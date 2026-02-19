@@ -71,7 +71,7 @@ std::pair<std::string, std::string> find_model_files() {
 
 int main() {
     std::cout << "========================================\n";
-    std::cout << "🔍 ТЕСТИРОВАНИЕ ОБУЧЕННОЙ МОДЕЛИ BPE\n";
+    std::cout << "ТЕСТИРОВАНИЕ ОБУЧЕННОЙ МОДЕЛИ BPE\n";
     std::cout << "========================================\n\n";
 
     // Загружаем модель
@@ -82,18 +82,18 @@ int main() {
     
     bpe::FastBPETokenizer tokenizer(config);
     
-    std::cout << "📦 Поиск файлов модели...\n";
+    std::cout << "Поиск файлов модели...\n";
     auto [vocab_path, merges_path] = find_model_files();
     
     if (vocab_path.empty()) {
-        std::cerr << "❌ Не удалось найти файлы модели!\n";
+        std::cerr << "Не удалось найти файлы модели!\n";
         std::cerr << "   Ожидаемые пути:\n";
         std::cerr << "   - ../../bpe/model_trained.bin\n";
         std::cerr << "   - ../../bpe/vocab_trained.json + merges_trained.txt\n";
         return 1;
     }
     
-    std::cout << "✅ Найдены файлы модели:\n";
+    std::cout << "Найдены файлы модели:\n";
     std::cout << "   Словарь: " << vocab_path << "\n";
     if (!merges_path.empty()) {
         std::cout << "   Слияния: " << merges_path << "\n";
@@ -114,14 +114,14 @@ int main() {
     auto load_time = std::chrono::duration_cast<std::chrono::milliseconds>(load_end - load_start);
     
     if (!loaded) {
-        std::cerr << "❌ Ошибка загрузки модели!\n";
+        std::cerr << "Ошибка загрузки модели!\n";
         return 1;
     }
     
-    std::cout << "✅ Модель загружена за " << load_time.count() << " мс\n";
-    std::cout << "📊 Размер словаря: " << tokenizer.vocab_size() << " токенов\n";
-    std::cout << "🔗 Правил слияния: " << tokenizer.merges_count() << "\n";
-    std::cout << "🎯 ID <UNK>: " << tokenizer.unknown_id() << "\n";
+    std::cout << "Модель загружена за " << load_time.count() << " мс\n";
+    std::cout << "Размер словаря: " << tokenizer.vocab_size() << " токенов\n";
+    std::cout << "Правил слияния: " << tokenizer.merges_count() << "\n";
+    std::cout << "ID <UNK>: " << tokenizer.unknown_id() << "\n";
     std::cout << std::endl;
     
     // Тестовые примеры
@@ -141,7 +141,7 @@ int main() {
     };
     
     std::cout << "========================================\n";
-    std::cout << "🔬 ТЕСТИРОВАНИЕ КОДИРОВАНИЯ\n";
+    std::cout << "ТЕСТИРОВАНИЕ КОДИРОВАНИЯ\n";
     std::cout << "========================================\n\n";
     
     int passed = 0;
@@ -152,7 +152,7 @@ int main() {
     std::vector<size_t> token_counts;
     
     for (const auto& [desc, code] : test_cases) {
-        std::cout << "📝 " << desc << ":\n";
+        std::cout << desc << ":\n";
         std::cout << "   Исходный:   '" << code << "'\n";
         
         // Измеряем время encode
@@ -183,7 +183,7 @@ int main() {
                   << std::set<int>(tokens.begin(), tokens.end()).size() << ")\n";
         std::cout << "   Время encode: " << format_duration(encode_time) << "\n";
         std::cout << "   Время decode: " << format_duration(decode_time) << "\n";
-        std::cout << "   Результат: " << (match ? "✅ СОВПАДАЕТ" : "❌ НЕ СОВПАДАЕТ") << "\n";
+        std::cout << "   Результат: " << (match ? "✅ СОВПАДАЕТ" : "НЕ СОВПАДАЕТ") << "\n";
         
         if (!match) {
             // Показываем различия
@@ -210,11 +210,11 @@ int main() {
     // ======================================================================
     
     std::cout << "========================================\n";
-    std::cout << "📊 СТАТИСТИКА\n";
+    std::cout << "СТАТИСТИКА\n";
     std::cout << "========================================\n\n";
     
     double success_rate = 100.0 * passed / total;
-    std::cout << "✅ Успешных тестов: " << passed << "/" << total 
+    std::cout << "Успешных тестов: " << passed << "/" << total 
               << " (" << std::fixed << std::setprecision(1) << success_rate << "%)\n\n";
     
     // Статистика по токенам
@@ -223,7 +223,7 @@ int main() {
         for (size_t count : token_counts) total_tokens += count;
         double avg_tokens = static_cast<double>(total_tokens) / token_counts.size();
         
-        std::cout << "📈 Статистика токенов:\n";
+        std::cout << "Статистика токенов:\n";
         std::cout << "   Всего токенов: " << total_tokens << "\n";
         std::cout << "   Среднее на текст: " << std::fixed << std::setprecision(1) << avg_tokens << "\n";
         std::cout << "   Минимум: " << *std::min_element(token_counts.begin(), token_counts.end()) << "\n";
@@ -250,7 +250,7 @@ int main() {
     // Статистика от токенизатора
     auto stats = tokenizer.stats();
     if (stats.encode_calls > 0) {
-        std::cout << "\n📊 Статистика токенизатора:\n";
+        std::cout << "\nСтатистика токенизатора:\n";
         std::cout << "   Всего encode вызовов: " << stats.encode_calls << "\n";
         std::cout << "   Всего decode вызовов: " << stats.decode_calls << "\n";
         std::cout << "   Попаданий в кэш: " << stats.cache_hits << "\n";
@@ -265,7 +265,7 @@ int main() {
     // ======================================================================
     
     std::cout << "\n========================================\n";
-    std::cout << "🚀 ТЕСТ ПРОИЗВОДИТЕЛЬНОСТИ\n";
+    std::cout << " ТЕСТ ПРОИЗВОДИТЕЛЬНОСТИ\n";
     std::cout << "========================================\n\n";
     
     // Создаем большой текст
@@ -274,8 +274,8 @@ int main() {
         large_text += "int x" + std::to_string(i) + " = " + std::to_string(i * i) + ";\n";
     }
     
-    std::cout << "📏 Размер текста: " << large_text.size() << " символов\n";
-    std::cout << "⏳ Запуск encode...\n";
+    std::cout << "Размер текста: " << large_text.size() << " символов\n";
+    std::cout << "Запуск encode...\n";
     
     auto perf_start = std::chrono::high_resolution_clock::now();
     auto large_tokens = tokenizer.encode(large_text);
@@ -284,7 +284,7 @@ int main() {
     auto perf_time = std::chrono::duration_cast<std::chrono::microseconds>(perf_end - perf_start);
     double mb_per_sec = (large_text.size() / 1'000'000.0) / (perf_time.count() / 1'000'000.0);
     
-    std::cout << "✅ Закодировано за " << format_duration(perf_time) << "\n";
+    std::cout << "Закодировано за " << format_duration(perf_time) << "\n";
     std::cout << "   Токенов: " << large_tokens.size() << "\n";
     std::cout << "   Скорость: " << std::fixed << std::setprecision(2) << mb_per_sec << " МБ/сек\n";
     std::cout << "   Токенов/сек: " << std::fixed << std::setprecision(0) 
@@ -312,7 +312,7 @@ int main() {
     // ======================================================================
     
     std::cout << "\n========================================\n";
-    std::cout << "✅ ТЕСТИРОВАНИЕ ЗАВЕРШЕНО\n";
+    std::cout << "ТЕСТИРОВАНИЕ ЗАВЕРШЕНО\n";
     std::cout << "========================================\n";
     
     return (passed == total) ? 0 : 1;

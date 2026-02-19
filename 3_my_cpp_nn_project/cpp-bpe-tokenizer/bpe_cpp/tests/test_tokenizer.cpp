@@ -149,7 +149,7 @@ TEST_F(TokenizerTest, LoadFromBinary) {
     BPETokenizer tokenizer;
     tokenizer.set_unknown_token("<UNK>");
     
-    bool loaded = tokenizer.load_binary("test_vocab.bin", "test_merges.txt");
+    bool loaded = tokenizer.load_binary("test_model.bin");
     EXPECT_TRUE(loaded);
     EXPECT_EQ(tokenizer.vocab_size(), binary_vocab_size);
     EXPECT_EQ(tokenizer.merges_count(), 3);
@@ -178,7 +178,7 @@ TEST_F(TokenizerTest, LoadNonExistent) {
  */
 TEST_F(TokenizerTest, TokenLookup) {
     BPETokenizer tokenizer;
-    tokenizer.load_binary("test_vocab.bin", "test_merges.txt");
+    tokenizer.load_binary("test_model.bin");
     
     // Проверяем поиск по строке
     token_id_t id_a = tokenizer.vocabulary().token_to_id("a");
@@ -197,7 +197,7 @@ TEST_F(TokenizerTest, TokenLookup) {
 TEST_F(TokenizerTest, SpecialTokens) {
     BPETokenizer tokenizer;
     tokenizer.set_unknown_token("<UNK>");
-    tokenizer.load_binary("test_vocab.bin", "test_merges.txt");
+    tokenizer.load_binary("test_model.bin");
     
     token_id_t unk_id = tokenizer.vocabulary().token_to_id("<UNK>");
     EXPECT_NE(unk_id, INVALID_TOKEN);
@@ -211,7 +211,7 @@ TEST_F(TokenizerTest, SpecialTokens) {
  */
 TEST_F(TokenizerTest, AllBytesPresent) {
     BPETokenizer tokenizer;
-    tokenizer.load_binary("test_vocab.bin", "test_merges.txt");
+    tokenizer.load_binary("test_model.bin");
     
     int found = 0;
     for (int i = 0; i < 256; ++i) {
@@ -234,7 +234,7 @@ TEST_F(TokenizerTest, AllBytesPresent) {
  */
 TEST_F(TokenizerTest, BasicEncode) {
     BPETokenizer tokenizer;
-    tokenizer.load_binary("test_vocab.bin", "test_merges.txt");
+    tokenizer.load_binary("test_model.bin");
     
     auto tokens = tokenizer.encode("a b");
     EXPECT_FALSE(tokens.empty());
@@ -249,7 +249,7 @@ TEST_F(TokenizerTest, BasicEncode) {
  */
 TEST_F(TokenizerTest, EncodeAllStrings) {
     BPETokenizer tokenizer;
-    tokenizer.load_binary("test_vocab.bin", "test_merges.txt");
+    tokenizer.load_binary("test_model.bin");
     
     for (const auto& text : test_strings) {
         auto tokens = tokenizer.encode(text);
@@ -264,7 +264,7 @@ TEST_F(TokenizerTest, EncodeAllStrings) {
  */
 TEST_F(TokenizerTest, EncodeWithMerges) {
     BPETokenizer tokenizer;
-    tokenizer.load_binary("test_vocab.bin", "test_merges.txt");
+    tokenizer.load_binary("test_model.bin");
     
     // Должно применить слияние a b -> ab
     auto tokens = tokenizer.encode("a b");
@@ -289,7 +289,7 @@ TEST_F(TokenizerTest, EncodeWithMerges) {
  */
 TEST_F(TokenizerTest, BasicDecode) {
     BPETokenizer tokenizer;
-    tokenizer.load_binary("test_vocab.bin", "test_merges.txt");
+    tokenizer.load_binary("test_model.bin");
     
     std::string original = "a b c";
     auto tokens = tokenizer.encode(original);
@@ -307,7 +307,7 @@ TEST_F(TokenizerTest, BasicDecode) {
  */
 TEST_F(TokenizerTest, RoundtripAll) {
     BPETokenizer tokenizer;
-    tokenizer.load_binary("test_vocab.bin", "test_merges.txt");
+    tokenizer.load_binary("test_model.bin");
     
     int passed = 0;
     for (const auto& text : test_strings) {
@@ -341,7 +341,7 @@ TEST_F(TokenizerTest, RoundtripAll) {
  */
 TEST_F(TokenizerTest, ByteLevelRussian) {
     BPETokenizer tokenizer(32000, true);  // byte_level = true
-    tokenizer.load_binary("test_vocab.bin", "test_merges.txt");
+    tokenizer.load_binary("test_model.bin");
     
     std::string russian = "привет мир";
     auto tokens = tokenizer.encode(russian);
@@ -357,7 +357,7 @@ TEST_F(TokenizerTest, ByteLevelRussian) {
  */
 TEST_F(TokenizerTest, ByteLevelChinese) {
     BPETokenizer tokenizer(32000, true);
-    tokenizer.load_binary("test_vocab.bin", "test_merges.txt");
+    tokenizer.load_binary("test_model.bin");
     
     std::string chinese = "你好世界";
     auto tokens = tokenizer.encode(chinese);
@@ -373,7 +373,7 @@ TEST_F(TokenizerTest, ByteLevelChinese) {
  */
 TEST_F(TokenizerTest, ByteLevelEmoji) {
     BPETokenizer tokenizer(32000, true);
-    tokenizer.load_binary("test_vocab.bin", "test_merges.txt");
+    tokenizer.load_binary("test_model.bin");
     
     std::string emoji = "😊🚀🌟";
     auto tokens = tokenizer.encode(emoji);
@@ -389,7 +389,7 @@ TEST_F(TokenizerTest, ByteLevelEmoji) {
  */
 TEST_F(TokenizerTest, NormalMode) {
     BPETokenizer tokenizer(32000, false);  // byte_level = false
-    tokenizer.load_binary("test_vocab.bin", "test_merges.txt");
+    tokenizer.load_binary("test_model.bin");
     
     std::string text = "hello";
     auto tokens = tokenizer.encode(text);
@@ -409,7 +409,7 @@ TEST_F(TokenizerTest, NormalMode) {
  */
 TEST_F(TokenizerTest, BatchEncode) {
     BPETokenizer tokenizer;
-    tokenizer.load_binary("test_vocab.bin", "test_merges.txt");
+    tokenizer.load_binary("test_model.bin");
     
     std::vector<std::string> texts = {"a", "b", "c", "ab", "bc"};
     auto batch_result = tokenizer.encode_batch(texts);
@@ -427,7 +427,7 @@ TEST_F(TokenizerTest, BatchEncode) {
  */
 TEST_F(TokenizerTest, BatchWithDifferentSizes) {
     BPETokenizer tokenizer;
-    tokenizer.load_binary("test_vocab.bin", "test_merges.txt");
+    tokenizer.load_binary("test_model.bin");
     
     std::vector<std::string> texts;
     for (int i = 1; i <= 10; ++i) {
@@ -452,7 +452,7 @@ TEST_F(TokenizerTest, BatchWithDifferentSizes) {
  */
 TEST_F(TokenizerTest, EmptyInput) {
     BPETokenizer tokenizer;
-    tokenizer.load_binary("test_vocab.bin", "test_merges.txt");
+    tokenizer.load_binary("test_model.bin");
     
     auto tokens = tokenizer.encode("");
     EXPECT_TRUE(tokens.empty());
@@ -468,7 +468,7 @@ TEST_F(TokenizerTest, EmptyInput) {
  */
 TEST_F(TokenizerTest, VeryLongInput) {
     BPETokenizer tokenizer;
-    tokenizer.load_binary("test_vocab.bin", "test_merges.txt");
+    tokenizer.load_binary("test_model.bin");
     
     std::string text(10000, 'a');
     auto tokens = tokenizer.encode(text);
@@ -482,7 +482,7 @@ TEST_F(TokenizerTest, VeryLongInput) {
  */
 TEST_F(TokenizerTest, MixedCharacters) {
     BPETokenizer tokenizer;
-    tokenizer.load_binary("test_vocab.bin", "test_merges.txt");
+    tokenizer.load_binary("test_model.bin");
     
     std::string text = "a1 b2 c3 !@#$ привет 世界 😊";
     auto tokens = tokenizer.encode(text);
@@ -496,7 +496,7 @@ TEST_F(TokenizerTest, MixedCharacters) {
  */
 TEST_F(TokenizerTest, AllBytes) {
     BPETokenizer tokenizer;
-    tokenizer.load_binary("test_vocab.bin", "test_merges.txt");
+    tokenizer.load_binary("test_model.bin");
     
     std::string all_bytes;
     for (int i = 0; i < 256; ++i) {
@@ -519,7 +519,7 @@ TEST_F(TokenizerTest, AllBytes) {
  */
 TEST_F(TokenizerTest, EncodePerformance) {
     BPETokenizer tokenizer;
-    tokenizer.load_binary("test_vocab.bin", "test_merges.txt");
+    tokenizer.load_binary("test_model.bin");
     
     std::string text(1000, 'a');
     const int iterations = 100;
@@ -541,20 +541,4 @@ TEST_F(TokenizerTest, EncodePerformance) {
     std::cout << "   Итераций: " << iterations << std::endl;
     std::cout << "   Среднее время: " << std::fixed << std::setprecision(3) 
               << ms_per_encode << " мс" << std::endl;
-}
-
-// ======================================================================
-// Запуск тестов
-// ======================================================================
-
-int main(int argc, char **argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    
-    std::cout << "\n🔧 Запуск тестов BPETokenizer\n" << std::endl;
-    
-    int result = RUN_ALL_TESTS();
-    
-    std::cout << "\n✅ Тестирование завершено. Код возврата: " << result << std::endl;
-    
-    return result;
 }

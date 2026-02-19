@@ -23,42 +23,42 @@ else()
     message(FATAL_ERROR "❌ Crow не найден! Установите: git clone https://github.com/CrowCpp/Crow.git ../../third_party/crow")
 endif()
 
-# ======================================================================
-# Добавление исполняемого файла сервера
-# ======================================================================
+# Поиск zlib
+find_package(ZLIB REQUIRED)
 
+# ======================================================================
+# Добавление исполняемого файла сервера (ТОЛЬКО ОДИН РАЗ!)
+# ======================================================================
 add_executable(tokenizer_server_crow server_crow.cpp)
 
 # ======================================================================
 # Настройка путей включения
 # ======================================================================
-
 target_include_directories(tokenizer_server_crow PRIVATE 
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include                    # Заголовки проекта
-    ${CROW_INCLUDE_DIR}                                        # Crow
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CROW_INCLUDE_DIR}
+    ${ZLIB_INCLUDE_DIRS}
 )
 
 # ======================================================================
 # Линковка с библиотеками
 # ======================================================================
-
 target_link_libraries(tokenizer_server_crow PRIVATE 
-    bpe_tokenizer                    # Основная библиотека токенизатора
-    Threads::Threads                  # Многопоточность
+    bpe_tokenizer
+    Threads::Threads
+    ZLIB::ZLIB
 )
 
 # ======================================================================
-# Определения для компиляции
+# Определения для компиляции (ОПЦИОНАЛЬНО - можно закомментировать если нет zlib)
 # ======================================================================
-
 target_compile_definitions(tokenizer_server_crow PRIVATE
-    CROW_ENABLE_COMPRESSION            # Включить сжатие
+    CROW_ENABLE_COMPRESSION
 )
 
 # ======================================================================
 # Копирование моделей в директорию сборки
 # ======================================================================
-
 add_custom_command(TARGET tokenizer_server_crow POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_CURRENT_SOURCE_DIR}/../models
@@ -69,7 +69,6 @@ add_custom_command(TARGET tokenizer_server_crow POST_BUILD
 # ======================================================================
 # Запуск сервера (пользовательская цель)
 # ======================================================================
-
 add_custom_target(run_web_server
     COMMAND $<TARGET_FILE:tokenizer_server_crow>
     COMMENT "🌐 Запуск веб-сервера на http://localhost:8080"
@@ -80,7 +79,6 @@ add_custom_target(run_web_server
 # ======================================================================
 # Информация о сборке
 # ======================================================================
-
 message(STATUS "")
 message(STATUS "🌐 Веб-сервер:")
 message(STATUS "   • tokenizer_server_crow - REST API сервер")

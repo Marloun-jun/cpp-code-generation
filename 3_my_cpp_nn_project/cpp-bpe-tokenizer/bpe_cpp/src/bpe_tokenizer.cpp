@@ -160,60 +160,118 @@ bool BPETokenizer::save_to_files(const std::string& vocab_path, const std::strin
     return true;
 }
 
-bool BPETokenizer::save_binary(const std::string& vocab_path, const std::string& merges_path) const {
-    std::shared_lock lock(mutex_);
+// ======================================================================
+// Сохранение в бинарный формат (один файл)
+// ======================================================================
+
+bool BPETokenizer::save_binary(const std::string& path) const {
+    std::ofstream file(path, std::ios::binary);
+    if (!file) return false;
     
-    // Сохранение словаря в бинарном формате
-    if (!vocab_.save_binary(vocab_path)) {
-        std::cerr << "Failed to save binary vocabulary to " << vocab_path << std::endl;
+    try {
+        // Магическое число для проверки формата
+        uint32_t magic = 0x42504542;  // "BPEB"
+        file.write(reinterpret_cast<const char*>(&magic), sizeof(magic));
+        
+        // Версия формата
+        uint32_t version = 1;
+        file.write(reinterpret_cast<const char*>(&version), sizeof(version));
+        
+        // Размер словаря
+        uint32_t vocab_size = static_cast<uint32_t>(vocab_.size());
+        file.write(reinterpret_cast<const char*>(&vocab_size), sizeof(vocab_size));
+        
+        // Токены
+        auto tokens = vocab_.get_all_tokens();
+        for (const auto& token : tokens) {
+            uint32_t len = static_cast<uint32_t>(token.size());
+            file.write(reinterpret_cast<const char*>(&len), sizeof(len));
+            file.write(token.data(), len);
+        }
+        
+        // Количество мерджей
+        uint32_t merges_count = static_cast<uint32_t>(merges_.size());
+        file.write(reinterpret_cast<const char*>(&merges_count), sizeof(merges_count));
+        
+        // Мерджи (сначала левый, потом правый токен)
+        for (const auto& [pair, rank] : merges_) {
+            uint32_t left_len = static_cast<uint32_t>(pair.left.size());
+            uint32_t right_len = static_cast<uint32_t>(pair.right.size());
+            
+            file.write(reinterpret_cast<const char*>(&left_len), sizeof(left_len));
+            file.write(pair.left.data(), left_len);
+            file.write(reinterpret_cast<const char*>(&right_len), sizeof(right_len));
+            file.write(pair.right.data(), right_len);
+        }
+        
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Ошибка бинарного сохранения: " << e.what() << std::endl;
         return false;
     }
-    
-    // Сохранение правил слияния в текстовом формате (они обычно небольшие)
-    std::ofstream merges_file(merges_path);
-    if (!merges_file.is_open()) {
-        return false;
-    }
-    
-    merges_file << "#version: 0.2\n";
-    for (const auto& [pair, rank] : merges_) {
-        merges_file << pair.left << " " << pair.right << "\n";
-    }
-    
-    return true;
 }
 
-bool BPETokenizer::load_binary(const std::string& vocab_path, const std::string& merges_path) {
-    std::unique_lock lock(mutex_);
+// ======================================================================
+// Загрузка из бинарного формата (один файл)
+// ======================================================================
+
+bool BPETokenizer::load_binary(const std::string& path) {
+    std::ifstream file(path, std::ios::binary);
+    if (!file) return false;
     
-    // Загрузка словаря из бинарного формата
-    if (!vocab_.load_binary(vocab_path)) {
-        std::cerr << "Failed to load binary vocabulary from " << vocab_path << std::endl;
+    try {
+        // Проверка магического числа
+        uint32_t magic;
+        file.read(reinterpret_cast<char*>(&magic), sizeof(magic));
+        if (magic != 0x42504542) return false;
+        
+        // Проверка версии
+        uint32_t version;
+        file.read(reinterpret_cast<char*>(&version), sizeof(version));
+        if (version != 1) return false;
+        
+        // Очищаем текущие данные
+        vocab_.clear();
+        merges_.clear();
+        
+        // Загрузка словаря
+        uint32_t vocab_size;
+        file.read(reinterpret_cast<char*>(&vocab_size), sizeof(vocab_size));
+        
+        for (uint32_t i = 0; i < vocab_size; ++i) {
+            uint32_t len;
+            file.read(reinterpret_cast<char*>(&len), sizeof(len));
+            
+            std::string token(len, '\0');
+            file.read(&token[0], len);
+            
+            vocab_.add_token(token);
+        }
+        
+        // Загрузка мерджей
+        uint32_t merges_count;
+        file.read(reinterpret_cast<char*>(&merges_count), sizeof(merges_count));
+        
+        for (uint32_t i = 0; i < merges_count; ++i) {
+            uint32_t left_len, right_len;
+            
+            file.read(reinterpret_cast<char*>(&left_len), sizeof(left_len));
+            std::string left(left_len, '\0');
+            file.read(&left[0], left_len);
+            
+            file.read(reinterpret_cast<char*>(&right_len), sizeof(right_len));
+            std::string right(right_len, '\0');
+            file.read(&right[0], right_len);
+            
+            MergePair pair{left, right};
+            merges_[pair] = i;
+        }
+        
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Ошибка бинарной загрузки: " << e.what() << std::endl;
         return false;
     }
-    
-    // Загрузка правил слияния
-    std::ifstream merges_file(merges_path);
-    if (!merges_file.is_open()) {
-        return false;
-    }
-    
-    merges_.clear();
-    std::string line;
-    int rank = 0;
-    
-    while (std::getline(merges_file, line)) {
-        if (line.empty() || line[0] == '#') {
-            continue;
-        }
-        std::istringstream iss(line);
-        std::string left, right;
-        if (iss >> left >> right) {
-            merges_[{left, right}] = rank++;
-        }
-    }
-    
-    return true;
 }
 
 std::vector<token_id_t> BPETokenizer::encode(const std::string& text) const {

@@ -434,19 +434,3 @@ TEST(VocabularyTest, GetAllTokens) {
         EXPECT_EQ(tokens[i], expected[i]);
     }
 }
-
-// ======================================================================
-// Запуск тестов
-// ======================================================================
-
-int main(int argc, char **argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    
-    std::cout << "\n🔧 Запуск тестов Vocabulary\n" << std::endl;
-    
-    int result = RUN_ALL_TESTS();
-    
-    std::cout << "\n✅ Тестирование завершено. Код возврата: " << result << std::endl;
-    
-    return result;
-}

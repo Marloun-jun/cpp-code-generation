@@ -20,7 +20,6 @@
 #include <gtest/gtest.h>
 #include "fast_tokenizer.hpp"
 #include "utils.hpp"
-
 #include <fstream>
 #include <iostream>
 #include <random>
@@ -618,20 +617,4 @@ TEST_F(FastTokenizerTest, MixedCharacters) {
     
     EXPECT_GT(tokens.size(), 0);
     std::cout << "📝 Смешанный текст -> " << tokens.size() << " токенов" << std::endl;
-}
-
-// ======================================================================
-// Запуск тестов
-// ======================================================================
-
-int main(int argc, char **argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    
-    std::cout << "\n🔧 Запуск тестов FastBPETokenizer\n" << std::endl;
-    
-    int result = RUN_ALL_TESTS();
-    
-    std::cout << "\n✅ Тестирование завершено. Код возврата: " << result << std::endl;
-    
-    return result;
 }

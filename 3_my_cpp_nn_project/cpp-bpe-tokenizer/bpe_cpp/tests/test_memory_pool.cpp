@@ -141,19 +141,3 @@ TEST(MemoryPoolTest, EdgeCases) {
     void* ptr2 = pool.allocate(100);
     pool.deallocate(ptr2, 200);  // Технически неправильно, но не должно упасть
 }
-
-// ======================================================================
-// Запуск тестов
-// ======================================================================
-
-int main(int argc, char **argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    
-    std::cout << "\n🔧 Запуск тестов MemoryPool\n" << std::endl;
-    
-    int result = RUN_ALL_TESTS();
-    
-    std::cout << "\n✅ Тестирование завершено. Код возврата: " << result << std::endl;
-    
-    return result;
-}

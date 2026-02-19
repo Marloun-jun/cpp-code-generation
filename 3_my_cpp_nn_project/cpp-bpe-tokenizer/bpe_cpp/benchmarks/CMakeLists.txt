@@ -1,5 +1,5 @@
 # ======================================================================
-# CMakeLists.txt - Бенчмарки для BPE токенизатора
+# benchmarks/CMakeLists.txt - Бенчмарки производительности
 # ======================================================================
 #
 # @file benchmarks/CMakeLists.txt
@@ -8,208 +8,141 @@
 # @author Ваше Имя
 # @date 2024
 # @version 1.0.0
-#
-# @details Сборка бенчмарков для сравнения производительности:
-#          - bpe_benchmarks - базовая версия токенизатора
-#          - bench_fast_tokenizer - оптимизированная версия
-#          - bench_comparison - прямое сравнение версий
-#
-# @see ../CMakeLists.txt
 # ======================================================================
-
-# Подключаем Google Benchmark
-include(FetchContent)
 
 # Политика для устранения предупреждения о времени
 if(POLICY CMP0135)
     cmake_policy(SET CMP0135 NEW)
 endif()
 
-message(STATUS "Загрузка Google Benchmark...")
-
-FetchContent_Declare(
-    googlebenchmark
-    URL https://github.com/google/benchmark/archive/refs/tags/v1.8.3.zip
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
-
-# Опции для Google Benchmark
-set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
-set(BENCHMARK_ENABLE_WERROR OFF CACHE BOOL "" FORCE)
-set(BENCHMARK_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
-set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE BOOL "" FORCE)
-set(BENCHMARK_USE_BUNDLED_GTEST OFF CACHE BOOL "" FORCE)
-
-FetchContent_MakeAvailable(googlebenchmark)
-
 # ======================================================================
-# Базовый бенчмарк
+# Подключение Google Benchmark (уже загружен в корневом CMake)
 # ======================================================================
 
-add_executable(bpe_benchmarks bench_tokenizer.cpp)
-
-target_link_libraries(bpe_benchmarks 
-    PRIVATE 
-        bpe_tokenizer 
-        benchmark::benchmark
-        benchmark::benchmark_main  # Автоматический main()
-)
-
-target_compile_definitions(bpe_benchmarks PRIVATE 
-    BENCHMARK_STATIC_DEFINE
-)
-
-# Копируем тестовые данные в директорию сборки
-add_custom_command(TARGET bpe_benchmarks POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/bench_data
-        ${CMAKE_CURRENT_BINARY_DIR}/bench_data
-    COMMENT "Копирование тестовых данных"
-)
-
 # ======================================================================
-# Бенчмарк для оптимизированного токенизатора
+# Функция для добавления бенчмарка
 # ======================================================================
-
-add_executable(bench_fast_tokenizer bench_fast_tokenizer.cpp)
-
-target_link_libraries(bench_fast_tokenizer 
-    PRIVATE 
-        bpe_tokenizer 
-        benchmark::benchmark
-        benchmark::benchmark_main
-        Threads::Threads  # Лучше чем pthread (кроссплатформенно)
-)
-
-# Включаем OpenMP если доступно
-if(USE_OPENMP AND OpenMP_CXX_FOUND)
-    target_link_libraries(bench_fast_tokenizer PRIVATE OpenMP::OpenMP_CXX)
-    target_compile_definitions(bench_fast_tokenizer PRIVATE USE_OPENMP)
-    message(STATUS "   OpenMP подключен для bench_fast_tokenizer")
-endif()
-
-# Копируем модели в директорию сборки (если есть)
-add_custom_command(TARGET bench_fast_tokenizer POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/../models
-        ${CMAKE_CURRENT_BINARY_DIR}/models
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/bench_data
-        ${CMAKE_CURRENT_BINARY_DIR}/bench_data
-    COMMENT "Копирование моделей и тестовых данных"
-)
-
-# ======================================================================
-# Бенчмарк сравнения двух версий
-# ======================================================================
-
-add_executable(bench_comparison bench_comparison.cpp)
-
-target_link_libraries(bench_comparison 
-    PRIVATE 
-        bpe_tokenizer 
-        benchmark::benchmark
-        benchmark::benchmark_main
-        Threads::Threads
-)
-
-# Копируем данные для сравнения
-add_custom_command(TARGET bench_comparison POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/../models
-        ${CMAKE_CURRENT_BINARY_DIR}/models
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/bench_data
-        ${CMAKE_CURRENT_BINARY_DIR}/bench_data
-    COMMENT "Копирование данных для сравнения"
-)
-
-# ======================================================================
-# Дополнительные тесты производительности (опционально)
-# ======================================================================
-
-# Бенчмарк для многопоточного обучения
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/bench_parallel_train.cpp)
-    add_executable(bench_parallel_train bench_parallel_train.cpp)
-    target_link_libraries(bench_parallel_train 
-        PRIVATE 
-            bpe_tokenizer 
-            benchmark::benchmark
-            benchmark::benchmark_main
-            Threads::Threads
-    )
-    
-    if(USE_OPENMP AND OpenMP_CXX_FOUND)
-        target_link_libraries(bench_parallel_train PRIVATE OpenMP::OpenMP_CXX)
-    endif()
-    
-    add_custom_command(TARGET bench_parallel_train POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_CURRENT_SOURCE_DIR}/bench_data
-            ${CMAKE_CURRENT_BINARY_DIR}/bench_data
-    )
-endif()
-
-# ======================================================================
-# Общие настройки для всех бенчмарков
-# ======================================================================
-
-# Добавляем пути для поиска заголовочных файлов
-foreach(BENCH_TARGET 
-        bpe_benchmarks 
-        bench_fast_tokenizer 
-        bench_comparison
-        bench_parallel_train)
-    if(TARGET ${BENCH_TARGET})
-        target_include_directories(${BENCH_TARGET} PRIVATE
-            ${CMAKE_CURRENT_SOURCE_DIR}/../include
-            ${CMAKE_CURRENT_BINARY_DIR}/../include
+function(add_benchmark BENCHMARK_NAME BENCHMARK_SOURCE)
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${BENCHMARK_SOURCE})
+        add_executable(${BENCHMARK_NAME} ${BENCHMARK_SOURCE})
+        
+        target_link_libraries(${BENCHMARK_NAME}
+            PRIVATE
+                bpe_tokenizer
+                benchmark::benchmark
+                benchmark::benchmark_main
+                Threads::Threads
         )
+        
+        # Подключаем OpenMP если доступно
+        if(USE_OPENMP AND OpenMP_CXX_FOUND)
+            target_link_libraries(${BENCHMARK_NAME} PRIVATE OpenMP::OpenMP_CXX)
+            target_compile_definitions(${BENCHMARK_NAME} PRIVATE USE_OPENMP)
+            message(STATUS "   ⚡ OpenMP подключен для ${BENCHMARK_NAME}")
+        endif()
+        
+        message(STATUS "   ✅ Добавлен бенчмарк: ${BENCHMARK_NAME}")
+    else()
+        message(STATUS "   ⚠️ Файл ${BENCHMARK_SOURCE} не найден, бенчмарк ${BENCHMARK_NAME} пропущен")
     endif()
-endforeach()
+endfunction()
+
+# ======================================================================
+# Добавление бенчмарков
+# ======================================================================
+
+message(STATUS "\n📊 Добавление бенчмарков:")
+
+# Базовый бенчмарк
+add_benchmark(bpe_benchmarks bench_tokenizer.cpp)
+
+# Бенчмарк для оптимизированной версии
+add_benchmark(bench_fast_tokenizer bench_fast_tokenizer.cpp)
+
+# Бенчмарк сравнения
+add_benchmark(bench_comparison bench_comparison.cpp)
+
+# ======================================================================
+# Копирование тестовых данных
+# ======================================================================
+
+# Копируем тестовые примеры C++ кода
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bench_data)
+
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/bench_data/sample_code.txt)
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/bench_data/sample_code.txt
+        ${CMAKE_CURRENT_BINARY_DIR}/bench_data/sample_code.txt
+        COPYONLY
+    )
+    message(STATUS "   📋 Скопирован sample_code.txt")
+endif()
 
 # ======================================================================
 # Пользовательские цели для запуска бенчмарков
 # ======================================================================
 
-# Запуск всех бенчмарков
+# Запуск всех бенчмарков (только существующие)
+set(BENCHMARK_COMMANDS)
+if(TARGET bpe_benchmarks)
+    list(APPEND BENCHMARK_COMMANDS COMMAND $<TARGET_FILE:bpe_benchmarks>)
+endif()
+if(TARGET bench_fast_tokenizer)
+    list(APPEND BENCHMARK_COMMANDS COMMAND $<TARGET_FILE:bench_fast_tokenizer>)
+endif()
+if(TARGET bench_comparison)
+    list(APPEND BENCHMARK_COMMANDS COMMAND $<TARGET_FILE:bench_comparison>)
+endif()
+
 add_custom_target(run_benchmarks
-    COMMAND $<TARGET_FILE:bpe_benchmarks> --benchmark_out=baseline.json --benchmark_out_format=json
-    COMMAND $<TARGET_FILE:bench_fast_tokenizer> --benchmark_out=fast.json --benchmark_out_format=json
-    COMMAND $<TARGET_FILE:bench_comparison> --benchmark_out=comparison.json --benchmark_out_format=json
-    COMMENT "🏃 Запуск всех бенчмарков и сохранение результатов в JSON"
+    ${BENCHMARK_COMMANDS}
+    COMMENT "🏃 Запуск всех бенчмарков"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-# Запуск с фильтрацией по названию
-add_custom_target(run_encode_benchmarks
-    COMMAND $<TARGET_FILE:bench_fast_tokenizer> --benchmark_filter=Encode
-    COMMENT "🏃 Запуск только encode бенчмарков"
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-)
+# Запуск конкретного бенчмарка
+if(TARGET bpe_benchmarks)
+    add_custom_target(run_basic_benchmark
+        COMMAND $<TARGET_FILE:bpe_benchmarks>
+        COMMENT "🏃 Запуск базового бенчмарка"
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
+endif()
 
-# Запуск с кастомизацией
-add_custom_target(run_benchmarks_detailed
-    COMMAND $<TARGET_FILE:bench_fast_tokenizer> 
-        --benchmark_repetitions=5
-        --benchmark_display_aggregates_only=true
-        --benchmark_counters_tabular=true
-    COMMENT "🏃 Запуск с детальной статистикой (5 повторений)"
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-)
+if(TARGET bench_fast_tokenizer)
+    add_custom_target(run_fast_benchmark
+        COMMAND $<TARGET_FILE:bench_fast_tokenizer>
+        COMMENT "🏃 Запуск бенчмарка FastTokenizer"
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
+endif()
+
+if(TARGET bench_comparison)
+    add_custom_target(run_comparison_benchmark
+        COMMAND $<TARGET_FILE:bench_comparison>
+        COMMENT "🏃 Запуск сравнительного бенчмарка"
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
+endif()
 
 # ======================================================================
 # Информация о сборке
 # ======================================================================
+
 message(STATUS "")
-message(STATUS "Бенчмарки:")
-message(STATUS "   • bpe_benchmarks - базовая версия")
-message(STATUS "   • bench_fast_tokenizer - оптимизированная версия")
-message(STATUS "   • bench_comparison - сравнение версий")
-if(TARGET bench_parallel_train)
-    message(STATUS "   • bench_parallel_train - параллельное обучение")
+message(STATUS "📊 Бенчмарки:")
+if(TARGET bpe_benchmarks)
+    message(STATUS "   • bpe_benchmarks - базовая версия")
+endif()
+if(TARGET bench_fast_tokenizer)
+    message(STATUS "   • bench_fast_tokenizer - оптимизированная версия")
+endif()
+if(TARGET bench_comparison)
+    message(STATUS "   • bench_comparison - сравнение версий")
 endif()
 message(STATUS "")
-message(STATUS "Для запуска: make run_benchmarks")
-message(STATUS "Или: ./benchmarks/bpe_benchmarks")
-message(STATUS "========================================")
+message(STATUS "🚀 Для запуска бенчмарков:")
+if(TARGET run_benchmarks)
+    message(STATUS "   make run_benchmarks")
+endif()
+message(STATUS "========================================\n")

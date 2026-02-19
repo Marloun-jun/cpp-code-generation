@@ -58,14 +58,14 @@ public:
      * @param path Путь для сохранения
      * @return true при успешном сохранении
      */
-    virtual bool save_binary(const std::string& path) const = 0;
+    virtual bool save_binary(const std::string& path) const = 0;  // 👈 ДОБАВИТЬ
     
     /**
      * @brief Загрузить модель из бинарного формата (единый файл)
      * @param path Путь к файлу
      * @return true при успешной загрузке
      */
-    virtual bool load_binary(const std::string& path) = 0;
+    virtual bool load_binary(const std::string& path) = 0;  // 👈 ДОБАВИТЬ
     
     /**
      * @brief Экспортировать в формат HuggingFace Tokenizers

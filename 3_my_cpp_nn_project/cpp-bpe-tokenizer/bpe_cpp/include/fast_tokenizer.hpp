@@ -26,13 +26,9 @@
 
 #pragma once
 
+// Убираем ручные определения, они теперь задаются через CMake
 #ifdef HAS_CONFIG_H
     #include "config.h"
-#else
-    // Ручные определения, пока config.h не создастся
-    #define USE_OPENMP
-    #define USE_AVX2
-    #define USE_SSE42
 #endif
 
 #include "memory_pool.hpp"

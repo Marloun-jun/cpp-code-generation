@@ -244,29 +244,3 @@ TEST(ParallelTrainerTest, CreationPerformance) {
     
     EXPECT_LT(duration.count(), 1000000);  // Меньше 1 секунды
 }
-
-// ======================================================================
-// Запуск тестов
-// ======================================================================
-
-int main(int argc, char **argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    
-    std::cout << "\n🔧 Запуск тестов ParallelTrainer\n" << std::endl;
-    
-#ifdef USE_OPENMP
-    std::cout << "  ⚡ OpenMP доступен" << std::endl;
-#else
-    std::cout << "  ⚠️ OpenMP не доступен" << std::endl;
-#endif
-    
-    std::cout << "  📊 Доступно аппаратных потоков: " 
-              << std::thread::hardware_concurrency() << std::endl;
-    std::cout << std::endl;
-    
-    int result = RUN_ALL_TESTS();
-    
-    std::cout << "\n✅ Тестирование завершено. Код возврата: " << result << std::endl;
-    
-    return result;
-}

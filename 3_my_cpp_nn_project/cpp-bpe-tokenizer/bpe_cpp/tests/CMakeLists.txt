@@ -48,20 +48,21 @@ include_directories(
 )
 
 # Функция для добавления теста с общими настройками
-function(add_bpe_test TEST_NAME TEST_SOURCES)
-    add_executable(${TEST_NAME} ${TEST_SOURCES})
+function(add_bpe_test TEST_NAME TEST_SOURCE)
+    add_executable(${TEST_NAME} ${TEST_SOURCE})
     
     target_link_libraries(${TEST_NAME}
         PRIVATE
             bpe_tokenizer
             gtest_main
-            pthread  # Для многопоточности
+            pthread
+            benchmark::benchmark
+            benchmark::benchmark_main
     )
     
     # Добавляем тест в CTest
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
     
-    # Включаем автоматическое обнаружение тестов
     include(GoogleTest)
     gtest_add_tests(${TEST_NAME} "" AUTO)
     

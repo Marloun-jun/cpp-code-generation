@@ -581,19 +581,3 @@ TEST_F(CompatibilityTest, SpecialTokens) {
     
     EXPECT_EQ(ids.size(), 4) << "Специальные токены должны иметь разные ID";
 }
-
-// ======================================================================
-// Запуск тестов
-// ======================================================================
-
-int main(int argc, char **argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    
-    std::cout << "\n🔧 Запуск тестов совместимости C++ BPE токенизатора\n" << std::endl;
-    
-    int result = RUN_ALL_TESTS();
-    
-    std::cout << "\n✅ Тестирование завершено. Код возврата: " << result << std::endl;
-    
-    return result;
-}

@@ -139,6 +139,17 @@ endif()
 # ======================================================================
 include(FetchContent)
 
+# Поиск Threads (pthread)
+find_package(Threads REQUIRED)
+if(TARGET Threads::Threads)
+    message(STATUS "✅ Threads::Threads найден")
+else()
+    message(WARNING "⚠️ Threads::Threads не найден, используем pthread напрямую")
+    add_library(Threads::Threads INTERFACE IMPORTED)
+    set_property(TARGET Threads::Threads PROPERTY 
+        INTERFACE_LINK_LIBRARIES pthread)
+endif()
+
 # OpenMP для параллельных вычислений
 find_package(OpenMP QUIET)
 if(USE_OPENMP AND OpenMP_CXX_FOUND)
@@ -170,8 +181,8 @@ if(BUILD_BENCHMARKS OR BUILD_TESTING)
     message(STATUS "📦 Загрузка Google Benchmark...")
     FetchContent_Declare(
         googlebenchmark
-        GIT_REPOSITORY https://github.com/google/benchmark.git
-        GIT_TAG v1.7.0
+        URL https://github.com/google/benchmark/archive/refs/tags/v1.7.0.zip
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     )
     set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
     set(BENCHMARK_ENABLE_WERROR OFF CACHE BOOL "" FORCE)
@@ -219,6 +230,19 @@ else()
 endif()
 
 # ======================================================================
+# Пути к зависимостям из build/_deps/
+# ======================================================================
+set(DEPS_INCLUDE_DIRS
+    ${CMAKE_CURRENT_BINARY_DIR}/_deps/nlohmann_json-src/include
+    ${CMAKE_CURRENT_BINARY_DIR}/_deps/fmt-src/include
+    ${CMAKE_CURRENT_BINARY_DIR}/_deps/googletest-src/googletest/include
+    ${CMAKE_CURRENT_BINARY_DIR}/_deps/googlebenchmark-src/include
+)
+
+# Добавляем пути ко всем таргетам
+include_directories(${DEPS_INCLUDE_DIRS})
+
+# ======================================================================
 # Исходные файлы библиотеки
 # ======================================================================
 set(LIB_SOURCES
@@ -227,11 +251,11 @@ set(LIB_SOURCES
     src/utils.cpp               # Утилиты
     src/fast_tokenizer.cpp      # Оптимизированная версия
     src/parallel_trainer.cpp    # Параллельное обучение
-#    src/simd_utils.cpp          # SIMD оптимизации
-#    src/memory_pool.cpp         # Пул памяти
-    src/profiler.cpp            # Профайлер
+#    src/simd_utils.cpp          # SIMD оптимизации (опционально)
+#    src/memory_pool.cpp         # Пул памяти (опционально)
+#    src/profiler.cpp            # Профайлер (опционально)
     src/bpe_export.cpp          # Экспорт моделей
-    src/python_bindings.cpp    # Python биндинги через pybind11
+    src/python_bindings.cpp     # Python биндинги через pybind11
 )
 
 # ======================================================================
@@ -261,7 +285,7 @@ configure_file(
 message(STATUS "⚙️ Сгенерирован config.h")
 
 # ======================================================================
-# Настройка путей включения
+# Настройка путей включения для библиотеки
 # ======================================================================
 target_include_directories(bpe_tokenizer 
     PUBLIC 
@@ -270,6 +294,7 @@ target_include_directories(bpe_tokenizer
         $<INSTALL_INTERFACE:include>
     PRIVATE 
         src
+        ${DEPS_INCLUDE_DIRS}
 )
 
 # ======================================================================
@@ -392,6 +417,17 @@ if(BUILD_PYTHON_BINDINGS)
     # Находим Python
     find_package(Python REQUIRED COMPONENTS Interpreter Development)
     message(STATUS "🐍 Python найден: ${Python_VERSION}")
+    message(STATUS "   • Include пути: ${Python_INCLUDE_DIRS}")
+    
+    # Путь к pybind11 из виртуального окружения
+    set(PYBIND11_INCLUDE_DIR /home/john/Projects/NS/.venv/lib/python3.12/site-packages/pybind11/include)
+    
+    # Проверяем существование пути
+    if(EXISTS ${PYBIND11_INCLUDE_DIR}/pybind11/pybind11.h)
+        message(STATUS "   ✅ pybind11 найден в: ${PYBIND11_INCLUDE_DIR}")
+    else()
+        message(WARNING "   ⚠️ pybind11 не найден по пути: ${PYBIND11_INCLUDE_DIR}")
+    endif()
     
     # Подключаем pybind11
     include(FetchContent)
@@ -402,6 +438,12 @@ if(BUILD_PYTHON_BINDINGS)
     )
     FetchContent_MakeAvailable(pybind11)
     
+    # Добавляем пути к pybind11 в библиотеку
+    target_include_directories(bpe_tokenizer PRIVATE 
+        ${PYBIND11_INCLUDE_DIR}
+        ${Python_INCLUDE_DIRS}
+    )
+    
     # Создаем модуль
     pybind11_add_module(bpe_tokenizer_cpp src/python_bindings.cpp)
     
@@ -410,6 +452,9 @@ if(BUILD_PYTHON_BINDINGS)
     target_include_directories(bpe_tokenizer_cpp PRIVATE 
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_BINARY_DIR}/include
+        ${PYBIND11_INCLUDE_DIR}
+        ${Python_INCLUDE_DIRS}
+        ${DEPS_INCLUDE_DIRS}
     )
     
     message(STATUS "🐍 Python биндинги будут собраны")

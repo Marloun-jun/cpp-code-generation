@@ -35,9 +35,9 @@ function(add_example EXAMPLE_NAME EXAMPLE_SOURCE)
     add_executable(${EXAMPLE_NAME} ${EXAMPLE_SOURCE})
     
     target_link_libraries(${EXAMPLE_NAME}
-        PRIVATE
-            bpe_tokenizer
-            Threads::Threads
+    PRIVATE
+        bpe_tokenizer
+        ${CMAKE_THREAD_LIBS_INIT}  # вместо Threads::Threads
     )
     
     # Если нужны дополнительные библиотеки для конкретного примера
@@ -131,7 +131,7 @@ add_custom_target(run_all_examples
     COMMAND $<TARGET_FILE:batch_example>
     COMMAND $<TARGET_FILE:compare_with_python>
     COMMAND echo "\n=== Fast Tokenizer Demo ==="
-    COMMAND $<TARGET_FILE:fast_tokenizer_demo>
+#    COMMAND $<TARGET_FILE:fast_tokenizer_demo>
     COMMAND echo "\n=== Training Example ==="
     COMMAND $<TARGET_FILE:train_example>
     COMMENT "🏃 Запуск всех примеров"
@@ -151,11 +151,13 @@ add_custom_target(run_batch_example
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-add_custom_target(run_fast_demo
-    COMMAND $<TARGET_FILE:fast_tokenizer_demo>
-    COMMENT "🏃 Запуск fast_tokenizer_demo"
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-)
+
+# add_custom_target(run_fast_demo
+#    COMMAND $<TARGET_FILE:fast_tokenizer_demo>
+#    COMMENT "🏃 Запуск fast_tokenizer_demo"
+#    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+#)
+
 
 add_custom_target(run_train_example
     COMMAND $<TARGET_FILE:train_example>
