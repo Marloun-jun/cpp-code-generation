@@ -2,9 +2,9 @@
  * @file profiler.hpp
  * @brief Простой встроенный профайлер для BPE токенизатора
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 1.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.1.0
  * 
  * @details Легковесная система профилирования для поиска узких мест:
  *          - Замер времени выполнения функций
@@ -154,7 +154,7 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         
         if (stats_.empty()) {
-            os << "📊 Нет данных профилирования\n";
+            os << "Нет данных профилирования\n";
             return;
         }
         
@@ -167,7 +167,7 @@ public:
             });
         
         os << "\n" << std::string(80, '=') << "\n";
-        os << "📊 ОТЧЕТ ПРОФИЛИРОВАНИЯ\n";
+        os << "ОТЧЕТ ПРОФИЛИРОВАНИЯ\n";
         os << std::string(80, '=') << "\n\n";
         
         // Заголовок таблицы
@@ -205,8 +205,8 @@ public:
         }
         
         os << std::string(103, '-') << "\n";
-        os << "📈 Всего операций: " << stats_.size() << "\n";
-        os << "⏱️  Общее время: " << std::fixed << std::setprecision(3)
+        os << "Всего операций: " << stats_.size() << "\n";
+        os << "Общее время: " << std::fixed << std::setprecision(3)
            << total_time_all / 1'000'000.0 << " мс\n";
         os << std::string(80, '=') << "\n\n";
     }
@@ -218,7 +218,7 @@ public:
         std::ofstream file(current_output_file_);
         if (file.is_open()) {
             printReport(file);
-            std::cout << "💾 Отчет сохранен в: " << current_output_file_ << "\n";
+            std::cout << "Отчет сохранен в: " << current_output_file_ << "\n";
         }
     }
 };

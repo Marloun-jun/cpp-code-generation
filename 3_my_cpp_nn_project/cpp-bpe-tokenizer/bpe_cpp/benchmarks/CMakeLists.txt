@@ -5,9 +5,9 @@
 # @file benchmarks/CMakeLists.txt
 # @brief Конфигурация сборки тестов производительности
 #
-# @author Ваше Имя
-# @date 2024
-# @version 1.0.0
+# @author Евгений П.
+# @date 2026
+# @version 3.3.0
 # ======================================================================
 
 # Политика для устранения предупреждения о времени
@@ -38,12 +38,12 @@ function(add_benchmark BENCHMARK_NAME BENCHMARK_SOURCE)
         if(USE_OPENMP AND OpenMP_CXX_FOUND)
             target_link_libraries(${BENCHMARK_NAME} PRIVATE OpenMP::OpenMP_CXX)
             target_compile_definitions(${BENCHMARK_NAME} PRIVATE USE_OPENMP)
-            message(STATUS "   ⚡ OpenMP подключен для ${BENCHMARK_NAME}")
+            message(STATUS "OpenMP подключен для ${BENCHMARK_NAME}")
         endif()
         
-        message(STATUS "   ✅ Добавлен бенчмарк: ${BENCHMARK_NAME}")
+        message(STATUS "Добавлен бенчмарк: ${BENCHMARK_NAME}")
     else()
-        message(STATUS "   ⚠️ Файл ${BENCHMARK_SOURCE} не найден, бенчмарк ${BENCHMARK_NAME} пропущен")
+        message(STATUS "Файл ${BENCHMARK_SOURCE} не найден, бенчмарк ${BENCHMARK_NAME} пропущен")
     endif()
 endfunction()
 
@@ -51,7 +51,7 @@ endfunction()
 # Добавление бенчмарков
 # ======================================================================
 
-message(STATUS "\n📊 Добавление бенчмарков:")
+message(STATUS "\nобавление бенчмарков:")
 
 # Базовый бенчмарк
 add_benchmark(bpe_benchmarks bench_tokenizer.cpp)
@@ -75,7 +75,7 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/bench_data/sample_code.txt)
         ${CMAKE_CURRENT_BINARY_DIR}/bench_data/sample_code.txt
         COPYONLY
     )
-    message(STATUS "   📋 Скопирован sample_code.txt")
+    message(STATUS "Скопирован sample_code.txt")
 endif()
 
 # ======================================================================
@@ -96,7 +96,7 @@ endif()
 
 add_custom_target(run_benchmarks
     ${BENCHMARK_COMMANDS}
-    COMMENT "🏃 Запуск всех бенчмарков"
+    COMMENT "Запуск всех бенчмарков"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
@@ -104,7 +104,7 @@ add_custom_target(run_benchmarks
 if(TARGET bpe_benchmarks)
     add_custom_target(run_basic_benchmark
         COMMAND $<TARGET_FILE:bpe_benchmarks>
-        COMMENT "🏃 Запуск базового бенчмарка"
+        COMMENT "Запуск базового бенчмарка"
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
 endif()
@@ -112,7 +112,7 @@ endif()
 if(TARGET bench_fast_tokenizer)
     add_custom_target(run_fast_benchmark
         COMMAND $<TARGET_FILE:bench_fast_tokenizer>
-        COMMENT "🏃 Запуск бенчмарка FastTokenizer"
+        COMMENT "Запуск бенчмарка FastTokenizer"
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
 endif()
@@ -120,7 +120,7 @@ endif()
 if(TARGET bench_comparison)
     add_custom_target(run_comparison_benchmark
         COMMAND $<TARGET_FILE:bench_comparison>
-        COMMENT "🏃 Запуск сравнительного бенчмарка"
+        COMMENT "Запуск сравнительного бенчмарка"
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
 endif()
@@ -130,7 +130,7 @@ endif()
 # ======================================================================
 
 message(STATUS "")
-message(STATUS "📊 Бенчмарки:")
+message(STATUS "Бенчмарки:")
 if(TARGET bpe_benchmarks)
     message(STATUS "   • bpe_benchmarks - базовая версия")
 endif()
@@ -141,7 +141,7 @@ if(TARGET bench_comparison)
     message(STATUS "   • bench_comparison - сравнение версий")
 endif()
 message(STATUS "")
-message(STATUS "🚀 Для запуска бенчмарков:")
+message(STATUS "Для запуска бенчмарков:")
 if(TARGET run_benchmarks)
     message(STATUS "   make run_benchmarks")
 endif()

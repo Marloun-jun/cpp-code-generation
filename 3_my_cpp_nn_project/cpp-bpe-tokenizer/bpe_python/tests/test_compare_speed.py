@@ -1,32 +1,68 @@
-"""
-Тест производительности BPE токенизатора.
-
-Измеряет скорость encode/decode операций на большом объеме C++ кода.
-Проводит множественные итерации для получения статистически значимых результатов.
-"""
+#!/usr/bin/env python3
+# ======================================================================
+# test_compare_speed.py - Тест производительности BPE токенизатора
+# ======================================================================
+#
+# @file test_compare_speed.py
+# @brief Тест производительности BPE токенизатора
+#
+# @author Евгений П.
+# @date 2026
+# @version 3.3.0
+#
+# @details Измеряет скорость encode/decode операций на большом объеме C++ кода.
+#          Проводит множественные итерации для получения статистически значимых
+#          результатов. Включает:
+#          - Тест скорости encode
+#          - Тест скорости decode
+#          - Тест точности roundtrip
+#          - Детальная статистика по времени и объему
+#
+# @usage python test_compare_speed.py [--model-size SIZE] [--iterations N] [--verbose]
+#
+# @example
+#   python test_compare_speed.py
+#   python test_compare_speed.py --model-size 10000 --iterations 100
+#   python test_compare_speed.py --verbose
+#
+# ======================================================================
 
 import sys
 import time
 import logging
+import argparse
+
 from pathlib import Path
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List, Dict, Any
 
-# Добавляем путь для импорта tokenizer
-current_file = Path(__file__).resolve()
-bpe_python_dir = current_file.parent.parent  # tests/ -> bpe_python/
-sys.path.insert(0, str(bpe_python_dir))
+# ======================================================================
+# НАСТРОЙКА ПУТЕЙ ДЛЯ ИМПОРТА
+# ======================================================================
 
-from tokenizer import BPETokenizer
+CURRENT_FILE = Path(__file__).resolve()           # tests/test_compare_speed.py
+TESTS_DIR = CURRENT_FILE.parent                    # tests/
+BPE_PYTHON_DIR = TESTS_DIR.parent                  # bpe_python/
+PROJECT_ROOT = BPE_PYTHON_DIR.parent               # cpp-bpe-tokenizer/
 
-# Настройка логирования
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# Добавляем путь для импорта токенизатора
+sys.path.insert(0, str(BPE_PYTHON_DIR))
+
+# ======================================================================
+# ИМПОРТ ТОКЕНИЗАТОРА
+# ======================================================================
+
+try:
+    from tokenizer import BPETokenizer
+except ImportError as e:
+    print(f"Ошибка импорта BPETokenizer: {e}")
+    print(f"Убедитесь, что файл tokenizer.py существует в {BPE_PYTHON_DIR}")
+    sys.exit(1)
 
 
-# Большой тестовый C++ код для бенчмарка
+# ======================================================================
+# БОЛЬШОЙ ТЕСТОВЫЙ C++ КОД ДЛЯ БЕНЧМАРКА
+# ======================================================================
+
 TEST_CODE = '''#include <iostream>
 #include <vector>
 #include <string>
@@ -126,103 +162,144 @@ int main() {
 '''
 
 
+# ======================================================================
+# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+# ======================================================================
+
+def get_project_paths() -> Dict[str, Path]:
+    """
+    Получить пути проекта.
+    
+    Returns:
+        Dict[str, Path]: Словарь с путями проекта
+    """
+    return {
+        "project_root": PROJECT_ROOT,
+        "bpe_python_dir": BPE_PYTHON_DIR,
+        "tests_dir": TESTS_DIR,
+        "models_dir": BPE_PYTHON_DIR / 'models',
+    }
+
+
+def print_header(title: str, width: int = 60) -> None:
+    """
+    Вывести заголовок раздела.
+    
+    Args:
+        title: Заголовок
+        width: Ширина линии
+    """
+    print(f"\n{'=' * width}")
+    print(f"{title:^{width}}")
+    print(f"{'=' * width}")
+
+
 def load_test_text(multiplier: int = 20) -> str:
     """
-    Загрузка тестового C++ кода с повторением.
+    Загрузить тестовый C++ код с повторением.
     
-    Аргументы:
+    Args:
         multiplier: Количество повторений базового кода
         
-    Возвращает:
-        Строка с тестовым кодом
+    Returns:
+        str: Строка с тестовым кодом
     """
     return TEST_CODE * multiplier
 
 
 def find_model_files(model_size: int = 8000) -> Tuple[Optional[Path], Optional[Path]]:
     """
-    Поиск файлов модели по стандартным путям.
+    Найти файлы модели по стандартным путям.
     
-    Аргументы:
+    Args:
         model_size: Размер модели (8000, 10000, 12000)
         
-    Возвращает:
-        Кортеж (путь к vocab.json, путь к merges.txt)
+    Returns:
+        Tuple[Optional[Path], Optional[Path]]: (путь к vocab.json, путь к merges.txt)
     """
-    possible_paths = [
-        # В директории models относительно bpe_python
-        bpe_python_dir / 'models' / f'bpe_{model_size}' / 'vocab.json',
-        bpe_python_dir / 'models' / f'bpe_{model_size}' / 'merges.txt',
-        
-        # В текущей директории
-        Path.cwd() / 'vocab.json',
-        Path.cwd() / 'merges.txt',
-        
-        # В родительской директории
-        Path.cwd().parent / 'vocab.json',
-        Path.cwd().parent / 'merges.txt',
+    paths = get_project_paths()
+    
+    # Стандартный путь в директории models
+    vocab_path = paths['models_dir'] / f'bpe_{model_size}' / 'vocab.json'
+    merges_path = paths['models_dir'] / f'bpe_{model_size}' / 'merges.txt'
+    
+    if vocab_path.exists() and merges_path.exists():
+        return vocab_path, merges_path
+    
+    # Альтернативные пути
+    alt_paths = [
+        (Path.cwd() / 'vocab.json', Path.cwd() / 'merges.txt'),
+        (Path.cwd().parent / 'vocab.json', Path.cwd().parent / 'merges.txt'),
+        (paths['bpe_python_dir'] / 'vocab.json', paths['bpe_python_dir'] / 'merges.txt'),
     ]
     
-    vocab_path = None
-    merges_path = None
+    for v_path, m_path in alt_paths:
+        if v_path.exists() and m_path.exists():
+            return v_path, m_path
     
-    # Ищем vocab.json
-    for path in possible_paths[::2]:  # Четные индексы - vocab
-        if path.exists():
-            vocab_path = path
-            break
-    
-    # Ищем merges.txt
-    for path in possible_paths[1::2]:  # Нечетные индексы - merges
-        if path.exists():
-            merges_path = path
-            break
-    
-    return vocab_path, merges_path
+    return None, None
 
+
+# ======================================================================
+# КЛАСС ДЛЯ ТЕСТИРОВАНИЯ СКОРОСТИ
+# ======================================================================
 
 class SpeedTest:
     """
     Класс для тестирования скорости работы токенизатора.
+    
+    Проводит комплексное тестирование производительности:
+    - Скорость encode операций
+    - Скорость decode операций
+    - Точность roundtrip преобразований
     """
     
-    def __init__(self, tokenizer: BPETokenizer):
+    def __init__(self, tokenizer: BPETokenizer, verbose: bool = False):
         """
         Инициализация теста скорости.
         
-        Аргументы:
+        Args:
             tokenizer: Загруженный токенизатор
+            verbose: Подробный вывод
         """
         self.tokenizer = tokenizer
-        self.results = {}
+        self.verbose = verbose
+        self.logger = logging.getLogger(__name__)
         
+        if verbose:
+            logging.getLogger().setLevel(logging.DEBUG)
+    
+    # ======================================================================
+    # ТЕСТЫ
+    # ======================================================================
+    
     def warmup(self, text: str, iterations: int = 5) -> None:
         """
         Прогрев токенизатора перед замерами.
         
-        Аргументы:
+        Args:
             text: Тестовый текст
             iterations: Количество итераций прогрева
         """
-        logger.info("Прогрев токенизатора...")
+        print(f"\nПрогрев токенизатора ({iterations} итераций)...")
         for i in range(iterations):
             _ = self.tokenizer.encode(text)
-            if (i + 1) % 10 == 0:
-                logger.debug(f"Прогрев: {i + 1}/{iterations}")
-        logger.info("Прогрев завершен")
+            if self.verbose and (i + 1) % 10 == 0:
+                print(f"   Прогрев: {i + 1}/{iterations}")
+        print("   ✓ Прогрев завершен")
     
-    def test_encode_speed(self, text: str, iterations: int = 50) -> dict:
+    def test_encode_speed(self, text: str, iterations: int = 50) -> Dict[str, Any]:
         """
         Тестирование скорости encode.
         
-        Аргументы:
+        Args:
             text: Тестовый текст
             iterations: Количество итераций
             
-        Возвращает:
-            Словарь с результатами
+        Returns:
+            Dict[str, Any]: Словарь с результатами
         """
-        logger.info(f"Запуск encode теста ({iterations} итераций)...")
+        print(f"\n⚡ Тест encode ({iterations} итераций)...")
         
         start_time = time.perf_counter()
         total_tokens = 0
@@ -234,8 +311,8 @@ class SpeedTest:
             total_tokens += token_count
             token_counts.append(token_count)
             
-            if (i + 1) % 10 == 0:
-                logger.debug(f"Encode: {i + 1}/{iterations}")
+            if self.verbose and (i + 1) % 10 == 0:
+                print(f"   Прогресс: {i + 1}/{iterations}")
         
         end_time = time.perf_counter()
         duration = end_time - start_time
@@ -252,22 +329,26 @@ class SpeedTest:
             'avg_tokens_per_text': total_tokens / iterations,
             'min_tokens': min(token_counts),
             'max_tokens': max(token_counts),
+            'std_tokens': self._std_dev(token_counts),
         }
+        
+        print(f"   ✓ Среднее время: {results['avg_time_per_encode']:.3f} мс")
+        print(f"   ✓ Скорость: {results['mb_per_second']:.2f} MB/сек")
         
         return results
     
-    def test_decode_speed(self, encoded_texts: list, iterations: int = 50) -> dict:
+    def test_decode_speed(self, encoded_texts: List[List[int]], iterations: int = 50) -> Dict[str, Any]:
         """
         Тестирование скорости decode.
         
-        Аргументы:
+        Args:
             encoded_texts: Список закодированных текстов
             iterations: Количество итераций
             
-        Возвращает:
-            Словарь с результатами
+        Returns:
+            Dict[str, Any]: Словарь с результатами
         """
-        logger.info(f"Запуск decode теста ({iterations} итераций)...")
+        print(f"\nТест decode ({iterations} итераций)...")
         
         start_time = time.perf_counter()
         total_chars = 0
@@ -277,8 +358,8 @@ class SpeedTest:
                 decoded = self.tokenizer.decode(encoded)
                 total_chars += len(decoded)
             
-            if (i + 1) % 10 == 0:
-                logger.debug(f"Decode: {i + 1}/{iterations}")
+            if self.verbose and (i + 1) % 10 == 0:
+                print(f"   Прогресс: {i + 1}/{iterations}")
         
         end_time = time.perf_counter()
         duration = end_time - start_time
@@ -294,28 +375,30 @@ class SpeedTest:
             'mb_per_second': (total_chars / duration) / (1024 * 1024),
         }
         
+        print(f"   ✓ Среднее время: {results['avg_time_per_decode']:.3f} мс")
+        print(f"   ✓ Скорость: {results['mb_per_second']:.2f} MB/сек")
+        
         return results
     
-    def test_roundtrip(self, test_strings: list) -> dict:
+    def test_roundtrip(self, test_strings: List[str]) -> Dict[str, Any]:
         """
         Тест точности encode-decode (roundtrip).
         
-        Аргументы:
+        Args:
             test_strings: Список тестовых строк
             
-        Возвращает:
-            Словарь с результатами
+        Returns:
+            Dict[str, Any]: Словарь с результатами
         """
-        logger.info("Тестирование roundtrip точности...")
+        print(f"\nТест roundtrip точности ({len(test_strings)} примеров)...")
         
         results = {
-            'total': 0,
+            'total': len(test_strings),
             'perfect': 0,
             'failed': []
         }
         
-        for text in test_strings:
-            results['total'] += 1
+        for i, text in enumerate(test_strings):
             encoded = self.tokenizer.encode(text)
             decoded = self.tokenizer.decode(encoded)
             
@@ -323,145 +406,182 @@ class SpeedTest:
                 results['perfect'] += 1
             else:
                 results['failed'].append({
-                    'original': text,
-                    'decoded': decoded,
-                    'tokens': [self.tokenizer.vocab.get(idx, '<UNK>') 
-                              for idx in encoded[:10]]
+                    'index': i,
+                    'original': text[:50] + '...' if len(text) > 50 else text,
+                    'tokens': encoded[:10]
                 })
+            
+            if self.verbose and (i + 1) % 10 == 0:
+                print(f"   Прогресс: {i + 1}/{len(test_strings)}")
         
         results['accuracy'] = (results['perfect'] / results['total']) * 100
         
+        print(f"   ✓ Точность: {results['accuracy']:.1f}% "
+              f"({results['perfect']}/{results['total']})")
+        
         return results
     
-    def print_report(self, encode_results: dict, decode_results: dict, 
-                    roundtrip_results: dict, text: str) -> None:
+    # ======================================================================
+    # ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    # ======================================================================
+    
+    def _std_dev(self, values: List[float]) -> float:
         """
-        Вывод отчета о тестировании.
+        Вычислить стандартное отклонение.
         
-        Аргументы:
+        Args:
+            values: Список значений
+            
+        Returns:
+            float: Стандартное отклонение
+        """
+        if len(values) < 2:
+            return 0.0
+        mean = sum(values) / len(values)
+        variance = sum((x - mean) ** 2 for x in values) / (len(values) - 1)
+        return variance ** 0.5
+    
+    # ======================================================================
+    # ОТЧЕТ
+    # ======================================================================
+    
+    def print_report(self, encode_results: Dict, decode_results: Dict, 
+                    roundtrip_results: Dict, text: str) -> None:
+        """
+        Вывести отчет о тестировании.
+        
+        Args:
             encode_results: Результаты encode теста
             decode_results: Результаты decode теста
             roundtrip_results: Результаты roundtrip теста
             text: Тестовый текст
         """
-        separator = "=" * 60
-        print(f"\n{separator}")
-        print("ОТЧЕТ О ТЕСТИРОВАНИИ СКОРОСТИ BPE ТОКЕНИЗАТОРА")
-        print(separator)
+        print_header("ОТЧЕТ О ТЕСТИРОВАНИИ СКОРОСТИ")
         
         # Информация о модели
         print(f"\nМодель:")
         print(f"  Размер словаря: {len(self.tokenizer.vocab)} токенов")
         print(f"  Byte-level: {self.tokenizer.byte_level}")
-        print(f"  Спец. токены: {self.tokenizer.special_tokens}")
+        print(f"  Спец. токены: {', '.join(self.tokenizer.special_tokens)}")
         
         # Информация о тесте
+        text_bytes = len(text.encode('utf-8'))
         print(f"\nПараметры теста:")
         print(f"  Размер текста: {len(text)} символов")
-        print(f"  Размер текста: {len(text.encode('utf-8')) / 1024:.2f} KB")
+        print(f"  Размер в байтах: {text_bytes / 1024:.2f} KB")
         print(f"  Итераций encode: {encode_results['iterations']}")
         print(f"  Итераций decode: {decode_results['iterations']}")
         
         # Результаты encode
-        print(f"\n⚡ encode:")
+        print(f"\nENCODE:")
         print(f"  Общее время: {encode_results['total_time']*1000:.2f} мс")
         print(f"  Среднее время: {encode_results['avg_time_per_encode']:.3f} мс")
         print(f"  Скорость: {encode_results['mb_per_second']:.2f} MB/сек")
         print(f"  Токенов/сек: {encode_results['tokens_per_second']:.0f}")
         print(f"  Токенов/текст: {encode_results['avg_tokens_per_text']:.1f} "
               f"(min: {encode_results['min_tokens']}, max: {encode_results['max_tokens']})")
+        if encode_results['std_tokens'] > 0:
+            print(f"  Станд. отклонение: ±{encode_results['std_tokens']:.1f}")
         
         # Результаты decode
-        print(f"\ndecode:")
+        print(f"\nDECODE:")
         print(f"  Общее время: {decode_results['total_time']*1000:.2f} мс")
         print(f"  Среднее время: {decode_results['avg_time_per_decode']:.3f} мс")
         print(f"  Скорость: {decode_results['mb_per_second']:.2f} MB/сек")
         print(f"  Символов/сек: {decode_results['chars_per_second']:.0f}")
         
         # Roundtrip точность
-        print(f"\nТочность roundtrip:")
+        print(f"\nТОЧНОСТЬ ROUNDTRIP:")
         print(f"  Точность: {roundtrip_results['accuracy']:.1f}% "
               f"({roundtrip_results['perfect']}/{roundtrip_results['total']})")
         
         if roundtrip_results['failed']:
             print(f"  Ошибки ({len(roundtrip_results['failed'])}):")
             for fail in roundtrip_results['failed'][:3]:  # Показываем первые 3
-                print(f"    • {fail['original'][:50]}...")
+                print(f"    • Пример {fail['index']}: {fail['original']}")
         
-        print(f"\n{separator}")
+        print(f"\n{'=' * 60}")
 
 
-def get_project_paths() -> dict:
+# ======================================================================
+# ОСНОВНАЯ ФУНКЦИЯ
+# ======================================================================
+
+def main() -> int:
     """
-    Получение путей проекта.
-    """
-    current_file = Path(__file__).resolve()  # tests/test_compare_speed.py
-    tests_dir = current_file.parent  # tests/
-    bpe_python_dir = tests_dir.parent  # bpe_python/
-    project_root = bpe_python_dir.parent  # cpp-bpe-tokenizer/
+    Основная функция тестирования.
     
-    return {
-        "project_root": project_root,
-        "bpe_python_dir": bpe_python_dir,
-        "tests_dir": tests_dir,
-        "models_dir": bpe_python_dir / 'models',
-    }
-
-
-def main():
-    """Основная функция тестирования."""
-    print("=" * 60)
-    print("ТЕСТ СКОРОСТИ BPE ТОКЕНИЗАТОРА")
-    print("=" * 60)
+    Returns:
+        int: 0 при успехе, 1 при ошибке
+    """
+    parser = argparse.ArgumentParser(description='Тест производительности BPE токенизатора')
+    parser.add_argument('--model-size', type=int, default=8000, choices=[8000, 10000, 12000],
+                       help='Размер модели (8000, 10000, 12000)')
+    parser.add_argument('--iterations', '-n', type=int, default=50,
+                       help='Количество итераций для усреднения')
+    parser.add_argument('--multiplier', '-m', type=int, default=20,
+                       help='Множитель тестового текста')
+    parser.add_argument('--verbose', '-v', action='store_true',
+                       help='Подробный вывод')
+    
+    args = parser.parse_args()
+    
+    print_header("ТЕСТ СКОРОСТИ BPE ТОКЕНИЗАТОРА")
     
     # Получаем пути
     paths = get_project_paths()
     
-    # Параметры
-    model_size = 8000  # Можно изменить на 10000 или 12000
-    iterations = 50
-    
     # Ищем файлы модели
-    vocab_path = paths['models_dir'] / f'bpe_{model_size}' / 'vocab.json'
-    merges_path = paths['models_dir'] / f'bpe_{model_size}' / 'merges.txt'
+    vocab_path, merges_path = find_model_files(args.model_size)
     
-    if not vocab_path.exists() or not merges_path.exists():
-        print(f"\nМодель bpe_{model_size} не найдена!")
-        print(f"  Искали vocab: {vocab_path}")
-        print(f"  Искали merges: {merges_path}")
+    if not vocab_path or not merges_path:
+        print(f"\nМодель bpe_{args.model_size} не найдена!")
+        print(f"   Искали в: {paths['models_dir']}")
         print(f"\nДоступные модели:")
-        for model_dir in paths['models_dir'].iterdir():
-            if model_dir.is_dir() and model_dir.name.startswith('bpe_'):
-                print(f"  • {model_dir.name}")
+        if paths['models_dir'].exists():
+            for model_dir in sorted(paths['models_dir'].iterdir()):
+                if model_dir.is_dir() and model_dir.name.startswith('bpe_'):
+                    size = model_dir.name.replace('bpe_', '')
+                    vocab = model_dir / 'vocab.json'
+                    merges = model_dir / 'merges.txt'
+                    status = '✓' if vocab.exists() and merges.exists() else '✗'
+                    print(f"   {status} {model_dir.name}")
+        else:
+            print(f"   Директория {paths['models_dir']} не существует")
         return 1
     
     try:
         # Загружаем токенизатор
-        print(f"\nЗагрузка модели bpe_{model_size}...")
+        print(f"\nЗагрузка модели bpe_{args.model_size}...")
         tokenizer = BPETokenizer.load(str(vocab_path), str(merges_path))
-        print(f"  ✓ Загружено {len(tokenizer.vocab)} токенов")
+        print(f"   ✓ Загружено {len(tokenizer.vocab)} токенов")
         
         # Создаем тест
-        speed_test = SpeedTest(tokenizer)
+        speed_test = SpeedTest(tokenizer, verbose=args.verbose)
         
         # Загружаем тестовый текст
         print(f"\nПодготовка тестовых данных...")
-        text = load_test_text(multiplier=20)
-        print(f"  Размер текста: {len(text)} символов")
-        print(f"  Размер в байтах: {len(text.encode('utf-8')) / 1024:.2f} KB")
+        text = load_test_text(multiplier=args.multiplier)
+        text_bytes = len(text.encode('utf-8'))
+        print(f"   Размер текста: {len(text)} символов")
+        print(f"   Размер в байтах: {text_bytes / 1024:.2f} KB")
+        print(f"   Размер в MB: {text_bytes / (1024 * 1024):.2f} MB")
         
         # Прогрев
         speed_test.warmup(text, iterations=5)
         
         # Тест encode
-        encode_results = speed_test.test_encode_speed(text, iterations=iterations)
+        encode_results = speed_test.test_encode_speed(text, iterations=args.iterations)
         
         # Подготовка данных для decode теста
-        print(f"\nодготовка encode данных для decode теста...")
+        print(f"\nПодготовка encode данных для decode теста...")
         encoded_texts = [tokenizer.encode(text) for _ in range(10)]
+        total_tokens = sum(len(et) for et in encoded_texts)
+        print(f"   Подготовлено {len(encoded_texts)} закодированных текстов")
+        print(f"   Всего токенов: {total_tokens}")
         
         # Тест decode
-        decode_results = speed_test.test_decode_speed(encoded_texts, iterations=iterations)
+        decode_results = speed_test.test_decode_speed(encoded_texts, iterations=args.iterations)
         
         # Тест roundtrip
         test_strings = [
@@ -471,6 +591,8 @@ def main():
             "template<typename T> class Vector {",
             "// Это комментарий на русском языке",
             "auto ptr = std::make_unique<int>(42);",
+            "std::cout << \"Привет, мир!\" << std::endl;",
+            "class MyClass { public: void method(); };",
         ]
         roundtrip_results = speed_test.test_roundtrip(test_strings)
         
@@ -480,10 +602,14 @@ def main():
         print("\nТестирование завершено успешно!")
         return 0
         
+    except KeyboardInterrupt:
+        print("\n\n !!! Тестирование прервано пользователем")
+        return 1
     except Exception as e:
         print(f"\nОшибка при тестировании: {e}")
-        import traceback
-        traceback.print_exc()
+        if args.verbose:
+            import traceback
+            traceback.print_exc()
         return 1
 
 

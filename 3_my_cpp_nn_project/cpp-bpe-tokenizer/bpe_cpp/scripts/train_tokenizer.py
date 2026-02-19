@@ -6,9 +6,9 @@
 # @file train_tokenizer.py
 # @brief Скрипт для обучения BPE токенизатора на датасете C++ кода
 #
-# @author Ваше Имя
-# @date 2024
-# @version 1.0.0
+# @author Евгений П.
+# @date 2026
+# @version 3.2.0
 #
 # @usage ./train_tokenizer.py [options]
 #   --vocab-size N    Размер словаря (по умолчанию: 8000)
@@ -31,6 +31,7 @@ import sys
 import time
 import json
 import argparse
+
 from pathlib import Path
 
 # ======================================================================
@@ -53,24 +54,24 @@ sys.path.insert(0, str(BPE_DIR))       # чтобы видеть сами фай
 try:
     # Прямой импорт из файла tokenizer.py
     from tokenizer import BPETokenizer
-    print("✅ Импорт через tokenizer успешен")
+    print("Импорт через tokenizer успешен")
 except ImportError as e:
-    print(f"⚠️ Прямой импорт не удался: {e}")
+    print(f"Прямой импорт не удался: {e}")
     
     try:
         # Импорт как модуля bpe
         from bpe.tokenizer import BPETokenizer
-        print("✅ Импорт через bpe.tokenizer успешен")
+        print("Импорт через bpe.tokenizer успешен")
     except ImportError as e2:
-        print(f"❌ Не удалось импортировать BPETokenizer")
+        print(f"Не удалось импортировать BPETokenizer")
         print(f"   Ошибка: {e2}")
-        print(f"\n🔍 Проверьте структуру папок:")
+        print(f"\nПроверьте структуру папок:")
         print(f"   PROJECT_ROOT = {PROJECT_ROOT}")
         print(f"   BPE_DIR = {BPE_DIR}")
         print(f"   Файл tokenizer.py существует: {(BPE_DIR / 'tokenizer.py').exists()}")
         print(f"   Файл __init__.py существует: {(BPE_DIR / '__init__.py').exists()}")
         
-        print("\n📋 Содержимое BPE_DIR:")
+        print("\nСодержимое BPE_DIR:")
         if BPE_DIR.exists():
             for f in BPE_DIR.iterdir():
                 print(f"   {f.name}")
@@ -136,15 +137,15 @@ class BPETrainer:
                     print(f"  Загружено {i} строк...")
         
         self.stats['corpus_size'] = total_size
-        print(f"  ✅ Загружено {len(corpus)} строк")
-        print(f"  📊 Общий размер: {total_size / 1024 / 1024:.2f} MB")
+        print(f"  Загружено {len(corpus)} строк")
+        print(f"  Общий размер: {total_size / 1024 / 1024:.2f} MB")
         
         # Анализ уникальных символов
         chars = set()
         for line in corpus:
             chars.update(line)
         self.stats['unique_chars'] = len(chars)
-        print(f"  🔤 Уникальных символов: {len(chars)}")
+        print(f"  Уникальных символов: {len(chars)}")
         
         return corpus
     
@@ -158,9 +159,9 @@ class BPETrainer:
             validate: Валидировать на тестовой выборке
         """
         print("=" * 60)
-        print(f"🚀 ОБУЧЕНИЕ BPE ТОКЕНИЗАТОРА")
+        print(f"ОБУЧЕНИЕ BPE ТОКЕНИЗАТОРА")
         print("=" * 60)
-        print(f"📊 Параметры:")
+        print(f"Параметры:")
         print(f"   • Размер словаря: {self.vocab_size}")
         print(f"   • Byte-level: {self.byte_level}")
         print(f"   • Спецтокены: {', '.join(self.special_tokens)}")
@@ -180,7 +181,7 @@ class BPETrainer:
         )
         
         # Обучение
-        print("\n🔄 Начало обучения...")
+        print("\nНачало обучения...")
         start_time = time.time()
         
         self.tokenizer.train(corpus)
@@ -190,7 +191,7 @@ class BPETrainer:
         self.stats['final_vocab_size'] = self.tokenizer.vocab_size()
         self.stats['num_merges'] = self.tokenizer.merges_count()
         
-        print(f"\n✅ Обучение завершено за {self.stats['training_time']:.2f} сек")
+        print(f"\nОбучение завершено за {self.stats['training_time']:.2f} сек")
         print(f"   Итоговый размер словаря: {self.stats['final_vocab_size']}")
         print(f"   Выполнено слияний: {self.stats['num_merges']}")
         
@@ -208,7 +209,7 @@ class BPETrainer:
     
     def save_model(self, output_path):
         """Сохранение модели в файлы"""
-        print("\n💾 Сохранение модели...")
+        print("\nСохранение модели...")
         
         vocab_path = output_path / "vocab.json"
         merges_path = output_path / "merges.txt"
@@ -220,9 +221,9 @@ class BPETrainer:
         binary_path = output_path / "model_trained.bin"
         self.tokenizer.save_binary(binary_path)
         
-        print(f"   ✅ Словарь: {vocab_path}")
-        print(f"   ✅ Слияния: {merges_path}")
-        print(f"   ✅ Бинарная модель: {binary_path}")
+        print(f"   Словарь: {vocab_path}")
+        print(f"   Слияния: {merges_path}")
+        print(f"   Бинарная модель: {binary_path}")
         
         # Сохранение метаданных
         metadata = {
@@ -237,11 +238,11 @@ class BPETrainer:
         with open(meta_path, 'w') as f:
             json.dump(metadata, f, indent=2)
         
-        print(f"   ✅ Метаданные: {meta_path}")
+        print(f"   Метаданные: {meta_path}")
     
     def validate(self, test_samples):
         """Валидация на тестовых примерах"""
-        print("\n🧪 Валидация модели...")
+        print("\nВалидация модели...")
         
         correct = 0
         total = len(test_samples)
@@ -268,13 +269,13 @@ class BPETrainer:
                 print(f"    Токенов:   {len(tokens)}")
         
         accuracy = (correct / total) * 100
-        print(f"\n📊 Точность roundtrip: {accuracy:.2f}% ({correct}/{total})")
+        print(f"\nТочность roundtrip: {accuracy:.2f}% ({correct}/{total})")
         
         self.stats['validation_accuracy'] = accuracy
     
     def plot_statistics(self, output_path):
         """Построение графиков статистики"""
-        print("\n📈 Построение графиков...")
+        print("\nПостроение графиков...")
         
         try:
             import matplotlib.pyplot as plt
@@ -345,28 +346,28 @@ class BPETrainer:
                 # Сохранение
                 plot_path = output_path / "training_stats.png"
                 plt.savefig(plot_path, dpi=150, bbox_inches='tight')
-                print(f"   ✅ Графики сохранены: {plot_path}")
+                print(f"   Графики сохранены: {plot_path}")
                 
                 plt.close()
             
         except ImportError:
-            print("   ⚠️ matplotlib не установлен, графики не построены")
+            print("   matplotlib не установлен, графики не построены")
         except Exception as e:
-            print(f"   ⚠️ Ошибка при построении графиков: {e}")
+            print(f"   Ошибка при построении графиков: {e}")
     
     def print_summary(self):
         """Вывод сводки обучения"""
         print("\n" + "=" * 60)
-        print("📊 СВОДКА ОБУЧЕНИЯ")
+        print("СВОДКА ОБУЧЕНИЯ")
         print("=" * 60)
-        print(f"🎯 Размер словаря: {self.stats['final_vocab_size']} / {self.vocab_size}")
-        print(f"🔗 Количество слияний: {self.stats['num_merges']}")
-        print(f"⏱️  Время обучения: {self.stats['training_time']:.2f} сек")
-        print(f"📁 Размер корпуса: {self.stats['corpus_size'] / 1024 / 1024:.2f} MB")
-        print(f"🔤 Уникальных символов: {self.stats['unique_chars']}")
+        print(f"  Размер словаря: {self.stats['final_vocab_size']} / {self.vocab_size}")
+        print(f"  Количество слияний: {self.stats['num_merges']}")
+        print(f"  Время обучения: {self.stats['training_time']:.2f} сек")
+        print(f"  Размер корпуса: {self.stats['corpus_size'] / 1024 / 1024:.2f} MB")
+        print(f"  Уникальных символов: {self.stats['unique_chars']}")
         
         if 'validation_accuracy' in self.stats:
-            print(f"✅ Точность валидации: {self.stats['validation_accuracy']:.2f}%")
+            print(f"  Точность валидации: {self.stats['validation_accuracy']:.2f}%")
         
         print("=" * 60)
 
@@ -435,11 +436,11 @@ def main():
                     token = token[:27] + "..."
                 print(f"     {i:4d}: '{token}'")
         
-        print("\n✅ Обучение успешно завершено!")
+        print("\nОбучение успешно завершено!")
         return 0
         
     except Exception as e:
-        print(f"\n❌ Ошибка при обучении: {e}")
+        print(f"\nОшибка при обучении: {e}")
         if args.verbose:
             import traceback
             traceback.print_exc()

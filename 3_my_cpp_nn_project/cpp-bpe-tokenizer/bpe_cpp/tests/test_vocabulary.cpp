@@ -2,9 +2,9 @@
  * @file test_vocabulary.cpp
  * @brief Модульные тесты для класса Vocabulary
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 1.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.3.0
  * 
  * @details Набор тестов для проверки функциональности Vocabulary:
  *          - Добавление и поиск токенов
@@ -19,6 +19,7 @@
  */
 
 #include <gtest/gtest.h>
+
 #include "vocabulary.hpp"
 
 #include <fstream>
@@ -380,7 +381,7 @@ TEST(VocabularyTest, AddManyTokens) {
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     
     EXPECT_EQ(vocab.size(), num_tokens);
-    std::cout << "⏱️  Добавление " << num_tokens << " токенов: " 
+    std::cout << "Добавление " << num_tokens << " токенов: " 
               << duration.count() << " мс" << std::endl;
 }
 
@@ -407,7 +408,7 @@ TEST(VocabularyTest, TokenLookupSpeed) {
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     
-    std::cout << "⏱️  Поиск " << num_tokens << " токенов: " 
+    std::cout << "Поиск " << num_tokens << " токенов: " 
               << duration.count() << " мс" << std::endl;
 }
 

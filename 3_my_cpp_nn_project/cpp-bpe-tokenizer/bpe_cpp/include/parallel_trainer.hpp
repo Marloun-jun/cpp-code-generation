@@ -2,9 +2,9 @@
  * @file parallel_trainer.hpp
  * @brief Параллельное обучение BPE токенизатора
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 2.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.2.0
  * 
  * @details Класс для многопоточного обучения BPE токенизатора.
  *          Реализует параллельные алгоритмы для:
@@ -22,6 +22,7 @@
 
 #include "optimized_types.hpp"
 #include "vocabulary.hpp"
+
 #include <atomic>
 #include <mutex>
 #include <string>

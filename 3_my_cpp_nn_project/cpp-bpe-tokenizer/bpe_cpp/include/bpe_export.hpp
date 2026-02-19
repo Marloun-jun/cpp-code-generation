@@ -2,9 +2,9 @@
  * @file bpe_export.hpp
  * @brief Заголовочный файл для экспорта/импорта моделей BPE токенизатора
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 1.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.1.0
  * 
  * @details Определяет функции для сохранения и загрузки моделей в различных форматах:
  *          - JSON (читаемый формат для отладки)
@@ -19,10 +19,11 @@
 
 #pragma once
 
+#include <nlohmann/json.hpp>
+
 #include <string>
 #include <vector>
 #include <utility>
-#include <nlohmann/json.hpp>  // Добавлено для JSON
 
 namespace bpe {
 
@@ -58,14 +59,14 @@ public:
      * @param path Путь для сохранения
      * @return true при успешном сохранении
      */
-    virtual bool save_binary(const std::string& path) const = 0;  // 👈 ДОБАВИТЬ
+    virtual bool save_binary(const std::string& path) const = 0;
     
     /**
      * @brief Загрузить модель из бинарного формата (единый файл)
      * @param path Путь к файлу
      * @return true при успешной загрузке
      */
-    virtual bool load_binary(const std::string& path) = 0;  // 👈 ДОБАВИТЬ
+    virtual bool load_binary(const std::string& path) = 0;
     
     /**
      * @brief Экспортировать в формат HuggingFace Tokenizers

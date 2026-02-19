@@ -2,9 +2,9 @@
  * @file bpe_export.cpp
  * @brief Экспорт/импорт моделей BPE токенизатора в различные форматы
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 1.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.1.0
  * 
  * @details Поддержка форматов:
  *          - JSON (читаемый, для отладки)
@@ -15,10 +15,11 @@
 
 #include "bpe_tokenizer.hpp"
 #include "bpe_export.hpp"
+#include <nlohmann/json.hpp>
+
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include <nlohmann/json.hpp>
 
 namespace bpe {
 
@@ -115,7 +116,7 @@ bool BPETokenizer::load_from_json(const std::string& path) {
         
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "❌ Ошибка загрузки JSON: " << e.what() << std::endl;
+        std::cerr << "Ошибка загрузки JSON: " << e.what() << std::endl;
         return false;
     }
 }
@@ -147,7 +148,7 @@ bool BPETokenizer::export_to_huggingface(const std::string& path) const {
         file << j.dump(2);
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "❌ Ошибка экспорта в HuggingFace: " << e.what() << std::endl;
+        std::cerr << "Ошибка экспорта в HuggingFace: " << e.what() << std::endl;
         return false;
     }
 }
@@ -167,7 +168,7 @@ bool BPETokenizer::export_to_sentencepiece(const std::string& path) const {
         }
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "❌ Ошибка экспорта в SentencePiece: " << e.what() << std::endl;
+        std::cerr << "Ошибка экспорта в SentencePiece: " << e.what() << std::endl;
         return false;
     }
 }
@@ -178,13 +179,13 @@ bool BPETokenizer::export_to_sentencepiece(const std::string& path) const {
 
 std::string BPETokenizer::get_model_info() const {
     std::stringstream ss;
-    ss << "=== BPE Tokenizer Model Info ===\n";
-    ss << "Vocabulary size: " << vocab_.size() << "\n";
-    ss << "Merges count: " << merges_.size() << "\n";
-    ss << "Byte-level mode: " << (byte_level_ ? "enabled" : "disabled") << "\n";
-    ss << "Unknown token: " << unknown_token_ << "\n";
-    ss << "Max token length: " << max_token_length_ << "\n";
-    ss << "================================";
+    ss << "=== Информация о BPE Tokenizer ===\n";
+    ss << "Размер словаря: " << vocab_.size() << "\n";
+    ss << "Количество слияний: " << merges_.size() << "\n";
+    ss << "Byte-level режим: " << (byte_level_ ? "enabled" : "disabled") << "\n";
+    ss << "Неизвестных токенов: " << unknown_token_ << "\n";
+    ss << "Максимальная длина токена: " << max_token_length_ << "\n";
+    ss << "===================================";
     return ss.str();
 }
 

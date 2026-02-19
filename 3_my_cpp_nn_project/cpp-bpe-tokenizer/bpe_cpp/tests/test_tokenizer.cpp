@@ -2,9 +2,9 @@
  * @file test_tokenizer.cpp
  * @brief Модульные тесты для базовой версии BPE токенизатора
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 1.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.2.0
  * 
  * @details Набор тестов для проверки функциональности BPETokenizer:
  *          - Загрузка словаря из разных форматов (JSON, бинарный)
@@ -17,6 +17,7 @@
  */
 
 #include <gtest/gtest.h>
+
 #include "bpe_tokenizer.hpp"
 #include "utils.hpp"
 
@@ -139,7 +140,7 @@ TEST_F(TokenizerTest, LoadFromJSON) {
     EXPECT_EQ(tokenizer.vocab_size(), json_vocab_size);
     EXPECT_EQ(tokenizer.merges_count(), 3);
     
-    std::cout << "✅ JSON словарь загружен: " << tokenizer.vocab_size() << " токенов" << std::endl;
+    std::cout << "JSON словарь загружен: " << tokenizer.vocab_size() << " токенов" << std::endl;
 }
 
 /**
@@ -154,7 +155,7 @@ TEST_F(TokenizerTest, LoadFromBinary) {
     EXPECT_EQ(tokenizer.vocab_size(), binary_vocab_size);
     EXPECT_EQ(tokenizer.merges_count(), 3);
     
-    std::cout << "✅ Бинарный словарь загружен: " << tokenizer.vocab_size() << " токенов" << std::endl;
+    std::cout << "Бинарный словарь загружен: " << tokenizer.vocab_size() << " токенов" << std::endl;
 }
 
 /**
@@ -166,7 +167,7 @@ TEST_F(TokenizerTest, LoadNonExistent) {
     bool loaded = tokenizer.load_from_files("nonexistent.json", "nonexistent.txt");
     EXPECT_FALSE(loaded);
     
-    std::cout << "✅ Корректная обработка отсутствующего файла" << std::endl;
+    std::cout << "Корректная обработка отсутствующего файла" << std::endl;
 }
 
 // ======================================================================
@@ -188,7 +189,7 @@ TEST_F(TokenizerTest, TokenLookup) {
     const std::string& token = tokenizer.vocabulary().id_to_token(id_a);
     EXPECT_EQ(token, "a");
     
-    std::cout << "✅ Поиск токенов работает: 'a' -> ID " << id_a << std::endl;
+    std::cout << "Поиск токенов работает: 'a' -> ID " << id_a << std::endl;
 }
 
 /**
@@ -202,7 +203,7 @@ TEST_F(TokenizerTest, SpecialTokens) {
     token_id_t unk_id = tokenizer.vocabulary().token_to_id("<UNK>");
     EXPECT_NE(unk_id, INVALID_TOKEN);
     
-    std::cout << "🔖 Специальные токены:" << std::endl;
+    std::cout << "Специальные токены:" << std::endl;
     std::cout << "   <UNK> ID: " << tokenizer.unknown_token_id() << std::endl;
 }
 
@@ -222,7 +223,7 @@ TEST_F(TokenizerTest, AllBytesPresent) {
     }
     
     EXPECT_EQ(found, 256);
-    std::cout << "✅ Все 256 байт присутствуют в словаре" << std::endl;
+    std::cout << "Все 256 байт присутствуют в словаре" << std::endl;
 }
 
 // ======================================================================
@@ -239,7 +240,7 @@ TEST_F(TokenizerTest, BasicEncode) {
     auto tokens = tokenizer.encode("a b");
     EXPECT_FALSE(tokens.empty());
     
-    std::cout << "📝 'a b' -> " << tokens.size() << " токенов: ";
+    std::cout << "'a b' -> " << tokens.size() << " токенов: ";
     for (auto id : tokens) std::cout << id << " ";
     std::cout << std::endl;
 }
@@ -254,7 +255,7 @@ TEST_F(TokenizerTest, EncodeAllStrings) {
     for (const auto& text : test_strings) {
         auto tokens = tokenizer.encode(text);
         EXPECT_FALSE(tokens.empty());
-        std::cout << "📌 '" << text << "' (" << text.size() << " символов) -> " 
+        std::cout << "'" << text << "' (" << text.size() << " символов) -> " 
                   << tokens.size() << " токенов" << std::endl;
     }
 }
@@ -269,7 +270,7 @@ TEST_F(TokenizerTest, EncodeWithMerges) {
     // Должно применить слияние a b -> ab
     auto tokens = tokenizer.encode("a b");
     
-    std::cout << "🔗 Слияния применены: 'a b' -> " << tokens.size() << " токенов" << std::endl;
+    std::cout << "Слияния применены: 'a b' -> " << tokens.size() << " токенов" << std::endl;
     
     // Проверяем, что размер меньше, чем без слияний
     auto tokens_no_merge = tokenizer.encode("a");
@@ -295,7 +296,7 @@ TEST_F(TokenizerTest, BasicDecode) {
     auto tokens = tokenizer.encode(original);
     auto decoded = tokenizer.decode(tokens);
     
-    std::cout << "🔄 Roundtrip тест:" << std::endl;
+    std::cout << "Roundtrip тест:" << std::endl;
     std::cout << "   Оригинал: '" << original << "'" << std::endl;
     std::cout << "   Декод.:   '" << decoded << "'" << std::endl;
     
@@ -326,7 +327,7 @@ TEST_F(TokenizerTest, RoundtripAll) {
     }
     
     double pass_rate = 100.0 * passed / test_strings.size();
-    std::cout << "📊 Roundtrip成功率: " << std::fixed << std::setprecision(1)
+    std::cout << "Процент успешных roundtrip:: " << std::fixed << std::setprecision(1)
               << pass_rate << "% (" << passed << "/" << test_strings.size() << ")" << std::endl;
     
     EXPECT_GE(pass_rate, 80.0);
@@ -348,7 +349,7 @@ TEST_F(TokenizerTest, ByteLevelRussian) {
     auto decoded = tokenizer.decode(tokens);
     
     EXPECT_EQ(decoded, russian);
-    std::cout << "🇷🇺 Русский текст: '" << russian << "' -> " 
+    std::cout << "Русский текст: '" << russian << "' -> " 
               << tokens.size() << " токенов" << std::endl;
 }
 
@@ -364,7 +365,7 @@ TEST_F(TokenizerTest, ByteLevelChinese) {
     auto decoded = tokenizer.decode(tokens);
     
     EXPECT_EQ(decoded, chinese);
-    std::cout << "🇨🇳 Китайский текст: '" << chinese << "' -> " 
+    std::cout << "Китайский текст: '" << chinese << "' -> " 
               << tokens.size() << " токенов" << std::endl;
 }
 
@@ -396,7 +397,7 @@ TEST_F(TokenizerTest, NormalMode) {
     auto decoded = tokenizer.decode(tokens);
     
     // В обычном режиме может не сохраниться точная длина
-    std::cout << "📝 Обычный режим: '" << text << "' -> " 
+    std::cout << "Обычный режим: '" << text << "' -> " 
               << tokens.size() << " токенов" << std::endl;
 }
 
@@ -415,7 +416,7 @@ TEST_F(TokenizerTest, BatchEncode) {
     auto batch_result = tokenizer.encode_batch(texts);
     
     EXPECT_EQ(batch_result.size(), texts.size());
-    std::cout << "📦 Пакетная обработка " << batch_result.size() << " текстов:" << std::endl;
+    std::cout << "Пакетная обработка " << batch_result.size() << " текстов:" << std::endl;
     
     for (size_t i = 0; i < batch_result.size(); ++i) {
         std::cout << "   Текст " << i << ": " << batch_result[i].size() << " токенов" << std::endl;
@@ -460,7 +461,7 @@ TEST_F(TokenizerTest, EmptyInput) {
     auto decoded = tokenizer.decode({});
     EXPECT_TRUE(decoded.empty());
     
-    std::cout << "✅ Пустой вход обработан корректно" << std::endl;
+    std::cout << "Пустой вход обработан корректно" << std::endl;
 }
 
 /**
@@ -474,7 +475,7 @@ TEST_F(TokenizerTest, VeryLongInput) {
     auto tokens = tokenizer.encode(text);
     
     EXPECT_GT(tokens.size(), 0);
-    std::cout << "📏 Длинный текст (10000 символов) -> " << tokens.size() << " токенов" << std::endl;
+    std::cout << "Длинный текст (10000 символов) -> " << tokens.size() << " токенов" << std::endl;
 }
 
 /**
@@ -488,7 +489,7 @@ TEST_F(TokenizerTest, MixedCharacters) {
     auto tokens = tokenizer.encode(text);
     
     EXPECT_GT(tokens.size(), 0);
-    std::cout << "📝 Смешанные символы -> " << tokens.size() << " токенов" << std::endl;
+    std::cout << "Смешанные символы -> " << tokens.size() << " токенов" << std::endl;
 }
 
 /**
@@ -507,7 +508,7 @@ TEST_F(TokenizerTest, AllBytes) {
     auto decoded = tokenizer.decode(tokens);
     
     EXPECT_EQ(decoded, all_bytes);
-    std::cout << "🔢 Все 256 байт закодированы и декодированы" << std::endl;
+    std::cout << "Все 256 байт закодированы и декодированы" << std::endl;
 }
 
 // ======================================================================

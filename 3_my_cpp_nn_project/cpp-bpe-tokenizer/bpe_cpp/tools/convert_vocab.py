@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # cpp/tools/convert_vocab.py - Конвертация словаря BPE токенизатора
 # 
-# @author Ваше Имя
-# @date 2024
-# @version 1.0.0
+# @author Евгений П.
+# @date 2026
+# @version 3.2.0
 #
 # @details Конвертирует словарь из Python формата в C++ формат.
 #          Поддерживает различные форматы входных данных:
@@ -21,6 +21,7 @@ import json
 import sys
 import shutil
 import argparse
+
 from pathlib import Path
 from collections import Counter
 from typing import Dict, List, Tuple, Optional, Any
@@ -101,7 +102,7 @@ def convert_id_to_token_format(data: Dict) -> Tuple[Dict, List[int]]:
     Returns:
         Tuple[Dict, List[int]]: (конвертированные данные, список пропущенных ID)
     """
-    print("📦 Обнаружен формат: ID -> ТОКЕН")
+    print("Обнаружен формат: ID -> ТОКЕН")
     
     # Находим максимальный ID
     max_id = -1
@@ -115,7 +116,7 @@ def convert_id_to_token_format(data: Dict) -> Tuple[Dict, List[int]]:
         elif isinstance(key, str) and key.isdigit():
             numeric_id = int(key)
         else:
-            print(f"⚠️  Пропускаем нечисловой ключ: '{key}'")
+            print(f" !!! Пропускаем нечисловой ключ: '{key}'")
             skipped += 1
             continue
         
@@ -153,7 +154,7 @@ def convert_token_to_id_format(data: Dict) -> Tuple[Dict, List[int]]:
     Returns:
         Tuple[Dict, List[int]]: (конвертированные данные, список пропущенных ID)
     """
-    print("📦 Обнаружен формат: ТОКЕН -> ID")
+    print("Обнаружен формат: ТОКЕН -> ID")
     
     token_to_id = {}
     max_id = -1
@@ -166,7 +167,7 @@ def convert_token_to_id_format(data: Dict) -> Tuple[Dict, List[int]]:
         elif isinstance(id_val, str) and id_val.isdigit():
             numeric_id = int(id_val)
         else:
-            print(f"⚠️  Пропускаем запись с нечисловым ID: {token} -> {id_val}")
+            print(f" !!! Пропускаем запись с нечисловым ID: {token} -> {id_val}")
             skipped += 1
             continue
         
@@ -204,7 +205,7 @@ def convert_array_format(data: List) -> Dict:
     Returns:
         Dict: Конвертированные данные
     """
-    print("📦 Обнаружен формат: МАССИВ токенов")
+    print("Обнаружен формат: МАССИВ токенов")
     print(f"   Количество токенов: {len(data)}")
     
     # Проверяем, есть ли специальные токены в начале
@@ -237,7 +238,7 @@ def compress_tokens(tokens: List[str], missing: List[int]) -> Dict:
     Returns:
         Dict: Сжатый словарь
     """
-    print(f"\n🔄 Сжатие токенов (удаление пропусков)...")
+    print(f"\nСжатие токенов (удаление пропусков)...")
     
     # Оставляем только реальные токены
     real_tokens = [t for t in tokens if t]
@@ -313,8 +314,8 @@ def inspect_vocab_file(file_path: Path) -> Optional[Any]:
         with open(file_path, 'r', encoding='utf-8') as f:
             sample = f.read(500)
             
-        print(f"\n🔍 Анализ файла: {file_path}")
-        print(f"📝 Первые 200 символов:")
+        print(f"\nАнализ файла: {file_path}")
+        print(f"Первые 200 символов:")
         print("-" * 40)
         print(sample[:200])
         print("-" * 40)
@@ -323,7 +324,7 @@ def inspect_vocab_file(file_path: Path) -> Optional[Any]:
         with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
-        print(f"\n📊 Структура данных:")
+        print(f"\nСтруктура данных:")
         print(f"   Тип: {type(data).__name__}")
         
         if isinstance(data, dict):
@@ -349,7 +350,7 @@ def inspect_vocab_file(file_path: Path) -> Optional[Any]:
         return data
         
     except Exception as e:
-        print(f"❌ Ошибка анализа: {e}")
+        print(f"Ошибка анализа: {e}")
         return None
 
 def print_statistics(tokens: List[str], title: str = "Статистика"):
@@ -360,7 +361,7 @@ def print_statistics(tokens: List[str], title: str = "Статистика"):
         tokens: Список токенов
         title: Заголовок
     """
-    print(f"\n📊 {title}:")
+    print(f"\n{title}:")
     print(f"   Всего токенов: {len(tokens)}")
     
     # Статистика по длинам
@@ -427,7 +428,7 @@ def main():
     
     args = parser.parse_args()
     
-    print("🔄 Конвертация словаря и слияний для C++...")
+    print("Конвертация словаря и слияний для C++...")
     print("-" * 50)
     
     # ИСПРАВЛЕНО: Используем абсолютные пути для входных файлов
@@ -435,12 +436,12 @@ def main():
     python_merges = Path(args.input_merges)
     
     if not python_vocab.exists():
-        print(f"❌ Файл не найден: {python_vocab}")
-        print(f"   Проверьте путь: /home/john/Projects/NS/3_my_cpp_nn_project/cpp-bpe-tokenizer/bpe_python/models/bpe_8000/vocab.json")
+        print(f"Файл не найден: {python_vocab}")
+        print(f"Проверьте путь: /home/john/Projects/NS/3_my_cpp_nn_project/cpp-bpe-tokenizer/bpe_python/models/bpe_8000/vocab.json")
         return 1
     
     # Анализируем
-    print("\n🔍 Анализ исходного словаря:")
+    print("\nАнализ исходного словаря:")
     data = inspect_vocab_file(python_vocab)
     
     if args.inspect_only:
@@ -465,14 +466,14 @@ def main():
         cpp_vocab_data = convert_array_format(data)
         missing = []
     else:
-        print("❌ Не удалось определить формат словаря")
+        print("Не удалось определить формат словаря")
         return 1
     
     # Извлекаем токены
     if isinstance(cpp_vocab_data, dict) and "tokens" in cpp_vocab_data:
         tokens = cpp_vocab_data["tokens"]
     else:
-        print("❌ Ошибка: не удалось извлечь токены")
+        print("Ошибка: не удалось извлечь токены")
         return 1
     
     # Применяем сжатие если нужно
@@ -480,7 +481,7 @@ def main():
         cpp_vocab_data = compress_tokens(tokens, missing)
     elif missing:
         # Заполняем пропуски заглушками
-        print(f"\n📝 Заполнение пропусков заглушками...")
+        print(f"\nЗаполнение пропусков заглушками...")
         for i in missing:
             if not tokens[i]:
                 tokens[i] = f"<MISSING_{i}>"
@@ -490,13 +491,13 @@ def main():
     if args.validate:
         issues = validate_tokens(tokens if 'tokens' in cpp_vocab_data else cpp_vocab_data)
         if issues:
-            print(f"\n⚠️ Найдены проблемы:")
+            print(f"\n !!! Найдены проблемы:")
             for issue in issues[:10]:
                 print(f"   • {issue}")
             if len(issues) > 10:
                 print(f"   ... и еще {len(issues) - 10}")
         else:
-            print(f"\n✅ Валидация успешна - проблем не найдено")
+            print(f"\nВалидация успешна - проблем не найдено")
     
     # ИСПРАВЛЕНО: Путь для сохранения результата
     output_dir = Path('/home/john/Projects/NS/3_my_cpp_nn_project/cpp-bpe-tokenizer/bpe_cpp/models/')
@@ -507,21 +508,21 @@ def main():
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(cpp_vocab_data, f, indent=2, ensure_ascii=False)
     
-    print(f"\n✅ Конвертировано в: {output_path}")
+    print(f"\nКонвертировано в: {output_path}")
     
     # Копируем merges
     if python_merges.exists():
         shutil.copy2(python_merges, output_dir / "cpp_merges.txt")
-        print(f"✅ Скопированы слияния: {output_dir / 'cpp_merges.txt'}")
+        print(f"Скопированы слияния: {output_dir / 'cpp_merges.txt'}")
     else:
-        print(f"⚠️ Файл слияний не найден: {python_merges}")
+        print(f"Файл слияний не найден: {python_merges}")
     
     # Выводим статистику
     if 'tokens' in cpp_vocab_data:
         print_statistics(cpp_vocab_data['tokens'], "Итоговый словарь")
     
     # Показываем примеры
-    print(f"\n📝 Примеры токенов (первые 20):")
+    print(f"\nПримеры токенов (первые 20):")
     tokens_to_show = cpp_vocab_data['tokens'] if 'tokens' in cpp_vocab_data else cpp_vocab_data
     
     for i in range(min(20, len(tokens_to_show))):
@@ -540,9 +541,9 @@ def main():
             print(f"   {i:4d}: '{display}'")
     
     if args.no_fill:
-        print(f"\n✅ Словарь сжат до {len(tokens_to_show)} реальных токенов!")
+        print(f"\nСловарь сжат до {len(tokens_to_show)} реальных токенов!")
     elif missing:
-        print(f"\n💡 Совет: Используйте --no-fill для сжатия словаря")
+        print(f"\nСовет: Используйте --no-fill для сжатия словаря")
         print(f"   python {sys.argv[0]} --no-fill")
     
     return 0

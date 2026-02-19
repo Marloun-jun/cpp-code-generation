@@ -2,9 +2,9 @@
  * @file fast_tokenizer.hpp
  * @brief Оптимизированная версия BPE токенизатора с поддержкой SIMD и пулов памяти
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 2.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.3.0
  * 
  * @details Высокопроизводительная реализация BPE токенизатора с фокусом на скорость:
  *          - StringView для избегания копирования строк
@@ -26,7 +26,6 @@
 
 #pragma once
 
-// Убираем ручные определения, они теперь задаются через CMake
 #ifdef HAS_CONFIG_H
     #include "config.h"
 #endif

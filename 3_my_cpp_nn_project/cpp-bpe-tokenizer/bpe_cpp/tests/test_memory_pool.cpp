@@ -2,9 +2,9 @@
  * @file test_memory_pool.cpp
  * @brief Модульные тесты для класса MemoryPool
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 1.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.1.0
  * 
  * @details Набор тестов для проверки функциональности пула памяти:
  *          - Базовое выделение и освобождение памяти
@@ -16,7 +16,9 @@
  */
 
 #include <gtest/gtest.h>
+
 #include "memory_pool.hpp"
+
 #include <vector>
 
 using namespace bpe;

@@ -6,9 +6,9 @@
 # @file run_tests.sh
 # @brief Запуск всех модульных тестов и анализ покрытия
 #
-# @author Ваше Имя
-# @date 2024
-# @version 1.0.0
+# @author Евгений П.
+# @date 2026
+# @version 3.3.0
 #
 # @usage ./run_tests.sh [options]
 #   --filter FILTER   Фильтр для запуска конкретных тестов (например: *Tokenizer*)
@@ -154,7 +154,7 @@ done
 # ======================================================================
 # Проверка окружения
 # ======================================================================
-print_header "🧪 ЗАПУСК ТЕСТОВ BPE TOKENIZER"
+print_header "ЗАПУСК ТЕСТОВ BPE TOKENIZER"
 
 print_info "Директория тестов: $BUILD_DIR"
 print_info "Директория отчетов: $REPORTS_DIR"
@@ -204,7 +204,7 @@ fi
 # ======================================================================
 # Запуск тестов
 # ======================================================================
-print_header "🏃 ЗАПУСК ТЕСТОВ"
+print_header "ЗАПУСК ТЕСТОВ"
 
 # Формируем команду ctest
 CTEST_CMD="ctest"
@@ -270,7 +270,7 @@ fi
 # Анализ покрытия
 # ======================================================================
 if [ $RUN_COVERAGE -eq 1 ]; then
-    print_header "📊 АНАЛИЗ ПОКРЫТИЯ КОДА"
+    print_header "АНАЛИЗ ПОКРЫТИЯ КОДА"
     
     # Проверка наличия lcov
     if ! command -v lcov &> /dev/null; then
@@ -305,7 +305,7 @@ if [ $RUN_COVERAGE -eq 1 ]; then
         
         # Показываем статистику
         echo ""
-        echo "📈 Статистика покрытия:"
+        echo "Статистика покрытия:"
         lcov --summary "$COVERAGE_DIR/coverage.info" | grep -E "lines|functions|branches" | sed 's/^/  /'
         
         if command -v firefox &> /dev/null; then
@@ -318,7 +318,7 @@ fi
 # Генерация HTML отчета
 # ======================================================================
 if [ $GEN_HTML -eq 1 ]; then
-    print_header "📄 ГЕНЕРАЦИЯ HTML ОТЧЕТА"
+    print_header "ГЕНЕРАЦИЯ HTML ОТЧЕТА"
     
     HTML_REPORT="$REPORTS_DIR/test_report_${TIMESTAMP}.html"
     
@@ -370,7 +370,7 @@ def generate_html(tests, output_file):
     </style>
 </head>
 <body>
-    <h1>🧪 BPE Tokenizer Test Report</h1>
+    <h1>BPE Tokenizer Test Report</h1>
     <p class='timestamp'>Generated: $TIMESTAMP</p>
     
     <div class='summary'>
@@ -420,7 +420,7 @@ def generate_html(tests, output_file):
 
 tests = parse_test_results('$TEST_FILE')
 generate_html(tests, '$HTML_REPORT')
-print(f'✅ HTML отчет сгенерирован: $HTML_REPORT')
+print(f'HTML отчет сгенерирован: $HTML_REPORT')
 "
             
             if command -v firefox &> /dev/null; then
@@ -433,7 +433,7 @@ fi
 # ======================================================================
 # Итог
 # ======================================================================
-print_header "✅ ТЕСТИРОВАНИЕ ЗАВЕРШЕНО"
+print_header "ТЕСТИРОВАНИЕ ЗАВЕРШЕНО"
 
 if [ $RUN_MEMCHECK -eq 0 ]; then
     if [ $TEST_RESULT -eq 0 ]; then
@@ -446,7 +446,7 @@ fi
 print_info "Отчеты сохранены в: $REPORTS_DIR"
 
 echo ""
-echo "📁 Сгенерированные файлы:"
+echo "Сгенерированные файлы:"
 ls -lt "$REPORTS_DIR" | head -10 | awk '{printf "  %s %s\n", $5, $9}'
 
 echo ""

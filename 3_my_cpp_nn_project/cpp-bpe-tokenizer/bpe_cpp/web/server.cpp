@@ -2,9 +2,9 @@
  * @file server.cpp
  * @brief Простой HTTP сервер для BPE токенизатора на чистом сокетах
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 1.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.2.0
  * 
  * @details Легковесный веб-сервер без внешних зависимостей:
  *          - / - HTML интерфейс
@@ -16,6 +16,11 @@
  * @compile g++ -std=c++17 -Iinclude server.cpp -o server -lpthread
  * @run ./server [--port PORT]
  */
+
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <unistd.h>
+#include <arpa/inet.h>
 
 #include "fast_tokenizer.hpp"
 #include "utils.hpp"
@@ -33,11 +38,6 @@
 #include <cstring>
 #include <signal.h>
 
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-
 using namespace bpe;
 
 // ======================================================================
@@ -48,7 +48,7 @@ std::atomic<bool> g_running{true};
 int g_server_fd = -1;
 
 void signal_handler(int) {
-    std::cout << "\n🛑 Получен сигнал остановки. Завершение работы..." << std::endl;
+    std::cout << "\nПолучен сигнал остановки. Завершение работы..." << std::endl;
     g_running = false;
     if (g_server_fd != -1) {
         close(g_server_fd);
@@ -381,7 +381,7 @@ std::string get_html_page() {
 </head>
 <body>
     <div class="container">
-        <h1><span>🚀 BPE Tokenizer</span></h1>
+        <h1><span>BPE Tokenizer</span></h1>
         
         <div class="stats" id="stats">
             <div class="stat-card">
@@ -390,9 +390,9 @@ std::string get_html_page() {
         </div>
         
         <div class="tabs">
-            <div class="tab active" onclick="switchTab('encode')">🔤 Токенизация</div>
-            <div class="tab" onclick="switchTab('decode')">🔄 Декодирование</div>
-            <div class="tab" onclick="switchTab('about')">ℹ️ О сервере</div>
+            <div class="tab active" onclick="switchTab('encode')">Токенизация</div>
+            <div class="tab" onclick="switchTab('decode')">Декодирование</div>
+            <div class="tab" onclick="switchTab('about')">О сервере</div>
         </div>
         
         <div id="encode" class="tab-content active">
@@ -466,16 +466,16 @@ std::string get_html_page() {
                 hideLoading('encode-loading');
                 if (data.success) {
                     resultDiv.innerHTML = `
-                        <strong>✅ Токены (${data.count} шт.):</strong><br>
+                        <strong>Токены (${data.count} шт.):</strong><br>
                         [${data.tokens.join(', ')}]
                     `;
                 } else {
-                    resultDiv.innerHTML = `<span class="error">❌ Ошибка: ${data.error}</span>`;
+                    resultDiv.innerHTML = `<span class="error">Ошибка: ${data.error}</span>`;
                 }
             })
             .catch(err => {
                 hideLoading('encode-loading');
-                resultDiv.innerHTML = `<span class="error">❌ Ошибка: ${err.message}</span>`;
+                resultDiv.innerHTML = `<span class="error">Ошибка: ${err.message}</span>`;
             });
         }
         
@@ -498,16 +498,16 @@ std::string get_html_page() {
                 hideLoading('decode-loading');
                 if (data.success) {
                     resultDiv.innerHTML = `
-                        <strong>✅ Декодированный текст:</strong><br>
+                        <strong>Декодированный текст:</strong><br>
                         <pre>${data.text}</pre>
                     `;
                 } else {
-                    resultDiv.innerHTML = `<span class="error">❌ Ошибка: ${data.error}</span>`;
+                    resultDiv.innerHTML = `<span class="error">Ошибка: ${data.error}</span>`;
                 }
             })
             .catch(err => {
                 hideLoading('decode-loading');
-                resultDiv.innerHTML = `<span class="error">❌ Ошибка: ${err.message}</span>`;
+                resultDiv.innerHTML = `<span class="error">Ошибка: ${err.message}</span>`;
             });
         }
         
@@ -569,7 +569,7 @@ std::string handle_request(const HttpRequest& req, FastBPETokenizer& tokenizer) 
             }
             json << "],\"count\":" << tokens.size() << ",\"success\":true}";
             
-            std::cout << "✅ Токенизировано " << tokens.size() << " токенов" << std::endl;
+            std::cout << "Токенизировано " << tokens.size() << " токенов" << std::endl;
             return HttpResponse::json(json.str());
             
         } catch (const std::exception& e) {
@@ -600,7 +600,7 @@ std::string handle_request(const HttpRequest& req, FastBPETokenizer& tokenizer) 
             json << "{\"text\":\"" << escaped << "\",\"count\":" << tokens.size()
                  << ",\"success\":true}";
             
-            std::cout << "✅ Детокенизировано " << tokens.size() << " токенов" << std::endl;
+            std::cout << "Детокенизировано " << tokens.size() << " токенов" << std::endl;
             return HttpResponse::json(json.str());
             
         } catch (const std::exception& e) {
@@ -681,7 +681,7 @@ bool find_model_files(FastBPETokenizer& tokenizer, std::string& vocab_path, std:
 
 int main(int argc, char* argv[]) {
     std::cout << "========================================\n";
-    std::cout << "🌐 BPE TOKENIZER WEB SERVICE\n";
+    std::cout << "BPE TOKENIZER WEB SERVICE\n";
     std::cout << "========================================\n\n";
     
     // Парсинг аргументов
@@ -705,34 +705,34 @@ int main(int argc, char* argv[]) {
     
     // Загружаем токенизатор
     FastBPETokenizer tokenizer;
-    std::cout << "📚 Загрузка модели..." << std::endl;
+    std::cout << "Загрузка модели..." << std::endl;
     
     std::string vocab_path, merges_path;
     if (!find_model_files(tokenizer, vocab_path, merges_path)) {
-        std::cerr << "❌ Не удалось загрузить модель!" << std::endl;
+        std::cerr << "Не удалось загрузить модель!" << std::endl;
         std::cerr << "   Убедитесь, что файлы существуют:" << std::endl;
         std::cerr << "   - ../../bpe/vocab_trained.json" << std::endl;
         std::cerr << "   - ../../bpe/merges_trained.txt" << std::endl;
         return 1;
     }
     
-    std::cout << "✅ Модель загружена!" << std::endl;
-    std::cout << "   📚 Словарь: " << vocab_path << std::endl;
-    std::cout << "   📚 Слияния: " << merges_path << std::endl;
-    std::cout << "   📊 Размер словаря: " << tokenizer.vocab_size() << std::endl;
-    std::cout << "   🔗 Правил слияния: " << tokenizer.merges_count() << std::endl;
+    std::cout << "Модель загружена!" << std::endl;
+    std::cout << "   Словарь: " << vocab_path << std::endl;
+    std::cout << "   Слияния: " << merges_path << std::endl;
+    std::cout << "   Размер словаря: " << tokenizer.vocab_size() << std::endl;
+    std::cout << "   Правил слияния: " << tokenizer.merges_count() << std::endl;
     std::cout << std::endl;
     
     // Создаем сокет
     g_server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (g_server_fd < 0) {
-        std::cerr << "❌ Ошибка создания сокета" << std::endl;
+        std::cerr << "Ошибка создания сокета" << std::endl;
         return 1;
     }
     
     int opt = 1;
     if (setsockopt(g_server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-        std::cerr << "❌ Ошибка настройки сокета" << std::endl;
+        std::cerr << "Ошибка настройки сокета" << std::endl;
         return 1;
     }
     
@@ -742,16 +742,16 @@ int main(int argc, char* argv[]) {
     address.sin_port = htons(port);
     
     if (bind(g_server_fd, (struct sockaddr*)&address, sizeof(address)) < 0) {
-        std::cerr << "❌ Ошибка привязки к порту " << port << std::endl;
+        std::cerr << "Ошибка привязки к порту " << port << std::endl;
         return 1;
     }
     
     if (listen(g_server_fd, 5) < 0) {
-        std::cerr << "❌ Ошибка прослушивания" << std::endl;
+        std::cerr << "Ошибка прослушивания" << std::endl;
         return 1;
     }
     
-    std::cout << "🌐 Сервер запущен на http://localhost:" << port << std::endl;
+    std::cout << "Сервер запущен на http://localhost:" << port << std::endl;
     std::cout << "   API эндпоинты:" << std::endl;
     std::cout << "   - POST /api/tokenize" << std::endl;
     std::cout << "   - POST /api/detokenize" << std::endl;
@@ -770,7 +770,7 @@ int main(int argc, char* argv[]) {
         
         if (client_fd < 0) {
             if (g_running) {
-                std::cerr << "❌ Ошибка принятия соединения" << std::endl;
+                std::cerr << "Ошибка принятия соединения" << std::endl;
             }
             continue;
         }
@@ -785,7 +785,7 @@ int main(int argc, char* argv[]) {
             HttpRequest req = parse_request(request_str);
             
             if (req.is_valid()) {
-                std::cout << "📝 [" << client_count << "] " 
+                std::cout << "[" << client_count << "] " 
                           << req.method << " " << req.path << std::endl;
                 
                 std::string response = handle_request(req, tokenizer);
@@ -800,7 +800,7 @@ int main(int argc, char* argv[]) {
     }
     
     close(g_server_fd);
-    std::cout << "\n👋 Сервер остановлен. Всего обработано запросов: " << client_count << std::endl;
+    std::cout << "\nСервер остановлен. Всего обработано запросов: " << client_count << std::endl;
     
     return 0;
 }

@@ -6,9 +6,9 @@
 # @file build.sh
 # @brief Универсальный скрипт для сборки проекта с различными опциями
 #
-# @author Ваше Имя
-# @date 2024
-# @version 1.0.0
+# @author Евгений П.
+# @date 2026
+# @version 3.2.0
 #
 # @usage ./build.sh [options] [build_type]
 #   build_type: Debug, Release, RelWithDebInfo (по умолчанию: Release)
@@ -144,7 +144,7 @@ done
 # ======================================================================
 # Начало сборки
 # ======================================================================
-print_header "🔧 BPE TOKENIZER - СБОРКА ПРОЕКТА"
+print_header "BPE TOKENIZER - СБОРКА ПРОЕКТА"
 
 print_info "Директория проекта: $PROJECT_ROOT"
 print_info "Тип сборки: $BUILD_TYPE"
@@ -187,7 +187,7 @@ cd "$BUILD_DIR"
 # ======================================================================
 # Конфигурация CMake
 # ======================================================================
-print_header "📦 КОНФИГУРАЦИЯ CMAKE"
+print_header "КОНФИГУРАЦИЯ CMAKE"
 
 CMAKE_OPTIONS="
     -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
@@ -220,7 +220,7 @@ print_success "Конфигурация завершена"
 # ======================================================================
 # Сборка
 # ======================================================================
-print_header "🔨 СБОРКА"
+print_header "СБОРКА"
 
 # Определяем количество ядер для параллельной сборки
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -250,7 +250,7 @@ print_success "Сборка завершена"
 # Запуск тестов
 # ======================================================================
 if [ $RUN_TESTS -eq 1 ]; then
-    print_header "🧪 ЗАПУСК ТЕСТОВ"
+    print_header "ЗАПУСК ТЕСТОВ"
     
     print_info "Запуск модульных тестов..."
     ctest --output-on-failure -j$CORES
@@ -266,7 +266,7 @@ fi
 # Запуск бенчмарков
 # ======================================================================
 if [ $RUN_BENCHMARKS -eq 1 ]; then
-    print_header "📊 ЗАПУСК БЕНЧМАРКОВ"
+    print_header "ЗАПУСК БЕНЧМАРКОВ"
     
     if [ -f "./benchmarks/bpe_benchmarks" ]; then
         print_info "Запуск бенчмарков..."
@@ -284,7 +284,7 @@ fi
 # Установка
 # ======================================================================
 if [ $INSTALL_AFTER_BUILD -eq 1 ]; then
-    print_header "📦 УСТАНОВКА"
+    print_header "УСТАНОВКА"
     
     print_info "Установка в $INSTALL_DIR..."
     make install
@@ -301,23 +301,23 @@ fi
 # ======================================================================
 # Информация о результатах
 # ======================================================================
-print_header "✅ СБОРКА ЗАВЕРШЕНА"
+print_header "СБОРКА ЗАВЕРШЕНА"
 
 print_success "Бинарные файлы в: $BUILD_DIR"
 
 echo ""
-echo "📁 Основные компоненты:"
-echo "  $(ls -lh examples/simple_example 2>/dev/null || echo '⚠️ simple_example не найден')"
-echo "  $(ls -lh examples/batch_example 2>/dev/null || echo '⚠️ batch_example не найден')"
-echo "  $(ls -lh tests/bpe_tests 2>/dev/null || echo '⚠️ bpe_tests не найден')"
-echo "  $(ls -lh benchmarks/bpe_benchmarks 2>/dev/null || echo '⚠️ bpe_benchmarks не найден')"
+echo "Основные компоненты:"
+echo "  $(ls -lh examples/simple_example 2>/dev/null || echo '!!! simple_example не найден')"
+echo "  $(ls -lh examples/batch_example 2>/dev/null || echo '!!! batch_example не найден')"
+echo "  $(ls -lh tests/bpe_tests 2>/dev/null || echo '!!! bpe_tests не найден')"
+echo "  $(ls -lh benchmarks/bpe_benchmarks 2>/dev/null || echo '!!! bpe_benchmarks не найден')"
 
 echo ""
-echo "📊 Размеры файлов:"
+echo "Размеры файлов:"
 du -sh "$BUILD_DIR" 2>/dev/null || echo "  Не удалось определить размер"
 
 echo ""
-echo "🚀 Быстрые команды:"
+echo "Быстрые команды:"
 echo "  ./build.sh --test          # Сборка + тесты"
 echo "  ./build.sh --benchmark      # Сборка + бенчмарки"
 echo "  ./build.sh Debug --clean    # Отладка с очисткой"

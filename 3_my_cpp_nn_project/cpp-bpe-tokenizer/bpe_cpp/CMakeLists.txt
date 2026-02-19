@@ -5,9 +5,9 @@
 # @file CMakeLists.txt
 # @brief Конфигурация CMake для сборки C++ BPE токенизатора
 #
-# @author Ваше Имя
-# @date 2024
-# @version 1.0.0
+# @author Евгений П.
+# @date 2026
+# @version 3.4.0
 #
 # @details Этот файл управляет сборкой всех компонентов проекта:
 #          - Основная библиотека bpe_tokenizer

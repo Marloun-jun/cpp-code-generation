@@ -2,9 +2,9 @@
  * @file thread_safe_cache.hpp
  * @brief Потокобезопасные реализации кэша для BPE токенизатора
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 2.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.2.0
  * 
  * @details Две реализации кэша с разными стратегиями:
  * 

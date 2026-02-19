@@ -6,9 +6,9 @@
 # @file profile.sh
 # @brief Запуск различных профилировщиков для анализа производительности
 #
-# @author Ваше Имя
-# @date 2024
-# @version 2.0.0
+# @author Евгений П.
+# @date 2026
+# @version 3.1.0
 #
 # @usage ./profile.sh [options]
 #   --tool TOOL     Инструмент профилирования (builtin|perf|callgrind|gprof|flamegraph|all)
@@ -184,7 +184,7 @@ check_tool() {
 # Сборка с флагами профилирования
 # ======================================================================
 build_with_profiling() {
-    print_header "🔨 СБОРКА С ПРОФИЛИРОВАНИЕМ"
+    print_header "СБОРКА С ПРОФИЛИРОВАНИЕМ"
     
     cd "$PROJECT_ROOT/bpe_cpp/build"
     
@@ -269,7 +269,7 @@ with open('$test_file', 'w') as f:
 # Встроенный профайлер (SimpleProfiler)
 # ======================================================================
 profile_with_builtin() {
-    print_header "📊 ВСТРОЕННЫЙ ПРОФАЙЛЕР (SimpleProfiler)"
+    print_header "ВСТРОЕННЫЙ ПРОФАЙЛЕР (SimpleProfiler)"
     
     local test_file="$1"
     local output="$OUTPUT_DIR/builtin_${TARGET}_${SIZE}"
@@ -302,7 +302,7 @@ profile_with_builtin() {
 # Профилирование с perf
 # ======================================================================
 profile_with_perf() {
-    print_header "📊 ПРОФИЛИРОВАНИЕ С PERF"
+    print_header "ПРОФИЛИРОВАНИЕ С PERF"
     
     check_tool "perf" || return 1
     
@@ -335,7 +335,7 @@ profile_with_perf() {
 # Профилирование с Callgrind
 # ======================================================================
 profile_with_callgrind() {
-    print_header "📊 ПРОФИЛИРОВАНИЕ С CALLGRIND"
+    print_header "ПРОФИЛИРОВАНИЕ С CALLGRIND"
     
     check_tool "valgrind" || return 1
     
@@ -357,7 +357,7 @@ profile_with_callgrind() {
 # Профилирование с gprof
 # ======================================================================
 profile_with_gprof() {
-    print_header "📊 ПРОФИЛИРОВАНИЕ С GPROF"
+    print_header "ПРОФИЛИРОВАНИЕ С GPROF"
     
     check_tool "gprof" || return 1
     
@@ -384,7 +384,7 @@ profile_with_gprof() {
 # Генерация flame graph
 # ======================================================================
 generate_flamegraph() {
-    print_header "🔥 ГЕНЕРАЦИЯ FLAME GRAPH"
+    print_header "ГЕНЕРАЦИЯ FLAME GRAPH"
     
     check_tool "perf" || return 1
     
@@ -420,7 +420,7 @@ generate_flamegraph() {
 # Сравнение до/после оптимизации
 # ======================================================================
 compare_before_after() {
-    print_header "📈 СРАВНЕНИЕ ДО/ПОСЛЕ ОПТИМИЗАЦИИ"
+    print_header "СРАВНЕНИЕ ДО/ПОСЛЕ ОПТИМИЗАЦИИ"
     
     local output="$OUTPUT_DIR/comparison_${TARGET}_${SIZE}"
     
@@ -444,20 +444,20 @@ compare_before_after() {
     
     if [ -n "$before_time" ] && [ -n "$after_time" ]; then
         local speedup=$(echo "scale=2; $before_time / $after_time" | bc)
-        echo -e "\n📊 Ускорение: ${speedup}x"
+        echo -e "\nУскорение: ${speedup}x"
         
         if (( $(echo "$speedup > 5" | bc -l) )); then
-            echo "✅ Цель достигнута ( >5x )"
+            echo "Цель достигнута ( >5x )"
         else
-            echo "⚠️ Нужно больше оптимизаций"
+            echo "Нужно больше оптимизаций"
         fi
     fi
     
     # Сравнение топ-5 функций
-    echo -e "\n🔍 Топ-5 функций ДО:"
+    echo -e "\nТоп-5 функций ДО:"
     grep -A 7 "ОТЧЕТ ПРОФИЛИРОВАНИЯ" "$before_report" | tail -n +3 | head -5
     
-    echo -e "\n🔍 Топ-5 функций ПОСЛЕ:"
+    echo -e "\nТоп-5 функций ПОСЛЕ:"
     grep -A 7 "ОТЧЕТ ПРОФИЛИРОВАНИЯ" "$after_report" | tail -n +3 | head -5
 }
 
@@ -509,7 +509,7 @@ fi
 # ======================================================================
 # Итог
 # ======================================================================
-print_header "✅ ПРОФИЛИРОВАНИЕ ЗАВЕРШЕНО"
+print_header "ПРОФИЛИРОВАНИЕ ЗАВЕРШЕНО"
 
 print_info "Отчеты сохранены в: $OUTPUT_DIR"
 ls -la "$OUTPUT_DIR" | grep -E "(builtin|perf|callgrind|gprof|flame)" | tail -5

@@ -2,9 +2,9 @@
  * @file batch_example.cpp
  * @brief Пример пакетной обработки текстов с BPE токенизатором
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 1.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.2.0
  * 
  * @details Демонстрация эффективности пакетной обработки:
  *          - Сравнение одиночной и пакетной обработки
@@ -17,7 +17,7 @@
  */
 
 #include "bpe_tokenizer.hpp"
-#include "fast_tokenizer.hpp"  // Добавляем быструю версию для сравнения
+#include "fast_tokenizer.hpp"
 #include "utils.hpp"
 
 #include <iostream>
@@ -131,7 +131,7 @@ std::vector<std::string> create_repetitive_batch(size_t size) {
 void print_token_stats(const std::vector<std::vector<token_id_t>>& results,
                        const std::vector<std::string>& batch) {
     
-    std::cout << "\n📊 Статистика по токенам:" << std::endl;
+    std::cout << "\nСтатистика по токенам:" << std::endl;
     std::cout << std::setw(4) << "ID" << " | " 
               << std::setw(30) << "Пример" << " | "
               << std::setw(8) << "Токены" << " | "
@@ -182,7 +182,7 @@ void print_token_stats(const std::vector<std::vector<token_id_t>>& results,
 
 int main() {
     std::cout << "========================================\n";
-    std::cout << "📦 ПАКЕТНАЯ ОБРАБОТКА BPE ТОКЕНИЗАТОРОМ\n";
+    std::cout << "ПАКЕТНАЯ ОБРАБОТКА BPE ТОКЕНИЗАТОРОМ\n";
     std::cout << "========================================\n" << std::endl;
     
     try {
@@ -206,26 +206,26 @@ int main() {
         bool loaded = false;
         for (const auto& [vocab_path, merges_path] : model_paths) {
             if (tokenizer.load_from_files(vocab_path, merges_path)) {
-                std::cout << "  ✅ Загружена модель: " << vocab_path << std::endl;
+                std::cout << "Загружена модель: " << vocab_path << std::endl;
                 loaded = true;
                 break;
             }
         }
         
         if (!loaded) {
-            std::cerr << "❌ Не удалось загрузить модель!" << std::endl;
+            std::cerr << "Не удалось загрузить модель!" << std::endl;
             return 1;
         }
         
-        std::cout << "  📚 Размер словаря: " << tokenizer.vocab_size() << std::endl;
-        std::cout << "  🔗 Правил слияния: " << tokenizer.merges_count() << std::endl;
+        std::cout << "Размер словаря: " << tokenizer.vocab_size() << std::endl;
+        std::cout << "Правил слияния: " << tokenizer.merges_count() << std::endl;
         
         // ======================================================================
         // Создание тестового батча
         // ======================================================================
         
         auto batch = create_test_batch();
-        std::cout << "\n📋 Создан тестовый батч из " << batch.size() << " примеров" << std::endl;
+        std::cout << "\nСоздан тестовый батч из " << batch.size() << " примеров" << std::endl;
         
         // ======================================================================
         // Тест 1: Сравнение одиночной и пакетной обработки
@@ -255,16 +255,16 @@ int main() {
         double batch_time = timer.elapsed();
         
         std::cout << std::fixed << std::setprecision(3);
-        std::cout << "  Одиночная обработка: " << single_time * 1000 << " ms" << std::endl;
-        std::cout << "  Пакетная обработка:  " << batch_time * 1000 << " ms" << std::endl;
-        std::cout << "  Ускорение:           " << (single_time / batch_time) << "x" << std::endl;
+        std::cout << "Одиночная обработка: " << single_time * 1000 << " ms" << std::endl;
+        std::cout << "Пакетная обработка:  " << batch_time * 1000 << " ms" << std::endl;
+        std::cout << "Ускорение:           " << (single_time / batch_time) << "x" << std::endl;
         
         // Проверка корректности
         bool all_match = true;
         for (size_t i = 0; i < batch.size(); ++i) {
             if (single_results[i] != batch_results[i]) {
                 all_match = false;
-                std::cout << "  ❌ Несовпадение в примере " << i << std::endl;
+                std::cout << "Несовпадение в примере " << i << std::endl;
                 
                 // Показываем различия
                 std::cout << "     Одиночная: ";
@@ -281,7 +281,7 @@ int main() {
                 break;
             }
         }
-        std::cout << "  Корректность: " << (all_match ? "✅" : "❌") << std::endl;
+        std::cout << "  Корректность: " << (all_match ? "[OK]" : "[BAD]") << std::endl;
         
         // ======================================================================
         // Тест 2: Статистика по токенам
@@ -403,7 +403,7 @@ int main() {
                     }
                 }
             }
-            std::cout << "  Корректность:    " << (fast_match ? "✅" : "❌") << std::endl;
+            std::cout << "  Корректность:    " << (fast_match ? "[OK]" : "[BAD]") << std::endl;
         }
         #endif
         
@@ -412,11 +412,11 @@ int main() {
         // ======================================================================
         
         std::cout << "\n" << std::string(50, '=') << std::endl;
-        std::cout << "✅ ТЕСТИРОВАНИЕ ЗАВЕРШЕНО" << std::endl;
+        std::cout << "ТЕСТИРОВАНИЕ ЗАВЕРШЕНО" << std::endl;
         std::cout << std::string(50, '=') << std::endl;
         
         // Сводка
-        std::cout << "\n📊 Сводка:" << std::endl;
+        std::cout << "\nСводка:" << std::endl;
         std::cout << "  • Всего примеров: " << batch.size() << std::endl;
         std::cout << "  • Всего токенов: " << std::accumulate(batch_results.begin(), batch_results.end(), 0,
             [](size_t sum, const auto& tokens) { return sum + tokens.size(); }) << std::endl;
@@ -428,7 +428,7 @@ int main() {
                           [](size_t sum, const auto& text) { return sum + text.size(); }))) << "%" << std::endl;
         
     } catch (const std::exception& e) {
-        std::cerr << "\n❌ Ошибка: " << e.what() << std::endl;
+        std::cerr << "\nОшибка: " << e.what() << std::endl;
         return 1;
     }
     

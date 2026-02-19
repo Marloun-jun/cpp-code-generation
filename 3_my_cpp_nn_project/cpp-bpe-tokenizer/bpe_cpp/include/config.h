@@ -2,9 +2,9 @@
  * @file config.h.in
  * @brief Шаблон конфигурационного файла для CMake
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 1.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.2.0
  * 
  * @details Этот файл обрабатывается CMake для генерации config.h.
  *          Он определяет макросы, основанные на результатах проверки системы
@@ -12,9 +12,9 @@
  * 
  *          Процесс обработки CMake:
  *          1. CMake читает этот шаблон
- *          2. Заменяет  на соответствующие значения
+ *          2. Заменяет @VARIABLES@ на соответствующие значения
  *          3. Создает config.h в бинарной директории
-/* #undef  */
+ *          4. Включает или исключает #cmakedefine директивы
  * 
  * @note Этот файл НЕ должен включаться напрямую в исходный код.
  *       Используйте сгенерированный config.h из директории сборки.
@@ -30,7 +30,7 @@
  * Версия проекта, определяемая в корневом CMakeLists.txt
  */
 /**@{*/
-#define PROJECT_VERSION "0.1.0"  ///< Версия проекта в формате "major.minor.patch"
+#define PROJECT_VERSION "@PROJECT_VERSION@"  ///< Версия проекта в формате "major.minor.patch"
 /**@}*/
 
 /**
@@ -38,8 +38,8 @@
  * Включают поддержку различных фреймворков для параллельных вычислений
  */
 /**@{*/
-#define USE_OPENMP  ///< Использовать OpenMP для параллельных циклов
-/* #undef USE_TBB */
+#cmakedefine USE_OPENMP  ///< Использовать OpenMP для параллельных циклов
+#cmakedefine USE_TBB     ///< Использовать Intel Threading Building Blocks
 /**@}*/
 
 /**
@@ -47,8 +47,8 @@
  * Включают поддержку векторных инструкций процессора
  */
 /**@{*/
-/* #undef USE_AVX2 */
-/* #undef USE_SSE42 */
+#cmakedefine USE_AVX2    ///< Поддержка AVX2 инструкций (Advanced Vector Extensions 2)
+#cmakedefine USE_SSE42   ///< Поддержка SSE4.2 инструкций (Streaming SIMD Extensions 4.2)
 /**@}*/
 
 /**
@@ -56,7 +56,7 @@
  * Опции для отладки и профилирования
  */
 /**@{*/
-/* #undef BUILD_WITH_PROFILING */
+#cmakedefine BUILD_WITH_PROFILING  ///< Включить встроенный профайлер
 /**@}*/
 
 #endif // BPE_TOKENIZER_CONFIG_H

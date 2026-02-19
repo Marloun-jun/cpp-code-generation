@@ -2,9 +2,9 @@
  * @file fast_tokenizer_demo.cpp
  * @brief Демонстрация возможностей оптимизированного BPE токенизатора
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 2.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.2.0
  * 
  * @details Демонстрация всех ключевых возможностей FastTokenizer:
  *          - Загрузка модели
@@ -53,7 +53,7 @@ public:
         if (print_on_destroy_) {
             auto end = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start_);
-            std::cout << "  ⏱️  " << std::left << std::setw(30) << name_ << ": " 
+            std::cout << "  [TIMER]  " << std::left << std::setw(30) << name_ << ": " 
                       << std::right << std::setw(8) << std::fixed << std::setprecision(3)
                       << duration.count() / 1000.0 << " ms" << std::endl;
         }
@@ -115,22 +115,22 @@ void check_simd_support() {
     std::cout << "\n🔧 SIMD оптимизации:\n";
     
     #ifdef USE_AVX2
-        std::cout << "  ✅ AVX2: ВКЛЮЧЕН (компиляция с -mavx2)\n";
+        std::cout << "AVX2: ВКЛЮЧЕН (компиляция с -mavx2)\n";
     #else
-        std::cout << "  ❌ AVX2: ОТКЛЮЧЕН\n";
+        std::cout << "AVX2: ОТКЛЮЧЕН\n";
     #endif
     
     #ifdef USE_SSE42
-        std::cout << "  ✅ SSE4.2: ВКЛЮЧЕН\n";
+        std::cout << "SSE4.2: ВКЛЮЧЕН\n";
     #else
-        std::cout << "  ❌ SSE4.2: ОТКЛЮЧЕН\n";
+        std::cout << "SSE4.2: ОТКЛЮЧЕН\n";
     #endif
     
     // Проверка во время выполнения
     if (SIMDUtils::check_avx2_support()) {
-        std::cout << "  ✅ AVX2 поддерживается процессором\n";
+        std::cout << "AVX2 поддерживается процессором\n";
     } else {
-        std::cout << "  ❌ AVX2 НЕ поддерживается процессором\n";
+        std::cout << "AVX2 НЕ поддерживается процессором\n";
     }
     
     std::cout << std::endl;
@@ -170,7 +170,7 @@ bool find_model_files(FastBPETokenizer& tokenizer, std::string& vocab_path, std:
  */
 void demo_basic_encoding(FastBPETokenizer& tokenizer, const std::vector<std::pair<std::string, std::string>>& examples) {
     std::cout << "\n" << std::string(60, '=') << "\n";
-    std::cout << "🔤 БАЗОВОЕ КОДИРОВАНИЕ/ДЕКОДИРОВАНИЕ\n";
+    std::cout << "БАЗОВОЕ КОДИРОВАНИЕ/ДЕКОДИРОВАНИЕ\n";
     std::cout << std::string(60, '=') << "\n";
     
     int success_count = 0;
@@ -178,7 +178,7 @@ void demo_basic_encoding(FastBPETokenizer& tokenizer, const std::vector<std::pai
     for (size_t i = 0; i < examples.size(); ++i) {
         const auto& [desc, text] = examples[i];
         
-        std::cout << "\n📝 Пример " << i+1 << ": " << desc << "\n";
+        std::cout << "\nПример " << i+1 << ": " << desc << "\n";
         std::cout << "   Исходный: " << text << "\n";
         
         // Кодирование
@@ -212,10 +212,10 @@ void demo_basic_encoding(FastBPETokenizer& tokenizer, const std::vector<std::pai
         if (success) success_count++;
         
         std::cout << "   Декодировано: " << decoded << "\n";
-        std::cout << "   Результат: " << (success ? "✅ УСПЕХ" : "❌ НЕУДАЧА") << "\n";
+        std::cout << "   Результат: " << (success ? "УСПЕХ" : "НЕУДАЧА") << "\n";
     }
     
-    std::cout << "\n📊 Итог: " << success_count << "/" << examples.size() 
+    std::cout << "\nИтог: " << success_count << "/" << examples.size() 
               << " примеров успешно (" << (success_count * 100 / examples.size()) << "%)\n";
 }
 
@@ -224,7 +224,7 @@ void demo_basic_encoding(FastBPETokenizer& tokenizer, const std::vector<std::pai
  */
 void demo_batch_processing(FastBPETokenizer& tokenizer, const std::vector<std::pair<std::string, std::string>>& examples) {
     std::cout << "\n" << std::string(60, '=') << "\n";
-    std::cout << "📦 ПАКЕТНАЯ ОБРАБОТКА\n";
+    std::cout << "ПАКЕТНАЯ ОБРАБОТКА\n";
     std::cout << std::string(60, '=') << "\n";
     
     // Подготовка данных
@@ -258,12 +258,12 @@ void demo_batch_processing(FastBPETokenizer& tokenizer, const std::vector<std::p
         auto single = tokenizer.encode(texts[i]);
         if (single.size() != batch_results[i].size()) {
             all_match = false;
-            std::cout << "   ❌ Несовпадение в тексте " << i << "\n";
+            std::cout << "   Несовпадение в тексте " << i << "\n";
             break;
         }
     }
     
-    std::cout << "   Корректность: " << (all_match ? "✅" : "❌") << "\n";
+    std::cout << "   Корректность: " << (all_match ? "[OK]" : "[BAD]") << "\n";
 }
 
 /**
@@ -271,7 +271,7 @@ void demo_batch_processing(FastBPETokenizer& tokenizer, const std::vector<std::p
  */
 void demo_caching(FastBPETokenizer& tokenizer) {
     std::cout << "\n" << std::string(60, '=') << "\n";
-    std::cout << "💾 ЭФФЕКТИВНОСТЬ КЭШИРОВАНИЯ\n";
+    std::cout << "ЭФФЕКТИВНОСТЬ КЭШИРОВАНИЯ\n";
     std::cout << std::string(60, '=') << "\n";
     
     std::vector<std::string> repetitive_texts;
@@ -317,7 +317,7 @@ void demo_caching(FastBPETokenizer& tokenizer) {
  */
 void demo_performance(FastBPETokenizer& tokenizer) {
     std::cout << "\n" << std::string(60, '=') << "\n";
-    std::cout << "🚀 ТЕСТ ПРОИЗВОДИТЕЛЬНОСТИ\n";
+    std::cout << "ТЕСТ ПРОИЗВОДИТЕЛЬНОСТИ\n";
     std::cout << std::string(60, '=') << "\n";
     
     // Тест с разными размерами
@@ -386,7 +386,7 @@ void demo_simd(FastBPETokenizer& tokenizer) {
 
 int main(int argc, char* argv[]) {
     std::cout << "========================================\n";
-    std::cout << "🚀 FAST BPE TOKENIZER DEMO\n";
+    std::cout << "FAST BPE TOKENIZER DEMO\n";
     std::cout << "========================================\n";
     
     // Парсинг аргументов командной строки
@@ -420,7 +420,7 @@ int main(int argc, char* argv[]) {
         config.enable_cache = true;
         config.enable_profiling = true;
         
-        std::cout << "📦 Создание токенизатора:\n";
+        std::cout << "Создание токенизатора:\n";
         std::cout << "  • vocab_size: " << config.vocab_size << "\n";
         std::cout << "  • cache_size: " << config.cache_size << "\n";
         std::cout << "  • byte_level: " << (config.byte_level ? "да" : "нет") << "\n";
@@ -430,23 +430,23 @@ int main(int argc, char* argv[]) {
         FastBPETokenizer tokenizer(config);
         
         // Загрузка модели
-        std::cout << "📖 Загрузка модели...\n";
+        std::cout << "Загрузка модели...\n";
         
         std::string vocab_path, merges_path;
         ScopedTimer load_timer("Загрузка модели");
         
         if (!find_model_files(tokenizer, vocab_path, merges_path)) {
-            std::cerr << "❌ Не удалось загрузить модель!\n";
+            std::cerr << "Не удалось загрузить модель!\n";
             std::cerr << "   Убедитесь, что файлы существуют:\n";
             std::cerr << "   - ../../bpe/vocab_complete.json\n";
             std::cerr << "   - ../../bpe/merges.txt\n";
             return 1;
         }
         
-        std::cout << "  ✅ Словарь: " << vocab_path << "\n";
-        std::cout << "  ✅ Слияния: " << merges_path << "\n";
-        std::cout << "  📚 Размер словаря: " << tokenizer.vocab_size() << " токенов\n";
-        std::cout << "  🔗 Правил слияния: " << tokenizer.merges_count() << "\n";
+        std::cout << "  Словарь: " << vocab_path << "\n";
+        std::cout << "  Слияния: " << merges_path << "\n";
+        std::cout << "  Размер словаря: " << tokenizer.vocab_size() << " токенов\n";
+        std::cout << "  Правил слияния: " << tokenizer.merges_count() << "\n";
         
         // Создание примеров
         auto examples = create_examples();
@@ -464,7 +464,7 @@ int main(int argc, char* argv[]) {
         // Финальная статистика
         auto stats = tokenizer.stats();
         std::cout << "\n" << std::string(60, '=') << "\n";
-        std::cout << "📊 ФИНАЛЬНАЯ СТАТИСТИКА\n";
+        std::cout << "ФИНАЛЬНАЯ СТАТИСТИКА\n";
         std::cout << std::string(60, '=') << "\n";
         std::cout << "  • Всего encode вызовов: " << stats.encode_calls << "\n";
         std::cout << "  • Всего decode вызовов: " << stats.decode_calls << "\n";
@@ -476,10 +476,10 @@ int main(int argc, char* argv[]) {
         std::cout << "  • Среднее время encode: " << std::fixed << std::setprecision(3) 
                   << stats.avg_encode_time_ms() << " ms\n";
         
-        std::cout << "\n✅ Демо завершено успешно!\n";
+        std::cout << "\nДемо завершено успешно!\n";
         
     } catch (const std::exception& e) {
-        std::cerr << "\n❌ Ошибка: " << e.what() << std::endl;
+        std::cerr << "\nОшибка: " << e.what() << std::endl;
         return 1;
     }
     

@@ -2,9 +2,9 @@
  * @file bench_fast_tokenizer.cpp
  * @brief Бенчмарки для сравнения производительности BPE токенизаторов
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 1.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.2.0
  * 
  * @details Набор тестов производительности с использованием Google Benchmark:
  *          - Сравнение fast_tokenizer и оригинального bpe_tokenizer

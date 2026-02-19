@@ -2,9 +2,9 @@
  * @file bench_tokenizer.cpp
  * @brief Бенчмарки для базовой версии BPE токенизатора
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 1.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.2.0
  * 
  * @details Набор тестов производительности для BPETokenizer:
  *          - Кодирование коротких и длинных текстов

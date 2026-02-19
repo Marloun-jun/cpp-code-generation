@@ -2,9 +2,9 @@
  * @file test_compatibility.cpp
  * @brief Тесты совместимости между C++ и Python реализациями BPE токенизатора
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 1.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.2.0
  * 
  * @details Набор тестов для проверки, что C++ токенизатор ведет себя так же,
  *          как и эталонная Python реализация. Включает:
@@ -21,6 +21,7 @@
 
 #include <benchmark/benchmark.h>
 #include <gtest/gtest.h>
+
 #include "fast_tokenizer.hpp"
 #include "bpe_tokenizer.hpp"
 #include "utils.hpp"
@@ -132,7 +133,7 @@ protected:
         // Выводим статистику после тестов
         if (tokenizer_loaded_) {
             auto stats = tokenizer_.stats();
-            std::cout << "\n📊 Статистика токенизатора:" << std::endl;
+            std::cout << "\nСтатистика токенизатора:" << std::endl;
             std::cout << "   Кэш: " << stats.cache_hit_rate() * 100 << "% попаданий" << std::endl;
             std::cout << "   Среднее время encode: " 
                       << std::fixed << std::setprecision(3)
@@ -148,7 +149,7 @@ protected:
         
         for (size_t i = 0; i < python_paths_.size(); ++i) {
             if (tokenizer_.load(python_paths_[i], merges_paths_[i])) {
-                std::cout << "✅ Загружен словарь: " << python_paths_[i] << std::endl;
+                std::cout << "Загружен словарь: " << python_paths_[i] << std::endl;
                 tokenizer_loaded_ = true;
                 loaded_path_ = python_paths_[i];
                 return true;
@@ -267,7 +268,7 @@ protected:
  */
 TEST_F(CompatibilityTest, LoadSameVocabulary) {
     if (!hasPythonFiles()) {
-        GTEST_SKIP() << "❌ Python vocabulary files not found. Run python tokenizer first.";
+        GTEST_SKIP() << "Python vocabulary files not found. Run python tokenizer first.";
     }
     
     ASSERT_TRUE(loadTokenizer());
@@ -275,9 +276,9 @@ TEST_F(CompatibilityTest, LoadSameVocabulary) {
     EXPECT_GT(tokenizer_.vocab_size(), 0);
     EXPECT_GT(tokenizer_.merges_count(), 0);
     
-    std::cout << "📚 C++ токенизатор загрузил " << tokenizer_.vocab_size() 
+    std::cout << "C++ токенизатор загрузил " << tokenizer_.vocab_size() 
               << " токенов из " << loaded_path_ << std::endl;
-    std::cout << "🔗 Правил слияния: " << tokenizer_.merges_count() << std::endl;
+    std::cout << "Правил слияния: " << tokenizer_.merges_count() << std::endl;
 }
 
 /**
@@ -294,7 +295,7 @@ TEST_F(CompatibilityTest, EncodeSimpleText) {
     auto tokens = tokenizer_.encode(text);
     
     EXPECT_GT(tokens.size(), 0);
-    std::cout << "📝 Текст '" << text << "' закодирован в " 
+    std::cout << "Текст '" << text << "' закодирован в " 
               << tokens.size() << " токенов" << std::endl;
     
     // Проверяем первые несколько токенов
@@ -319,7 +320,7 @@ TEST_F(CompatibilityTest, EncodeAllTestStrings) {
         auto tokens = tokenizer_.encode(text);
         all_outputs.push_back(tokens);
         
-        std::cout << "📌 '" << text.substr(0, 30) 
+        std::cout << "'" << text.substr(0, 30) 
                   << (text.length() > 30 ? "..." : "") 
                   << "' -> " << tokens.size() << " токенов" << std::endl;
         
@@ -328,7 +329,7 @@ TEST_F(CompatibilityTest, EncodeAllTestStrings) {
     
     // Сохраняем для сравнения с Python
     save_cpp_outputs(getCppOutputPath("encode_all"), all_outputs);
-    std::cout << "💾 Результаты сохранены в " << getCppOutputPath("encode_all") << std::endl;
+    std::cout << "Результаты сохранены в " << getCppOutputPath("encode_all") << std::endl;
 }
 
 /**
@@ -356,16 +357,16 @@ TEST_F(CompatibilityTest, EncodeRussianComments) {
         // Проверяем, что декодирование работает
         auto decoded = tokenizer_.decode(tokens);
         
-        std::cout << "\n📌 Исходный:  '" << text << "'" << std::endl;
-        std::cout << "   Декод.:    '" << decoded << "'" << std::endl;
-        std::cout << "   Токенов:   " << tokens.size() << std::endl;
+        std::cout << "\n  Исходный:  '" << text << "'" << std::endl;
+        std::cout << "  Декод.:    '" << decoded << "'" << std::endl;
+        std::cout << "  Токенов:   " << tokens.size() << std::endl;
         
         // Проверяем, что все символы присутствуют
         bool all_chars_present = true;
         for (char c : text) {
             if (decoded.find(c) == std::string::npos && c > 0) {
                 all_chars_present = false;
-                std::cout << "   ⚠️ Отсутствует символ: '" << c << "' (код " << int(c) << ")" << std::endl;
+                std::cout << " !!! Отсутствует символ: '" << c << "' (код " << int(c) << ")" << std::endl;
             }
         }
         
@@ -408,14 +409,14 @@ TEST_F(CompatibilityTest, EncodeDecodeRoundtrip) {
             passed_tests++;
         } else {
             failures.push_back(text);
-            std::cout << "\n❌ Провал для: '" << text << "'" << std::endl;
+            std::cout << "\nПровал для: '" << text << "'" << std::endl;
             std::cout << "   Отсутствуют символы: '" << missing_chars << "'" << std::endl;
             std::cout << "   Декодировано: '" << decoded << "'" << std::endl;
         }
     }
     
     double success_rate = 100.0 * passed_tests / total_tests;
-    std::cout << "\n📊 Roundtrip成功率: " << std::fixed << std::setprecision(1)
+    std::cout << "\nПроцент успешных roundtrip: " << std::fixed << std::setprecision(1)
               << success_rate << "% (" << passed_tests << "/" << total_tests << ")" << std::endl;
     
     EXPECT_GE(success_rate, 95.0) << "Слишком много неудачных roundtrip тестов";
@@ -441,7 +442,7 @@ TEST_F(CompatibilityTest, BatchEncode) {
     auto batch_result = tokenizer_.encode_batch(views);
     
     EXPECT_EQ(batch_result.size(), texts.size());
-    std::cout << "📦 Пакетная обработка " << batch_result.size() << " текстов:" << std::endl;
+    std::cout << "Пакетная обработка " << batch_result.size() << " текстов:" << std::endl;
     
     size_t total_tokens = 0;
     for (size_t i = 0; i < batch_result.size(); ++i) {
@@ -487,7 +488,7 @@ TEST_F(CompatibilityTest, EncodePerformance) {
     double ms_per_encode = duration.count() / static_cast<double>(iterations);
     double tokens_per_second = (large_text.size() * iterations) / (duration.count() / 1000.0);
     
-    std::cout << "\n⚡ Производительность encode:" << std::endl;
+    std::cout << "\nПроизводительность encode:" << std::endl;
     std::cout << "   Размер текста: " << large_text.size() << " байт" << std::endl;
     std::cout << "   Среднее время: " << std::fixed << std::setprecision(2) 
               << ms_per_encode << " мс" << std::endl;
@@ -512,7 +513,7 @@ TEST_F(CompatibilityTest, CompareWithPython) {
     auto python_outputs = load_python_outputs(getPythonOutputPath("encode_all"));
     
     if (python_outputs.empty()) {
-        std::cout << "\n⚠️ Нет сохраненных выходов Python для сравнения." << std::endl;
+        std::cout << "\n !!! Нет сохраненных выходов Python для сравнения." << std::endl;
         std::cout << "   Чтобы создать их, запустите:" << std::endl;
         std::cout << "   python3 -c \"" << std::endl;
         std::cout << "   import json" << std::endl;
@@ -542,14 +543,14 @@ TEST_F(CompatibilityTest, CompareWithPython) {
         if (python_outputs[i] == cpp_outputs[i]) {
             matches++;
         } else {
-            std::cout << "\n❌ Несовпадение для текста " << i << ":" << std::endl;
+            std::cout << "\nНесовпадение для текста " << i << ":" << std::endl;
             std::cout << "   Python: " << python_outputs[i].size() << " токенов" << std::endl;
             std::cout << "   C++:    " << cpp_outputs[i].size() << " токенов" << std::endl;
         }
     }
     
     double match_rate = 100.0 * matches / cpp_outputs.size();
-    std::cout << "\n📊 Совпадение с Python: " << std::fixed << std::setprecision(1)
+    std::cout << "\nСовпадение с Python: " << std::fixed << std::setprecision(1)
               << match_rate << "% (" << matches << "/" << cpp_outputs.size() << ")" << std::endl;
     
     EXPECT_GE(match_rate, 90.0) << "Слишком большое расхождение с Python";
@@ -565,7 +566,7 @@ TEST_F(CompatibilityTest, SpecialTokens) {
     
     ASSERT_TRUE(loadTokenizer());
     
-    std::cout << "\n🔖 Специальные токены:" << std::endl;
+    std::cout << "\nСпециальные токены:" << std::endl;
     std::cout << "   <UNK> ID: " << tokenizer_.unknown_id() << std::endl;
     std::cout << "   <PAD> ID: " << tokenizer_.pad_id() << std::endl;
     std::cout << "   <BOS> ID: " << tokenizer_.bos_id() << std::endl;

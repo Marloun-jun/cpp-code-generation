@@ -2,9 +2,9 @@
  * @file train_example.cpp
  * @brief Пример параллельного обучения BPE токенизатора на корпусе C++ кода
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 2.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.2.0
  * 
  * @details Демонстрация обучения токенизатора с использованием:
  *          - Параллельной обработки (OpenMP)
@@ -48,7 +48,7 @@ public:
     ~ScopedTimer() {
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start_);
-        std::cout << "  ⏱️  " << std::left << std::setw(30) << name_ << ": " 
+        std::cout << "  [TIMER]  " << std::left << std::setw(30) << name_ << ": " 
                   << std::right << std::setw(8) << duration.count() / 1000.0 
                   << " сек" << std::endl;
     }
@@ -62,11 +62,11 @@ public:
  * @brief Загрузка корпуса из файла
  */
 std::vector<std::string> load_corpus(const std::string& path, bool verbose = true) {
-    std::cout << "📖 Загрузка корпуса из: " << path << std::endl;
+    std::cout << "Загрузка корпуса из: " << path << std::endl;
     
     std::ifstream file(path);
     if (!file.is_open()) {
-        throw std::runtime_error("Cannot open file: " + path);
+        throw std::runtime_error("Не удалось открыть файл: " + path);
     }
     
     std::vector<std::string> corpus;
@@ -87,18 +87,18 @@ std::vector<std::string> load_corpus(const std::string& path, bool verbose = tru
     }
     
     if (verbose) {
-        std::cout << "  ✅ Загружено примеров: " << corpus.size() << std::endl;
-        std::cout << "  📊 Общий размер: " << total_size << " байт ("
+        std::cout << "  Загружено примеров: " << corpus.size() << std::endl;
+        std::cout << "  Общий размер: " << total_size << " байт ("
                   << std::fixed << std::setprecision(2) 
                   << total_size / 1024.0 / 1024.0 << " MB)" << std::endl;
-        std::cout << "  📏 Средний размер: " << total_size / corpus.size() << " байт" << std::endl;
+        std::cout << "  Средний размер: " << total_size / corpus.size() << " байт" << std::endl;
         
         // Статистика по уникальным символам
         std::set<char> unique_chars;
         for (const auto& text : corpus) {
             unique_chars.insert(text.begin(), text.end());
         }
-        std::cout << "  🔤 Уникальных символов: " << unique_chars.size() << std::endl;
+        std::cout << "  Уникальных символов: " << unique_chars.size() << std::endl;
     }
     
     return corpus;
@@ -108,7 +108,7 @@ std::vector<std::string> load_corpus(const std::string& path, bool verbose = tru
  * @brief Создать тестовый корпус для демонстрации (если нет реального)
  */
 std::vector<std::string> create_demo_corpus(size_t num_examples = 1000) {
-    std::cout << "📝 Создание демо-корпуса из " << num_examples << " примеров..." << std::endl;
+    std::cout << "Создание демо-корпуса из " << num_examples << " примеров..." << std::endl;
     
     std::vector<std::string> examples = {
         "int x = 42;",
@@ -130,7 +130,7 @@ std::vector<std::string> create_demo_corpus(size_t num_examples = 1000) {
         corpus.push_back(examples[i % examples.size()] + " // " + std::to_string(i));
     }
     
-    std::cout << "  ✅ Создано " << corpus.size() << " примеров" << std::endl;
+    std::cout << "  Создано " << corpus.size() << " примеров" << std::endl;
     return corpus;
 }
 
@@ -138,7 +138,7 @@ std::vector<std::string> create_demo_corpus(size_t num_examples = 1000) {
  * @brief Валидация обученной модели
  */
 void validate_model(FastBPETokenizer& tokenizer, const std::vector<std::string>& corpus, size_t num_samples = 100) {
-    std::cout << "\n🔍 Валидация модели на " << num_samples << " примерах..." << std::endl;
+    std::cout << "\nВалидация модели на " << num_samples << " примерах..." << std::endl;
     
     size_t correct = 0;
     size_t total_chars = 0;
@@ -176,7 +176,7 @@ void validate_model(FastBPETokenizer& tokenizer, const std::vector<std::string>&
     double accuracy = 100.0 * correct / num_samples;
     double compression = 100.0 * (1.0 - static_cast<double>(total_tokens) / total_chars);
     
-    std::cout << "\n📊 Результаты валидации:" << std::endl;
+    std::cout << "\nРезультаты валидации:" << std::endl;
     std::cout << "  • Точность roundtrip: " << std::fixed << std::setprecision(1)
               << accuracy << "% (" << correct << "/" << num_samples << ")" << std::endl;
     std::cout << "  • Сжатие: " << std::fixed << std::setprecision(1)
@@ -191,7 +191,7 @@ void validate_model(FastBPETokenizer& tokenizer, const std::vector<std::string>&
 
 int main(int argc, char* argv[]) {
     std::cout << "========================================\n";
-    std::cout << "🚀 ПАРАЛЛЕЛЬНОЕ ОБУЧЕНИЕ BPE ТОКЕНИЗАТОРА\n";
+    std::cout << "ПАРАЛЛЕЛЬНОЕ ОБУЧЕНИЕ BPE ТОКЕНИЗАТОРА\n";
     std::cout << "========================================\n\n";
     
     // Парсинг аргументов
@@ -237,13 +237,13 @@ int main(int argc, char* argv[]) {
         if (std::filesystem::exists(corpus_path)) {
             corpus = load_corpus(corpus_path);
         } else {
-            std::cout << "⚠️  Файл не найден: " << corpus_path << std::endl;
-            std::cout << "   Создаю демо-корпус для тестирования..." << std::endl;
+            std::cout << "Файл не найден: " << corpus_path << std::endl;
+            std::cout << "Создаю демо-корпус для тестирования..." << std::endl;
             corpus = create_demo_corpus(quick_mode ? 100 : 1000);
         }
         
         if (corpus.empty()) {
-            std::cerr << "❌ Корпус пуст!" << std::endl;
+            std::cerr << "Корпус пуст!" << std::endl;
             return 1;
         }
         
@@ -258,7 +258,7 @@ int main(int argc, char* argv[]) {
         config.enable_cache = true;
         config.enable_profiling = true;
         
-        std::cout << "\n⚙️  Конфигурация обучения:\n";
+        std::cout << "\nКонфигурация обучения:\n";
         std::cout << "  • Размер словаря: " << config.vocab_size << std::endl;
         std::cout << "  • Byte-level: " << (config.byte_level ? "да" : "нет") << std::endl;
         std::cout << "  • Кэширование: " << (config.enable_cache ? "да" : "нет") << std::endl;
@@ -275,7 +275,7 @@ int main(int argc, char* argv[]) {
         // Обучение
         // ======================================================================
         
-        std::cout << "\n🔄 Начало обучения..." << std::endl;
+        std::cout << "\nНачало обучения..." << std::endl;
         
         auto stats = tokenizer.stats();
         
@@ -290,12 +290,12 @@ int main(int argc, char* argv[]) {
         
         auto final_stats = tokenizer.stats();
         
-        std::cout << "\n📊 Статистика обучения:\n";
+        std::cout << "\nСтатистика обучения:\n";
         std::cout << "  • Итоговый размер словаря: " << tokenizer.vocab_size() << std::endl;
         std::cout << "  • Правил слияния: " << tokenizer.merges_count() << std::endl;
         
         // Показываем первые несколько токенов для примера
-        std::cout << "\n🔤 Первые 20 токенов:\n";
+        std::cout << "\nПервые 20 токенов:\n";
         for (uint32_t i = 0; i < std::min<uint32_t>(20, tokenizer.vocab_size()); ++i) {
             // Для FastTokenizer нет прямого доступа к токенам по ID
             // В реальном коде можно было бы вывести что-то типа tokenizer.id_to_token(i)
@@ -314,7 +314,7 @@ int main(int argc, char* argv[]) {
         // Сохранение модели
         // ======================================================================
         
-        std::cout << "\n💾 Сохранение модели..." << std::endl;
+        std::cout << "\nСохранение модели..." << std::endl;
         
         // Создаем директорию для моделей
         std::filesystem::create_directories("../../bpe");
@@ -325,7 +325,7 @@ int main(int argc, char* argv[]) {
                 ScopedTimer timer("Сохранение в бинарный формат");
                 tokenizer.save_binary(model_path);
             }
-            std::cout << "  ✅ Бинарная модель: " << model_path << std::endl;
+            std::cout << "  Бинарная модель: " << model_path << std::endl;
         } else {
             std::string vocab_path = "../../bpe/vocab_trained.json";
             std::string merges_path = "../../bpe/merges_trained.txt";
@@ -335,35 +335,35 @@ int main(int argc, char* argv[]) {
                 tokenizer.save(vocab_path, merges_path);
             }
             
-            std::cout << "  ✅ Словарь: " << vocab_path << std::endl;
-            std::cout << "  ✅ Слияния: " << merges_path << std::endl;
+            std::cout << "  Словарь: " << vocab_path << std::endl;
+            std::cout << "  Слияния: " << merges_path << std::endl;
             
             // Показываем размеры файлов
             auto vocab_size_bytes = std::filesystem::file_size(vocab_path);
             auto merges_size_bytes = std::filesystem::file_size(merges_path);
             
-            std::cout << "  📦 Размер словаря: " << std::fixed << std::setprecision(2)
+            std::cout << "  Размер словаря: " << std::fixed << std::setprecision(2)
                       << vocab_size_bytes / 1024.0 / 1024.0 << " MB" << std::endl;
-            std::cout << "  📦 Размер слияний: " << merges_size_bytes / 1024.0 << " KB" << std::endl;
+            std::cout << "  Размер слияний: " << merges_size_bytes / 1024.0 << " KB" << std::endl;
         }
         
         // ======================================================================
         // Тест загрузки сохраненной модели
         // ======================================================================
         
-        std::cout << "\n🔄 Тест загрузки сохраненной модели..." << std::endl;
+        std::cout << "\nТест загрузки сохраненной модели..." << std::endl;
         
         FastBPETokenizer loaded_tokenizer(config);
         
         if (save_binary) {
             if (loaded_tokenizer.load_binary("../../bpe/model_trained.bin")) {
-                std::cout << "  ✅ Модель успешно загружена из бинарного файла" << std::endl;
-                std::cout << "  📚 Размер словаря: " << loaded_tokenizer.vocab_size() << std::endl;
+                std::cout << "  Модель успешно загружена из бинарного файла" << std::endl;
+                std::cout << "  Размер словаря: " << loaded_tokenizer.vocab_size() << std::endl;
             }
         } else {
             if (loaded_tokenizer.load("../../bpe/vocab_trained.json", "../../bpe/merges_trained.txt")) {
-                std::cout << "  ✅ Модель успешно загружена из текстовых файлов" << std::endl;
-                std::cout << "  📚 Размер словаря: " << loaded_tokenizer.vocab_size() << std::endl;
+                std::cout << "  Модель успешно загружена из текстовых файлов" << std::endl;
+                std::cout << "  Размер словаря: " << loaded_tokenizer.vocab_size() << std::endl;
             }
         }
         
@@ -372,23 +372,23 @@ int main(int argc, char* argv[]) {
         // ======================================================================
         
         std::cout << "\n" << std::string(50, '=') << std::endl;
-        std::cout << "✅ ОБУЧЕНИЕ УСПЕШНО ЗАВЕРШЕНО!" << std::endl;
+        std::cout << "ОБУЧЕНИЕ УСПЕШНО ЗАВЕРШЕНО!" << std::endl;
         std::cout << std::string(50, '=') << std::endl;
         
-        std::cout << "\n📊 Сводка:" << std::endl;
+        std::cout << "\nСводка:" << std::endl;
         std::cout << "  • Размер корпуса: " << corpus.size() << " примеров" << std::endl;
         std::cout << "  • Размер словаря: " << tokenizer.vocab_size() << std::endl;
         std::cout << "  • Правил слияния: " << tokenizer.merges_count() << std::endl;
         
         if (!save_binary) {
-            std::cout << "\n💡 Для использования модели:" << std::endl;
+            std::cout << "\nДля использования модели:" << std::endl;
             std::cout << "   FastBPETokenizer tokenizer(config);" << std::endl;
             std::cout << "   tokenizer.load(\"../../bpe/vocab_trained.json\", "
                       << "\"../../bpe/merges_trained.txt\");" << std::endl;
         }
         
     } catch (const std::exception& e) {
-        std::cerr << "\n❌ Ошибка: " << e.what() << std::endl;
+        std::cerr << "\nОшибка: " << e.what() << std::endl;
         return 1;
     }
     

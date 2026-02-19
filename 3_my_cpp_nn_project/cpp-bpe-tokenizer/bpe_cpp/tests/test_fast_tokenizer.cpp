@@ -2,9 +2,9 @@
  * @file test_fast_tokenizer.cpp
  * @brief Модульные тесты для оптимизированной версии BPE токенизатора
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 2.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.3.0
  * 
  * @details Набор тестов для проверки функциональности FastBPETokenizer:
  *          - Создание и инициализация
@@ -18,8 +18,10 @@
  */
 
 #include <gtest/gtest.h>
+
 #include "fast_tokenizer.hpp"
 #include "utils.hpp"
+
 #include <fstream>
 #include <iostream>
 #include <random>
@@ -142,7 +144,7 @@ TEST_F(FastTokenizerTest, Creation) {
     EXPECT_EQ(tokenizer.merges_count(), 0);
     EXPECT_EQ(tokenizer.unknown_id(), 0);
     
-    std::cout << "✅ Токенизатор создан с конфигурацией:" << std::endl;
+    std::cout << "Токенизатор создан с конфигурацией:" << std::endl;
     std::cout << "   vocab_size: " << config_.vocab_size << std::endl;
     std::cout << "   cache_size: " << config_.cache_size << std::endl;
     std::cout << "   byte_level: " << std::boolalpha << config_.byte_level << std::endl;
@@ -161,7 +163,7 @@ TEST_F(FastTokenizerTest, CreationWithDifferentConfigs) {
     for (size_t i = 0; i < configs.size(); ++i) {
         FastBPETokenizer tokenizer(configs[i]);
         EXPECT_EQ(tokenizer.vocab_size(), 0);
-        std::cout << "✅ Конфигурация " << i+1 << " работает" << std::endl;
+        std::cout << "Конфигурация " << i+1 << " работает" << std::endl;
     }
 }
 
@@ -174,15 +176,15 @@ TEST_F(FastTokenizerTest, CreationWithDifferentConfigs) {
  */
 TEST_F(FastTokenizerTest, LoadVocabulary) {
     if (!has_model_) {
-        GTEST_SKIP() << "❌ Файлы модели не найдены. Сначала обучите токенизатор.";
+        GTEST_SKIP() << "Файлы модели не найдены. Сначала обучите токенизатор.";
     }
     
     EXPECT_TRUE(model_loaded_);
     EXPECT_GT(tokenizer_->vocab_size(), 0);
     EXPECT_GT(tokenizer_->merges_count(), 0);
     
-    std::cout << "📚 Загружено токенов: " << tokenizer_->vocab_size() << std::endl;
-    std::cout << "🔗 Правил слияния: " << tokenizer_->merges_count() << std::endl;
+    std::cout << "Загружено токенов: " << tokenizer_->vocab_size() << std::endl;
+    std::cout << "Правил слияния: " << tokenizer_->merges_count() << std::endl;
 }
 
 /**
@@ -193,7 +195,7 @@ TEST_F(FastTokenizerTest, LoadNonExistentFile) {
     
     bool loaded = tokenizer.load("nonexistent.json", "nonexistent.txt");
     EXPECT_FALSE(loaded);
-    std::cout << "✅ Корректная обработка отсутствующего файла" << std::endl;
+    std::cout << "Корректная обработка отсутствующего файла" << std::endl;
 }
 
 // ======================================================================
@@ -205,14 +207,14 @@ TEST_F(FastTokenizerTest, LoadNonExistentFile) {
  */
 TEST_F(FastTokenizerTest, SimpleEncode) {
     if (!tokenizer_ready()) {
-        GTEST_SKIP() << "❌ Модель не загружена";
+        GTEST_SKIP() << "Модель не загружена";
     }
     
     std::string text = "int";
     auto tokens = tokenizer_->encode(text);
     
     EXPECT_GT(tokens.size(), 0);
-    std::cout << "📝 '" << text << "' -> " << tokens.size() << " токенов" << std::endl;
+    std::cout << "'" << text << "' -> " << tokens.size() << " токенов" << std::endl;
     
     for (size_t i = 0; i < std::min<size_t>(5, tokens.size()); ++i) {
         std::cout << "   Токен " << i << ": ID " << tokens[i] << std::endl;
@@ -224,7 +226,7 @@ TEST_F(FastTokenizerTest, SimpleEncode) {
  */
 TEST_F(FastTokenizerTest, EncodeWithSpace) {
     if (!tokenizer_ready()) {
-        GTEST_SKIP() << "❌ Модель не загружена";
+        GTEST_SKIP() << "Модель не загружена";
     }
     
     std::vector<std::string> texts = {
@@ -238,7 +240,7 @@ TEST_F(FastTokenizerTest, EncodeWithSpace) {
     for (const auto& text : texts) {
         auto tokens = tokenizer_->encode(text);
         EXPECT_GT(tokens.size(), 0);
-        std::cout << "📝 '" << text << "' (" << text.size() << " символов) -> " 
+        std::cout << "'" << text << "' (" << text.size() << " символов) -> " 
                   << tokens.size() << " токенов" << std::endl;
     }
 }
@@ -248,7 +250,7 @@ TEST_F(FastTokenizerTest, EncodeWithSpace) {
  */
 TEST_F(FastTokenizerTest, EncodeNumber) {
     if (!tokenizer_ready()) {
-        GTEST_SKIP() << "❌ Модель не загружена";
+        GTEST_SKIP() << "Модель не загружена";
     }
     
     std::vector<std::string> numbers = {
@@ -263,7 +265,7 @@ TEST_F(FastTokenizerTest, EncodeNumber) {
     for (const auto& num : numbers) {
         auto tokens = tokenizer_->encode(num);
         EXPECT_GT(tokens.size(), 0);
-        std::cout << "🔢 Число '" << num << "' -> " << tokens.size() << " токенов" << std::endl;
+        std::cout << "Число '" << num << "' -> " << tokens.size() << " токенов" << std::endl;
     }
 }
 
@@ -272,7 +274,7 @@ TEST_F(FastTokenizerTest, EncodeNumber) {
  */
 TEST_F(FastTokenizerTest, EncodeKeywords) {
     if (!tokenizer_ready()) {
-        GTEST_SKIP() << "❌ Модель не загружена";
+        GTEST_SKIP() << "Модель не загружена";
     }
     
     std::vector<std::string> keywords = {
@@ -287,7 +289,7 @@ TEST_F(FastTokenizerTest, EncodeKeywords) {
     for (const auto& kw : keywords) {
         auto tokens = tokenizer_->encode(kw);
         EXPECT_GT(tokens.size(), 0);
-        std::cout << "🔑 Ключевое слово '" << kw << "' -> " << tokens.size() << " токенов" << std::endl;
+        std::cout << "Ключевое слово '" << kw << "' -> " << tokens.size() << " токенов" << std::endl;
     }
 }
 
@@ -296,7 +298,7 @@ TEST_F(FastTokenizerTest, EncodeKeywords) {
  */
 TEST_F(FastTokenizerTest, EncodeOperators) {
     if (!tokenizer_ready()) {
-        GTEST_SKIP() << "❌ Модель не загружена";
+        GTEST_SKIP() << "Модель не загружена";
     }
     
     std::vector<std::string> operators = {
@@ -311,7 +313,7 @@ TEST_F(FastTokenizerTest, EncodeOperators) {
     for (const auto& op : operators) {
         auto tokens = tokenizer_->encode(op);
         EXPECT_GT(tokens.size(), 0);
-        std::cout << "➡️ Оператор '" << op << "' -> " << tokens.size() << " токенов" << std::endl;
+        std::cout << "Оператор '" << op << "' -> " << tokens.size() << " токенов" << std::endl;
     }
 }
 
@@ -320,7 +322,7 @@ TEST_F(FastTokenizerTest, EncodeOperators) {
  */
 TEST_F(FastTokenizerTest, LongText) {
     if (!tokenizer_ready()) {
-        GTEST_SKIP() << "❌ Модель не загружена";
+        GTEST_SKIP() << "Модель не загружена";
     }
     
     // Создаем текст разной длины
@@ -331,7 +333,7 @@ TEST_F(FastTokenizerTest, LongText) {
         auto tokens = tokenizer_->encode(text);
         
         EXPECT_GT(tokens.size(), 0);
-        std::cout << "📏 Текст " << size << " символов -> " << tokens.size() << " токенов" << std::endl;
+        std::cout << "Текст " << size << " символов -> " << tokens.size() << " токенов" << std::endl;
         
         // Проверяем примерное соотношение
         double ratio = static_cast<double>(tokens.size()) / size;
@@ -344,7 +346,7 @@ TEST_F(FastTokenizerTest, LongText) {
  */
 TEST_F(FastTokenizerTest, EncodeUTF8) {
     if (!tokenizer_ready()) {
-        GTEST_SKIP() << "❌ Модель не загружена";
+        GTEST_SKIP() << "Модель не загружена";
     }
     
     std::vector<std::string> utf8_strings = {
@@ -360,7 +362,7 @@ TEST_F(FastTokenizerTest, EncodeUTF8) {
     for (const auto& text : utf8_strings) {
         auto tokens = tokenizer_->encode(text);
         EXPECT_GT(tokens.size(), 0);
-        std::cout << "🌍 '" << text << "' -> " << tokens.size() << " токенов" << std::endl;
+        std::cout << "'" << text << "' -> " << tokens.size() << " токенов" << std::endl;
     }
 }
 
@@ -373,14 +375,14 @@ TEST_F(FastTokenizerTest, EncodeUTF8) {
  */
 TEST_F(FastTokenizerTest, SimpleDecode) {
     if (!tokenizer_ready()) {
-        GTEST_SKIP() << "❌ Модель не загружена";
+        GTEST_SKIP() << "Модель не загружена";
     }
     
     std::string original = "int main()";
     auto tokens = tokenizer_->encode(original);
     auto decoded = tokenizer_->decode(tokens);
     
-    std::cout << "🔄 Roundtrip тест:" << std::endl;
+    std::cout << "Roundtrip тест:" << std::endl;
     std::cout << "   Оригинал:  '" << original << "'" << std::endl;
     std::cout << "   Декод.:    '" << decoded << "'" << std::endl;
     std::cout << "   Токенов:   " << tokens.size() << std::endl;
@@ -388,7 +390,7 @@ TEST_F(FastTokenizerTest, SimpleDecode) {
     // Проверяем, что все символы сохранились
     for (char c : original) {
         if (decoded.find(c) == std::string::npos) {
-            std::cout << "   ⚠️ Отсутствует символ: '" << c << "'" << std::endl;
+            std::cout << " !!! Отсутствует символ: '" << c << "'" << std::endl;
         }
     }
 }
@@ -398,7 +400,7 @@ TEST_F(FastTokenizerTest, SimpleDecode) {
  */
 TEST_F(FastTokenizerTest, RoundtripAllStrings) {
     if (!tokenizer_ready()) {
-        GTEST_SKIP() << "❌ Модель не загружена";
+        GTEST_SKIP() << "Модель не загружена";
     }
     
     int passed = 0;
@@ -422,7 +424,7 @@ TEST_F(FastTokenizerTest, RoundtripAllStrings) {
     }
     
     double pass_rate = 100.0 * passed / total;
-    std::cout << "📊 Roundtrip成功率: " << std::fixed << std::setprecision(1)
+    std::cout << "Процент успешных roundtrip: " << std::fixed << std::setprecision(1)
               << pass_rate << "% (" << passed << "/" << total << ")" << std::endl;
     
     EXPECT_GE(pass_rate, 90.0);
@@ -437,7 +439,7 @@ TEST_F(FastTokenizerTest, RoundtripAllStrings) {
  */
 TEST_F(FastTokenizerTest, BatchEncode) {
     if (!tokenizer_ready()) {
-        GTEST_SKIP() << "❌ Модель не загружена";
+        GTEST_SKIP() << "Модель не загружена";
     }
     
     std::vector<std::string> texts = test_strings_;
@@ -447,7 +449,7 @@ TEST_F(FastTokenizerTest, BatchEncode) {
     auto results = tokenizer_->encode_batch(views);
     
     EXPECT_EQ(results.size(), texts.size());
-    std::cout << "📦 Пакетная обработка " << results.size() << " текстов:" << std::endl;
+    std::cout << "Пакетная обработка " << results.size() << " текстов:" << std::endl;
     
     for (size_t i = 0; i < std::min<size_t>(5, results.size()); ++i) {
         std::cout << "   Текст " << i << ": " << results[i].size() << " токенов" << std::endl;
@@ -459,7 +461,7 @@ TEST_F(FastTokenizerTest, BatchEncode) {
  */
 TEST_F(FastTokenizerTest, BatchVsSequential) {
     if (!tokenizer_ready()) {
-        GTEST_SKIP() << "❌ Модель не загружена";
+        GTEST_SKIP() << "Модель не загружена";
     }
     
     std::vector<std::string> texts = test_strings_;
@@ -486,7 +488,7 @@ TEST_F(FastTokenizerTest, BatchVsSequential) {
     }
     
     double match_rate = 100.0 * matches / texts.size();
-    std::cout << "📊 Совпадение batch vs sequential: " << match_rate << "%" << std::endl;
+    std::cout << "Совпадение batch vs sequential: " << match_rate << "%" << std::endl;
     
     EXPECT_GE(match_rate, 90.0);
 }
@@ -500,7 +502,7 @@ TEST_F(FastTokenizerTest, BatchVsSequential) {
  */
 TEST_F(FastTokenizerTest, EncodePerformance) {
     if (!tokenizer_ready()) {
-        GTEST_SKIP() << "❌ Модель не загружена";
+        GTEST_SKIP() << "Модель не загружена";
     }
     
     std::string text(10000, 'a');
@@ -545,7 +547,7 @@ TEST_F(FastTokenizerTest, CacheEfficiency) {
     FastBPETokenizer tokenizer(cache_config);
     
     if (!load_tokenizer(tokenizer)) {
-        GTEST_SKIP() << "❌ Модель не загружена";
+        GTEST_SKIP() << "Модель не загружена";
     }
     
     // Кодируем одни и те же тексты несколько раз
@@ -559,7 +561,7 @@ TEST_F(FastTokenizerTest, CacheEfficiency) {
     }
     
     auto stats = tokenizer.stats();
-    std::cout << "\n📊 Статистика кэша:" << std::endl;
+    std::cout << "\nСтатистика кэша:" << std::endl;
     std::cout << "   Попаданий: " << stats.cache_hits << std::endl;
     std::cout << "   Промахов: " << stats.cache_misses << std::endl;
     std::cout << "   Процент попаданий: " << stats.cache_hit_rate() * 100 << "%" << std::endl;
@@ -576,7 +578,7 @@ TEST_F(FastTokenizerTest, CacheEfficiency) {
  */
 TEST_F(FastTokenizerTest, EmptyText) {
     if (!tokenizer_ready()) {
-        GTEST_SKIP() << "❌ Модель не загружена";
+        GTEST_SKIP() << "Модель не загружена";
     }
     
     std::string empty = "";
@@ -586,7 +588,7 @@ TEST_F(FastTokenizerTest, EmptyText) {
     auto decoded = tokenizer_->decode(tokens);
     EXPECT_EQ(decoded, "");
     
-    std::cout << "✅ Пустой текст обработан корректно" << std::endl;
+    std::cout << "Пустой текст обработан корректно" << std::endl;
 }
 
 /**
@@ -594,14 +596,14 @@ TEST_F(FastTokenizerTest, EmptyText) {
  */
 TEST_F(FastTokenizerTest, VeryLongText) {
     if (!tokenizer_ready()) {
-        GTEST_SKIP() << "❌ Модель не загружена";
+        GTEST_SKIP() << "Модель не загружена";
     }
     
     std::string text(100000, 'a');  // 100KB текста
     auto tokens = tokenizer_->encode(text);
     
     EXPECT_GT(tokens.size(), 0);
-    std::cout << "📏 Очень длинный текст (100KB) -> " << tokens.size() << " токенов" << std::endl;
+    std::cout << "Очень длинный текст (100KB) -> " << tokens.size() << " токенов" << std::endl;
 }
 
 /**
@@ -609,12 +611,12 @@ TEST_F(FastTokenizerTest, VeryLongText) {
  */
 TEST_F(FastTokenizerTest, MixedCharacters) {
     if (!tokenizer_ready()) {
-        GTEST_SKIP() << "❌ Модель не загружена";
+        GTEST_SKIP() << "Модель не загружена";
     }
     
     std::string text = "int x = 42; // комментарий с цифрами 123 и символами !@#$%";
     auto tokens = tokenizer_->encode(text);
     
     EXPECT_GT(tokens.size(), 0);
-    std::cout << "📝 Смешанный текст -> " << tokens.size() << " токенов" << std::endl;
+    std::cout << "Смешанный текст -> " << tokens.size() << " токенов" << std::endl;
 }

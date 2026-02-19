@@ -2,9 +2,9 @@
  * @file test_parallel.cpp
  * @brief Модульные тесты для класса ParallelTrainer
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 1.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.1.0
  * 
  * @details Набор тестов для проверки функциональности параллельного обучения:
  *          - Создание тренера с разным количеством потоков
@@ -17,7 +17,9 @@
  */
 
 #include <gtest/gtest.h>
+
 #include "parallel_trainer.hpp"
+
 #include <vector>
 #include <string>
 #include <thread>
@@ -150,7 +152,7 @@ TEST(ParallelTrainerTest, CountFrequenciesLargeCorpus) {
     const int NUM_LINES = 10000;
     
     for (int i = 0; i < NUM_LINES; ++i) {
-        corpus.push_back("line " + std::to_string(i) + " with some text");
+        corpus.push_back("строка " + std::to_string(i) + " с каким-то текстом");
     }
     
     // TODO: добавить проверку производительности
@@ -240,7 +242,7 @@ TEST(ParallelTrainerTest, CreationPerformance) {
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     
-    std::cout << "  ⏱️  Creation time: " << duration.count() << " μs" << std::endl;
+    std::cout << "  Время создания: " << duration.count() << " мс" << std::endl;
     
     EXPECT_LT(duration.count(), 1000000);  // Меньше 1 секунды
 }

@@ -2,9 +2,9 @@
  * @file test_utils.cpp
  * @brief Модульные тесты для вспомогательных утилит
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 1.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.3.0
  * 
  * @details Набор тестов для проверки функциональности утилит:
  *          - Чтение/запись файлов
@@ -17,6 +17,7 @@
  */
 
 #include <gtest/gtest.h>
+
 #include "utils.hpp"
 
 #include <thread>

@@ -2,9 +2,9 @@
  * @file bpe_tokenizer.cpp
  * @brief Реализация BPE токенизатора
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 1.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.3.0
  * 
  * @details Реализация алгоритма Byte Pair Encoding (BPE) для токенизации текста.
  *          Поддерживает два режима работы:
@@ -206,7 +206,7 @@ bool BPETokenizer::save_binary(const std::string& path) const {
         
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "❌ Ошибка бинарного сохранения: " << e.what() << std::endl;
+        std::cerr << "Ошибка бинарного сохранения: " << e.what() << std::endl;
         return false;
     }
 }
@@ -269,7 +269,7 @@ bool BPETokenizer::load_binary(const std::string& path) {
         
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "❌ Ошибка бинарной загрузки: " << e.what() << std::endl;
+        std::cerr << "Ошибка бинарной загрузки: " << e.what() << std::endl;
         return false;
     }
 }

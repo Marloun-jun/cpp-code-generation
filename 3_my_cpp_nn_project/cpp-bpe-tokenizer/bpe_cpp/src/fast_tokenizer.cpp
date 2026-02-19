@@ -2,9 +2,9 @@
  * @file fast_tokenizer.cpp
  * @brief Реализация оптимизированного BPE токенизатора
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 2.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.3.0
  * 
  * @details Высокопроизводительная реализация BPE с поддержкой:
  *          - SIMD-оптимизаций (AVX2) для массового кодирования
@@ -22,7 +22,8 @@
 
 #include "fast_tokenizer.hpp"
 #include "simd_utils.hpp"
-#include "profiler.hpp"  // Добавлен профайлер
+#include "profiler.hpp"
+#include <nlohmann/json.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -33,7 +34,6 @@
 #include <thread>
 #include <unordered_set>
 
-#include <nlohmann/json.hpp>
 
 namespace bpe {
 
@@ -56,7 +56,7 @@ FastBPETokenizer::FastBPETokenizer(const TokenizerConfig& config)
     initialize_special_tokens();
     
     if (config_.enable_profiling) {
-        std::cout << "🔧 FastBPETokenizer инициализирован с профилированием" << std::endl;
+        std::cout << "FastBPETokenizer инициализирован с профилированием" << std::endl;
         SimpleProfiler::setEnabled(true);
         SimpleProfiler::setOutputFile("profiler_report.txt");
     } else {
@@ -109,12 +109,12 @@ bool FastBPETokenizer::load(const std::string& vocab_path, const std::string& me
     token_to_id_.clear();
     merges_.clear();
     
-    std::cout << "📖 Загрузка словаря из: " << vocab_path << std::endl;
+    std::cout << "Загрузка словаря из: " << vocab_path << std::endl;
     
     // Загрузка словаря из JSON
     std::ifstream vocab_file(vocab_path);
     if (!vocab_file.is_open()) {
-        std::cerr << "❌ Не удалось открыть файл словаря: " << vocab_path << std::endl;
+        std::cerr << "Не удалось открыть файл словаря: " << vocab_path << std::endl;
         return false;
     }
     
@@ -137,11 +137,11 @@ bool FastBPETokenizer::load(const std::string& vocab_path, const std::string& me
                     size_t id = std::stoul(key);
                     if (id > max_id) max_id = id;
                 } catch (...) {
-                    std::cout << "  ⚠️ Предупреждение: нечисловой ключ: " << key << std::endl;
+                    std::cout << " !!! Предупреждение: нечисловой ключ: " << key << std::endl;
                 }
             }
             
-            std::cout << "  Максимальный ID: " << max_id << std::endl;
+            std::cout << " Максимальный ID: " << max_id << std::endl;
             
             // Резервируем место
             id_to_token_.resize(max_id + 1);
@@ -154,7 +154,7 @@ bool FastBPETokenizer::load(const std::string& vocab_path, const std::string& me
                     
                     // Проверяем, не занят ли уже этот ID
                     if (id < id_to_token_.size() && !id_to_token_[id].empty()) {
-                        std::cout << "  ⚠️ Предупреждение: ID " << id << " уже имеет токен '" 
+                        std::cout << " !!! Предупреждение: ID " << id << " уже имеет токен '" 
                                 << id_to_token_[id] << "', перезапись на '" << token << "'" << std::endl;
                     }
                     
@@ -163,10 +163,10 @@ bool FastBPETokenizer::load(const std::string& vocab_path, const std::string& me
                     
                     // Отладка для ключевых ID
                     if (id < 10 || (id >= 95 && id <= 100)) {
-                        std::cout << "    Загружен: ID " << id << " -> '" << token << "'" << std::endl;
+                        std::cout << "  Загружен: ID " << id << " -> '" << token << "'" << std::endl;
                     }
                 } catch (const std::exception& e) {
-                    std::cerr << "  ❌ Ошибка разбора записи словаря: " << key << " -> " << e.what() << std::endl;
+                    std::cerr << "  Ошибка разбора записи словаря: " << key << " -> " << e.what() << std::endl;
                 }
             }
                         
@@ -179,16 +179,16 @@ bool FastBPETokenizer::load(const std::string& vocab_path, const std::string& me
                 token_to_id_[id_to_token_.back()] = static_cast<uint32_t>(i);
                 
                 if (i < 10) {
-                    std::cout << "    Загружен: ID " << i << " -> '" << token << "'" << std::endl;
+                    std::cout << "  Загружен: ID " << i << " -> '" << token << "'" << std::endl;
                 }
             }
         }
     } catch (const std::exception& e) {
-        std::cerr << "❌ Ошибка разбора JSON словаря: " << e.what() << std::endl;
+        std::cerr << "Ошибка разбора JSON словаря: " << e.what() << std::endl;
         return false;
     }
     
-    std::cout << "  ✅ Всего загружено токенов: " << id_to_token_.size() << std::endl;
+    std::cout << "  Всего загружено токенов: " << id_to_token_.size() << std::endl;
     
     // Диагностика содержимого
     #ifdef DEBUG
@@ -196,10 +196,10 @@ bool FastBPETokenizer::load(const std::string& vocab_path, const std::string& me
     #endif
     
     // Загрузка мерджей
-    std::cout << "📖 Загрузка слияний из: " << merges_path << std::endl;
+    std::cout << "Загрузка слияний из: " << merges_path << std::endl;
     std::ifstream merges_file(merges_path);
     if (!merges_file.is_open()) {
-        std::cerr << "❌ Не удалось открыть файл слияний: " << merges_path << std::endl;
+        std::cerr << "Не удалось открыть файл слияний: " << merges_path << std::endl;
         return false;
     }
     
@@ -226,7 +226,7 @@ bool FastBPETokenizer::load(const std::string& vocab_path, const std::string& me
         }
     }
     
-    std::cout << "  ✅ Загружено слияний: " << merges_.size() << std::endl;
+    std::cout << "  Загружено слияний: " << merges_.size() << std::endl;
     
     // Убеждаемся что специальные токены есть
     initialize_special_tokens();
@@ -242,7 +242,7 @@ bool FastBPETokenizer::save(const std::string& vocab_path, const std::string& me
     // Сохранение словаря
     std::ofstream vocab_file(vocab_path);
     if (!vocab_file.is_open()) {
-        std::cerr << "❌ Не удалось открыть файл словаря для записи: " << vocab_path << std::endl;
+        std::cerr << "Не удалось открыть файл словаря для записи: " << vocab_path << std::endl;
         return false;
     }
     
@@ -260,7 +260,7 @@ bool FastBPETokenizer::save(const std::string& vocab_path, const std::string& me
     // Сохранение мерджей
     std::ofstream merges_file(merges_path);
     if (!merges_file.is_open()) {
-        std::cerr << "❌ Не удалось открыть файл слияний для записи: " << merges_path << std::endl;
+        std::cerr << "Не удалось открыть файл слияний для записи: " << merges_path << std::endl;
         return false;
     }
     
@@ -283,7 +283,7 @@ bool FastBPETokenizer::save(const std::string& vocab_path, const std::string& me
         }
     }
     
-    std::cout << "💾 Сохранен словарь (" << id_to_token_.size() << " токенов) и слияния ("
+    std::cout << "Сохранен словарь (" << id_to_token_.size() << " токенов) и слияния ("
               << merges_.size() << " пар)" << std::endl;
     
     return true;
@@ -291,13 +291,13 @@ bool FastBPETokenizer::save(const std::string& vocab_path, const std::string& me
 
 bool FastBPETokenizer::save_binary(const std::string& path) const {
     (void)path;
-    std::cerr << "⚠️ Бинарное сохранение еще не реализовано" << std::endl;
+    std::cerr << "Бинарное сохранение еще не реализовано" << std::endl;
     return false;
 }
 
 bool FastBPETokenizer::load_binary(const std::string& path) {
     (void)path;
-    std::cerr << "⚠️ Бинарная загрузка еще не реализована" << std::endl;
+    std::cerr << "Бинарная загрузка еще не реализована" << std::endl;
     return false;
 }
 
@@ -518,41 +518,41 @@ std::vector<uint32_t> FastBPETokenizer::tokenize_word_avx2(std::string_view word
 // ==================== Обучение ====================
 
 void FastBPETokenizer::train(const std::vector<std::string>& corpus) {
-    std::cerr << "⚠️ Обучение еще не реализовано в FastBPETokenizer" << std::endl;
-    std::cerr << "   Используйте parallel_train() для оптимизированного обучения" << std::endl;
+    std::cerr << "Обучение еще не реализовано в FastBPETokenizer" << std::endl;
+    std::cerr << "Используйте parallel_train() для оптимизированного обучения" << std::endl;
 }
 
 void FastBPETokenizer::parallel_train(const std::vector<std::string>& corpus, size_t num_merges) {
     PROFILE_FUNCTION();
     
-    std::cout << "\n🚀 Запуск параллельного обучения на " << corpus.size() << " примерах..." << std::endl;
-    std::cout << "   Используется потоков: " << std::thread::hardware_concurrency() << std::endl;
+    std::cout << "\nЗапуск параллельного обучения на " << corpus.size() << " примерах..." << std::endl;
+    std::cout << "Используется потоков: " << std::thread::hardware_concurrency() << std::endl;
     
     auto start_time = std::chrono::high_resolution_clock::now();
     
     // ===== Шаг 1: Подсчет частот символов =====
-    std::cout << "\n📊 Подсчет частот символов..." << std::endl;
+    std::cout << "\nПодсчет частот символов..." << std::endl;
     auto freq_result = count_char_frequencies_parallel(corpus);
     
     auto mid_time = std::chrono::high_resolution_clock::now();
     auto freq_duration = std::chrono::duration_cast<std::chrono::milliseconds>(mid_time - start_time);
-    std::cout << "✅ Подсчет частот завершен за " << freq_duration.count() << " мс" << std::endl;
-    std::cout << "📈 Найдено уникальных символов: " << freq_result.size() << std::endl;
+    std::cout << "Подсчет частот завершен за " << freq_duration.count() << " мс" << std::endl;
+    std::cout << "Найдено уникальных символов: " << freq_result.size() << std::endl;
     
     // ===== Шаг 2: Построение начального словаря =====
-    std::cout << "\n📚 Построение начального словаря..." << std::endl;
+    std::cout << "\nПостроение начального словаря..." << std::endl;
     build_initial_vocabulary(freq_result);
     
-    std::cout << "✅ Начальный размер словаря: " << id_to_token_.size() << std::endl;
+    std::cout << "Начальный размер словаря: " << id_to_token_.size() << std::endl;
     
     // ===== Шаг 3: BPE слияния =====
-    std::cout << "\n🔄 Выполнение BPE слияний (цель: " << num_merges << " операций)..." << std::endl;
+    std::cout << "\nВыполнение BPE слияний (цель: " << num_merges << " операций)..." << std::endl;
     // TODO: Реализовать параллельные BPE слияния
     
     auto end_time = std::chrono::high_resolution_clock::now();
     auto total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
     
-    std::cout << "\n🎉 Параллельное обучение завершено!" << std::endl;
+    std::cout << "\nПараллельное обучение завершено!" << std::endl;
     std::cout << "   Всего затрачено времени: " << total_duration.count() << " мс" << std::endl;
 }
 

@@ -2,9 +2,9 @@
  * @file parallel_trainer.cpp
  * @brief Реализация параллельного обучения BPE токенизатора
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 2.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.2.0
  * 
  * @details Реализация многопоточных алгоритмов для BPE обучения:
  *          - Использование OpenMP для параллельных циклов
@@ -37,7 +37,7 @@ ParallelTrainer::ParallelTrainer(size_t num_threads) {
         omp_set_num_threads(static_cast<int>(num_threads_));
     #endif
     
-    std::cout << "📊 ParallelTrainer инициализирован с " 
+    std::cout << "ParallelTrainer инициализирован с " 
               << num_threads_ << " потоками" << std::endl;
 }
 
@@ -52,14 +52,14 @@ bool ParallelTrainer::train(const std::vector<std::string>& corpus,
     
     auto start_time = std::chrono::high_resolution_clock::now();
     
-    std::cout << "🚀 Запуск параллельного обучения на " << corpus.size() 
+    std::cout << "Запуск параллельного обучения на " << corpus.size() 
               << " примерах..." << std::endl;
     
     // 1. Разбиваем корпус на чанки
     auto chunks = split_corpus(corpus);
     
     // 2. Подсчет частот символов
-    std::cout << "📊 Подсчет частот символов..." << std::endl;
+    std::cout << "Подсчет частот символов..." << std::endl;
     auto freq_start = std::chrono::high_resolution_clock::now();
     
     auto char_freq = count_char_frequencies_parallel(chunks);
@@ -76,17 +76,17 @@ bool ParallelTrainer::train(const std::vector<std::string>& corpus,
     }
     vocab.add_special_tokens({"<UNK>", "<PAD>", "<BOS>", "<EOS>"});
     
-    std::cout << "📚 Начальный размер словаря: " << vocab.size() << std::endl;
+    std::cout << "Начальный размер словаря: " << vocab.size() << std::endl;
     
     // 4. Основной цикл слияний
     size_t initial_size = vocab.size();
     size_t merges_needed = target_size - initial_size;
     
-    std::cout << "🔄 Выполнение " << merges_needed << " слияний..." << std::endl;
+    std::cout << "Выполнение " << merges_needed << " слияний..." << std::endl;
     
     for (size_t step = 0; step < merges_needed; ++step) {
         if (cancel_.load(std::memory_order_relaxed)) {
-            std::cout << "⛔ Обучение прервано" << std::endl;
+            std::cout << "Обучение прервано" << std::endl;
             return false;
         }
         
@@ -94,7 +94,7 @@ bool ParallelTrainer::train(const std::vector<std::string>& corpus,
         auto pair_freq = count_pair_frequencies_parallel(chunks, vocab);
         
         if (pair_freq.empty()) {
-            std::cout << "⚠️ Нет больше пар для слияния на шаге " << step << std::endl;
+            std::cout << "Нет больше пар для слияния на шаге " << step << std::endl;
             break;
         }
         
@@ -134,7 +134,7 @@ bool ParallelTrainer::train(const std::vector<std::string>& corpus,
         }
     }
     
-    std::cout << "\n✅ Обучение завершено!" << std::endl;
+    std::cout << "\nОбучение завершено!" << std::endl;
     
     auto end_time = std::chrono::high_resolution_clock::now();
     stats_.total_time_sec = std::chrono::duration<double>(end_time - start_time).count();

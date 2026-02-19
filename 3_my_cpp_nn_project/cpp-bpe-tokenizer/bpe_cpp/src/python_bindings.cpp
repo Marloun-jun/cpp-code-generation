@@ -2,9 +2,9 @@
  * @file python_bindings.cpp
  * @brief Python биндинги для BPE токенизатора через pybind11
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 1.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.2.0
  * 
  * @details Этот файл создает Python модуль bpe_tokenizer_cpp,
  *          предоставляющий доступ к быстрой C++ реализации токенизатора.
@@ -21,8 +21,9 @@
  */
 
 #include <pybind11/pybind11.h>
-#include <pybind11/stl.h>      // Для автоматической конвертации STL контейнеров
-#include <pybind11/iostream.h> // Для перенаправления C++ вывода в Python
+#include <pybind11/stl.h>
+#include <pybind11/iostream.h>
+
 #include "simd_utils.hpp"
 #include "fast_tokenizer.hpp"
 

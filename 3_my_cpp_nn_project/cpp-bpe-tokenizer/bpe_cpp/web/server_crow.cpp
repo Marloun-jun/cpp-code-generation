@@ -2,9 +2,9 @@
  * @file server_crow.cpp
  * @brief Веб-сервер для BPE токенизатора на базе CrowCpp
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 1.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.2.0
  * 
  * @details REST API сервер для токенизации C++ кода:
  *          - /tokenize - POST: кодирование текста в токены
@@ -21,6 +21,7 @@
 
 #include "crow/app.h"
 #include "crow/middlewares/cors.h"
+
 #include "fast_tokenizer.hpp"
 #include "utils.hpp"
 
@@ -45,7 +46,7 @@ crow::SimpleApp* g_app = nullptr;
 bool g_running = true;
 
 void signal_handler(int) {
-    std::cout << "\n🛑 Получен сигнал остановки. Завершение работы..." << std::endl;
+    std::cout << "\nПолучен сигнал остановки. Завершение работы..." << std::endl;
     g_running = false;
     if (g_app) {
         g_app->stop();
@@ -78,7 +79,7 @@ struct LoggingMiddleware {
             default: method_str = "OTHER";
         }
         
-        std::cout << "📝 " << std::setw(6) << duration.count() << "μs | "
+        std::cout << std::setw(6) << duration.count() << "μs | "
                   << std::setw(4) << res.code << " | "
                   << std::setw(10) << method_str << " | "
                   << req.url << std::endl;
@@ -125,11 +126,11 @@ int main(int argc, char* argv[]) {
     // ======================================================================
     
     std::cout << "========================================\n";
-    std::cout << "🌐 BPE TOKENIZER WEB SERVER\n";
+    std::cout << "BPE TOKENIZER WEB SERVER\n";
     std::cout << "========================================\n\n";
     
     // Загружаем токенизатор
-    std::cout << "📚 Загрузка модели..." << std::endl;
+    std::cout << "Загрузка модели..." << std::endl;
     
     auto tokenizer = std::make_shared<FastBPETokenizer>(
         TokenizerConfig{32000, 10000, true, true}
@@ -154,15 +155,15 @@ int main(int argc, char* argv[]) {
     }
     
     if (!loaded) {
-        std::cerr << "❌ Ошибка загрузки модели!" << std::endl;
+        std::cerr << "Ошибка загрузки модели!" << std::endl;
         std::cerr << "   Путь: " << model_path << std::endl;
         std::cerr << "   Слияния: " << merges_path << std::endl;
         return 1;
     }
     
-    std::cout << "✅ Модель загружена!" << std::endl;
-    std::cout << "   📚 Размер словаря: " << tokenizer->vocab_size() << std::endl;
-    std::cout << "   🔗 Правил слияния: " << tokenizer->merges_count() << std::endl;
+    std::cout << "Модель загружена!" << std::endl;
+    std::cout << "   Размер словаря: " << tokenizer->vocab_size() << std::endl;
+    std::cout << "   Правил слияния: " << tokenizer->merges_count() << std::endl;
     std::cout << std::endl;
     
     // ======================================================================
@@ -208,7 +209,7 @@ int main(int argc, char* argv[]) {
 </head>
 <body>
     <div class="container">
-        <h1>🚀 BPE Tokenizer API</h1>
+        <h1>BPE Tokenizer API</h1>
         <p style="text-align: center;">Fast C++ BPE Tokenizer for C++ code</p>
         
         <div class="stats" id="stats">
@@ -555,17 +556,17 @@ int main(int argc, char* argv[]) {
     // Запуск сервера (без глобального указателя для сигналов)
     // ======================================================================
     
-    std::cout << "🌐 Сервер запускается на http://localhost:" << port << std::endl;
-    std::cout << "📚 Документация: http://localhost:" << port << "/" << std::endl;
-    std::cout << "📚 Swagger UI: http://localhost:" << port << "/swagger" << std::endl;
-    std::cout << "⚡ Потоков: " << threads << std::endl;
-    std::cout << "   Нажмите Ctrl+C для остановки" << std::endl;
+    std::cout << "Сервер запускается на http://localhost:" << port << std::endl;
+    std::cout << "Документация: http://localhost:" << port << "/" << std::endl;
+    std::cout << "Swagger UI: http://localhost:" << port << "/swagger" << std::endl;
+    std::cout << "Потоков: " << threads << std::endl;
+    std::cout << "Нажмите Ctrl+C для остановки" << std::endl;
     std::cout << std::endl;
     
     // Запускаем сервер (блокирующий вызов)
     app.port(port).multithreaded().run();
     
-    std::cout << "\n👋 Сервер остановлен" << std::endl;
+    std::cout << "\nСервер остановлен" << std::endl;
     
     return 0;
 }

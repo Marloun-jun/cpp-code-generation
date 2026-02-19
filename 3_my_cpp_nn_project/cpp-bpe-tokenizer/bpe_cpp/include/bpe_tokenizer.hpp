@@ -2,9 +2,9 @@
  * @file bpe_tokenizer.hpp
  * @brief Основной заголовочный файл BPE токенизатора
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 1.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.3.0
  * 
  * @details Этот файл содержит объявление класса BPETokenizer - ядра BPE алгоритма.
  *          Класс реализует:
@@ -28,13 +28,13 @@
 
 #include "vocabulary.hpp"
 #include "bpe_export.hpp"
+#include <nlohmann/json.hpp>
 
 #include <cstdint>
 #include <shared_mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <nlohmann/json.hpp>
 
 namespace bpe {
 

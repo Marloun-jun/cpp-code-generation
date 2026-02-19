@@ -6,9 +6,9 @@
 # @file compare_performance.py
 # @brief Сравнение скорости и точности Python и C++ реализаций
 #
-# @author Ваше Имя
-# @date 2024
-# @version 1.0.0
+# @author Евгений П.
+# @date 2026
+# @version 3.2.0
 #
 # @usage ./compare_performance.py [options]
 #   --iterations N    Количество итераций для усреднения (по умолч. 10)
@@ -32,7 +32,6 @@ import subprocess
 import argparse
 import statistics
 import tempfile
-from pathlib import Path
 
 # ======================================================================
 # Настройка путей
@@ -51,8 +50,8 @@ sys.path.insert(0, SCRIPT_DIR)
 # Импорт Python токенизатора
 # ======================================================================
 
-print(f"📂 Python path: {sys.path}")
-print(f"📂 BPE directory: {BPE_DIR}")
+print(f"Путь для Python: {sys.path}")
+print(f"BPE каталог: {BPE_DIR}")
 
 try:
     # Пробуем разные варианты импорта
@@ -66,7 +65,7 @@ try:
         try:
             module = __import__(module_name, fromlist=[class_name])
             BPETokenizer = getattr(module, class_name)
-            print(f"✅ Импорт через {module_name}.{class_name} успешен")
+            print(f"Импорт через {module_name}.{class_name} успешен")
             break
         except (ImportError, AttributeError):
             continue
@@ -74,8 +73,8 @@ try:
         raise ImportError("Не удалось импортировать BPETokenizer")
         
 except ImportError as e:
-    print(f"❌ Ошибка импорта: {e}")
-    print("\n🔍 Проверка структуры папок:")
+    print(f"Ошибка импорта: {e}")
+    print("\nПроверка структуры папок:")
     print(f"  BPE_DIR = {BPE_DIR}")
     print("  Файлы в папке bpe:")
     for f in os.listdir(BPE_DIR):
@@ -212,10 +211,10 @@ int main() {{
 def test_python_tokenizer(text, vocab_path, merges_path, iterations=10, warmup=3):
     """Тестирование производительности Python токенизатора"""
     
-    print(f"  📦 Загрузка Python токенизатора...")
+    print(f"Загрузка Python токенизатора...")
     
     if not os.path.exists(vocab_path):
-        print(f"  ❌ Файл не найден: {vocab_path}")
+        print(f"Файл не найден: {vocab_path}")
         return None
     
     # Инициализация
@@ -223,12 +222,12 @@ def test_python_tokenizer(text, vocab_path, merges_path, iterations=10, warmup=3
     tokenizer.load(vocab_path, merges_path)
     
     # Прогрев
-    print(f"  🔥 Прогрев ({warmup} итераций)...")
+    print(f"Прогрев ({warmup} итераций)...")
     for i in range(warmup):
         tokens = tokenizer.encode(text[:1000])
     
     # Измерение
-    print(f"  ⏱️  Измерение ({iterations} итераций)...")
+    print(f"Измерение ({iterations} итераций)...")
     times = []
     token_counts = []
     
@@ -274,11 +273,11 @@ def test_cpp_tokenizer(text, iterations=10, warmup=3):
     for candidate in candidates:
         if os.path.exists(candidate):
             cpp_demo = candidate
-            print(f"  ✅ Найдено C++ демо: {cpp_demo}")
+            print(f"Найдено C++ демо: {cpp_demo}")
             break
     
     if not cpp_demo:
-        print(f"  ❌ C++ демо не найдено. Искали в:")
+        print(f"C++ демо не найдено. Искали в:")
         for c in candidates:
             print(f"     {c}")
         return None
@@ -290,7 +289,7 @@ def test_cpp_tokenizer(text, iterations=10, warmup=3):
     
     try:
         # Прогрев
-        print(f"  🔥 Прогрев ({warmup} итераций)...")
+        print(f"Прогрев ({warmup} итераций)...")
         for i in range(warmup):
             result = subprocess.run(
                 [cpp_demo, temp_file],
@@ -300,7 +299,7 @@ def test_cpp_tokenizer(text, iterations=10, warmup=3):
             )
         
         # Измерение
-        print(f"  ⏱️  Измерение ({iterations} итераций)...")
+        print(f"Измерение ({iterations} итераций)...")
         times = []
         token_counts = []
         
@@ -364,11 +363,11 @@ def main():
     args = parser.parse_args()
     
     print("=" * 60)
-    print("🚀 СРАВНЕНИЕ ПРОИЗВОДИТЕЛЬНОСТИ PYTHON VS C++")
+    print("СРАВНЕНИЕ ПРОИЗВОДИТЕЛЬНОСТИ PYTHON VS C++")
     print("=" * 60)
     
     # Генерация тестового текста
-    print(f"\n📄 Генерация тестового текста ({args.size} KB)...")
+    print(f"\nГенерация тестового текста ({args.size} KB)...")
     test_text = generate_test_code(args.size)
     print(f"   Размер: {len(test_text)} байт")
     print(f"   Строк: {test_text.count(chr(10)) + 1}")
@@ -383,20 +382,20 @@ def main():
     py_vocab = os.path.join(BPE_DIR, 'vocab.json')
     py_merges = os.path.join(BPE_DIR, 'merges.txt')
     
-    print(f"\n📂 Пути к файлам:")
+    print(f"\nПути к файлам:")
     print(f"   Python словарь: {py_vocab}")
     print(f"   Python слияния: {py_merges}")
     print(f"   C++ бинарные: {CPP_BUILD_DIR}")
     
     # Проверка наличия файлов
     if not os.path.exists(py_vocab):
-        print(f"\n❌ Файл словаря не найден: {py_vocab}")
+        print(f"\nФайл словаря не найден: {py_vocab}")
         print("   Сначала обучите токенизатор или скопируйте файлы.")
         return 1
     
     # Тестирование Python
     print("\n" + "=" * 60)
-    print("🐍 ТЕСТИРОВАНИЕ PYTHON")
+    print("ТЕСТИРОВАНИЕ PYTHON")
     print("=" * 60)
     
     py_stats = test_python_tokenizer(
@@ -407,7 +406,7 @@ def main():
     
     # Тестирование C++
     print("\n" + "=" * 60)
-    print("⚡ ТЕСТИРОВАНИЕ C++")
+    print("ТЕСТИРОВАНИЕ C++")
     print("=" * 60)
     
     cpp_stats = test_cpp_tokenizer(
@@ -418,11 +417,11 @@ def main():
     
     # Результаты
     print("\n" + "=" * 60)
-    print("📊 РЕЗУЛЬТАТЫ")
+    print("РЕЗУЛЬТАТЫ")
     print("=" * 60)
     
     if py_stats:
-        print(f"\n🐍 Python ({args.size} KB, {args.iterations} итераций):")
+        print(f"\nPython ({args.size} KB, {args.iterations} итераций):")
         print(f"   Среднее время: {py_stats['mean_time']:.2f} ms")
         print(f"   Медиана:       {py_stats['median_time']:.2f} ms")
         print(f"   Мин/Макс:      {py_stats['min_time']:.2f} / {py_stats['max_time']:.2f} ms")
@@ -430,7 +429,7 @@ def main():
         print(f"   Токенов:       {py_stats['token_count']}")
     
     if cpp_stats:
-        print(f"\n⚡ C++ ({args.size} KB, {args.iterations} итераций):")
+        print(f"\nC++ ({args.size} KB, {args.iterations} итераций):")
         print(f"   Среднее время: {cpp_stats['mean_time']:.2f} ms")
         print(f"   Медиана:       {cpp_stats['median_time']:.2f} ms")
         print(f"   Мин/Макс:      {cpp_stats['min_time']:.2f} / {cpp_stats['max_time']:.2f} ms")
@@ -440,13 +439,13 @@ def main():
     # Сравнение
     if py_stats and cpp_stats:
         speedup = py_stats['mean_time'] / cpp_stats['mean_time']
-        print(f"\n📈 УСКОРЕНИЕ:")
+        print(f"\nУСКОРЕНИЕ:")
         print(f"   C++ быстрее Python в {speedup:.2f} раз")
         
         if py_stats['token_count'] == cpp_stats['token_count']:
-            print(f"✅ Количество токенов совпадает: {py_stats['token_count']}")
+            print(f"Количество токенов совпадает: {py_stats['token_count']}")
         else:
-            print(f"❌ Количество токенов разное:")
+            print(f"Количество токенов разное:")
             print(f"   Python: {py_stats['token_count']}")
             print(f"   C++:    {cpp_stats['token_count']}")
     
@@ -465,7 +464,7 @@ def main():
         
         with open(args.output, 'w') as f:
             json.dump(results, f, indent=2)
-        print(f"\n💾 Результаты сохранены в {args.output}")
+        print(f"\nРезультаты сохранены в {args.output}")
     
     # График
     if args.plot and py_stats and cpp_stats:
@@ -494,10 +493,10 @@ def main():
             plt.savefig('performance_comparison.png', dpi=150)
             plt.show()
             
-            print("📊 График сохранен в performance_comparison.png")
+            print("График сохранен в performance_comparison.png")
             
         except ImportError:
-            print("⚠️ matplotlib не установлен, график не создан")
+            print("!!! matplotlib не установлен, график не создан")
     
     print("\n" + "=" * 60)
     return 0

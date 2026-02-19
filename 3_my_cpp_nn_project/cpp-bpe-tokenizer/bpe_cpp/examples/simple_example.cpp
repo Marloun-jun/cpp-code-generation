@@ -2,9 +2,9 @@
  * @file simple_example.cpp
  * @brief Простой пример использования BPE токенизатора
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 1.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.2.0
  * 
  * @details Демонстрация базовых возможностей BPE токенизатора:
  *          - Загрузка модели из файлов
@@ -47,6 +47,7 @@
 #include "bpe_tokenizer.hpp"
 #include "fast_tokenizer.hpp"
 #include "utils.hpp"
+
 #include <iostream>
 #include <iomanip>
 #include <fstream>

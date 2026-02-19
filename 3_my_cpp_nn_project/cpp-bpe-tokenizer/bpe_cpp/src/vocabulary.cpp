@@ -2,9 +2,9 @@
  * @file vocabulary.cpp
  * @brief Реализация класса Vocabulary для управления словарём токенов
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 1.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.3.0
  * 
  * @details Реализация двустороннего отображения между токенами и их ID.
  *          Поддерживает два формата сериализации:
@@ -18,11 +18,12 @@
  */
 
 #include "vocabulary.hpp"
+#include <nlohmann/json.hpp>
+
 #include <fstream>
 #include <iostream>
 #include <algorithm>
 #include <stdexcept>
-#include <nlohmann/json.hpp>
 
 namespace bpe {
 
@@ -92,11 +93,11 @@ void Vocabulary::from_json(const nlohmann::json& j) {
     token_to_id_.clear();
     id_to_token_.clear();
     
-    std::cout << "📦 Загрузка JSON словаря, тип: " << j.type_name() << std::endl;
+    std::cout << "Загрузка JSON словаря, тип: " << j.type_name() << std::endl;
     
     // Формат 1: Прямой массив ["a", "b", "c"]
     if (j.is_array()) {
-        std::cout << "  Формат: массив, элементов: " << j.size() << std::endl;
+        std::cout << "Формат: массив, элементов: " << j.size() << std::endl;
         
         id_to_token_.reserve(j.size());
         
@@ -106,13 +107,13 @@ void Vocabulary::from_json(const nlohmann::json& j) {
             id_to_token_.push_back(token);
             
             if (i < 5) {  // Показываем первые 5 для отладки
-                std::cout << "    Токен " << i << ": '" << token << "'" << std::endl;
+                std::cout << "Токен " << i << ": '" << token << "'" << std::endl;
             }
         }
     }
     // Формат 2: Объект {"size": 9, "tokens": ["a", "b", "c"]}
     else if (j.is_object() && j.contains("tokens")) {
-        std::cout << "  Формат: объект с tokens" << std::endl;
+        std::cout << "Формат: объект с tokens" << std::endl;
         
         const auto& tokens = j["tokens"];
         if (tokens.is_array()) {
@@ -124,17 +125,17 @@ void Vocabulary::from_json(const nlohmann::json& j) {
                 id_to_token_.push_back(token);
                 
                 if (i < 5) {
-                    std::cout << "    Токен " << i << ": '" << token << "'" << std::endl;
+                    std::cout << "Токен " << i << ": '" << token << "'" << std::endl;
                 }
             }
         }
     }
     else {
-        std::cerr << "❌ Неподдерживаемый формат JSON!" << std::endl;
+        std::cerr << "Неподдерживаемый формат JSON!" << std::endl;
         return;
     }
     
-    std::cout << "  ✅ Загружено токенов: " << id_to_token_.size() << std::endl;
+    std::cout << "Загружено токенов: " << id_to_token_.size() << std::endl;
 }
 
 // ==================== Сохранение/загрузка (текстовый формат) ====================
@@ -142,17 +143,17 @@ void Vocabulary::from_json(const nlohmann::json& j) {
 bool Vocabulary::save(const std::string& path) const {
     std::ofstream file(path);
     if (!file.is_open()) {
-        std::cerr << "❌ Не удалось открыть файл для записи: " << path << std::endl;
+        std::cerr << "Не удалось открыть файл для записи: " << path << std::endl;
         return false;
     }
     
     try {
         auto j = to_json();
         file << j.dump(2);  // Отступ 2 пробела для читаемости
-        std::cout << "💾 Словарь сохранен в текстовый файл: " << path << std::endl;
+        std::cout << "Словарь сохранен в текстовый файл: " << path << std::endl;
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "❌ Ошибка при сохранении словаря: " << e.what() << std::endl;
+        std::cerr << "Ошибка при сохранении словаря: " << e.what() << std::endl;
         return false;
     }
 }
@@ -160,7 +161,7 @@ bool Vocabulary::save(const std::string& path) const {
 bool Vocabulary::load(const std::string& path) {
     std::ifstream file(path);
     if (!file.is_open()) {
-        std::cerr << "❌ Не удалось открыть файл: " << path << std::endl;
+        std::cerr << "Не удалось открыть файл: " << path << std::endl;
         return false;
     }
     
@@ -171,7 +172,7 @@ bool Vocabulary::load(const std::string& path) {
         from_json(j);
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "❌ Ошибка загрузки словаря: " << e.what() << std::endl;
+        std::cerr << "Ошибка загрузки словаря: " << e.what() << std::endl;
         return false;
     }
 }
@@ -181,7 +182,7 @@ bool Vocabulary::load(const std::string& path) {
 bool Vocabulary::save_binary(const std::string& path) const {
     std::ofstream file(path, std::ios::binary);
     if (!file.is_open()) {
-        std::cerr << "❌ Не удалось открыть бинарный файл для записи: " << path << std::endl;
+        std::cerr << "Не удалось открыть бинарный файл для записи: " << path << std::endl;
         return false;
     }
     
@@ -197,10 +198,10 @@ bool Vocabulary::save_binary(const std::string& path) const {
             file.write(token.c_str(), len);
         }
         
-        std::cout << "💾 Словарь сохранен в бинарный файл: " << path << std::endl;
+        std::cout << "Словарь сохранен в бинарный файл: " << path << std::endl;
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "❌ Ошибка при бинарном сохранении: " << e.what() << std::endl;
+        std::cerr << "Ошибка при бинарном сохранении: " << e.what() << std::endl;
         return false;
     }
 }
@@ -208,7 +209,7 @@ bool Vocabulary::save_binary(const std::string& path) const {
 bool Vocabulary::load_binary(const std::string& path) {
     std::ifstream file(path, std::ios::binary);
     if (!file.is_open()) {
-        std::cerr << "❌ Не удалось открыть бинарный файл: " << path << std::endl;
+        std::cerr << "Не удалось открыть бинарный файл: " << path << std::endl;
         return false;
     }
     
@@ -221,7 +222,7 @@ bool Vocabulary::load_binary(const std::string& path) {
         file.read(reinterpret_cast<char*>(&size), sizeof(size));
         
         if (!file) {
-            std::cerr << "❌ Ошибка чтения размера словаря" << std::endl;
+            std::cerr << "Ошибка чтения размера словаря" << std::endl;
             return false;
         }
         
@@ -233,7 +234,7 @@ bool Vocabulary::load_binary(const std::string& path) {
             file.read(reinterpret_cast<char*>(&len), sizeof(len));
             
             if (!file || len > 10000) {  // Защита от некорректных данных
-                std::cerr << "❌ Ошибка чтения длины токена" << std::endl;
+                std::cerr << "Ошибка чтения длины токена" << std::endl;
                 return false;
             }
             
@@ -241,7 +242,7 @@ bool Vocabulary::load_binary(const std::string& path) {
             file.read(&token[0], len);
             
             if (!file) {
-                std::cerr << "❌ Ошибка чтения токена" << std::endl;
+                std::cerr << "Ошибка чтения токена" << std::endl;
                 return false;
             }
             
@@ -249,11 +250,11 @@ bool Vocabulary::load_binary(const std::string& path) {
             id_to_token_.push_back(std::move(token));
         }
         
-        std::cout << "✅ Загружено токенов из бинарного файла: " << id_to_token_.size() << std::endl;
+        std::cout << "Загружено токенов из бинарного файла: " << id_to_token_.size() << std::endl;
         return true;
         
     } catch (const std::exception& e) {
-        std::cerr << "❌ Ошибка при бинарной загрузке: " << e.what() << std::endl;
+        std::cerr << "Ошибка при бинарной загрузке: " << e.what() << std::endl;
         return false;
     }
 }

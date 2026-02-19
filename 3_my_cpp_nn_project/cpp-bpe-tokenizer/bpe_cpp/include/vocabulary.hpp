@@ -2,9 +2,9 @@
  * @file vocabulary.hpp
  * @brief Управление словарём токенов BPE токенизатора
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 1.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.3.0
  * 
  * @details Класс Vocabulary обеспечивает двустороннее отображение между токенами и их ID:
  *          - token_to_id_ для быстрого поиска ID по токену (unordered_map)
@@ -28,6 +28,7 @@
 #pragma once
 
 #include <nlohmann/json.hpp>
+
 #include <limits>
 #include <stdexcept>
 #include <string>

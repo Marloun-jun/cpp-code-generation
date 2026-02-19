@@ -2,9 +2,9 @@
  * @file test_trained_model.cpp
  * @brief Тестирование обученной модели BPE токенизатора
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 1.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.3.0
  * 
  * @details Загружает обученную модель и проверяет её работу на различных
  *          примерах C++ кода. Выводит статистику и результаты сравнения.
@@ -14,6 +14,7 @@
  */
 
 #include "fast_tokenizer.hpp"
+
 #include <fstream>
 #include <iostream>
 #include <iomanip>
@@ -100,7 +101,7 @@ int main() {
     }
     std::cout << std::endl;
     
-    std::cout << "⏳ Загрузка модели...\n";
+    std::cout << "Загрузка модели...\n";
     auto load_start = std::chrono::high_resolution_clock::now();
     
     bool loaded;
@@ -183,7 +184,7 @@ int main() {
                   << std::set<int>(tokens.begin(), tokens.end()).size() << ")\n";
         std::cout << "   Время encode: " << format_duration(encode_time) << "\n";
         std::cout << "   Время decode: " << format_duration(decode_time) << "\n";
-        std::cout << "   Результат: " << (match ? "✅ СОВПАДАЕТ" : "НЕ СОВПАДАЕТ") << "\n";
+        std::cout << "   Результат: " << (match ? "СОВПАДАЕТ" : "НЕ СОВПАДАЕТ") << "\n";
         
         if (!match) {
             // Показываем различия
@@ -241,7 +242,7 @@ int main() {
         for (double time : encode_times) total_time += time;
         double avg_time = total_time / encode_times.size();
         
-        std::cout << "\n⚡ Производительность encode:\n";
+        std::cout << "\nПроизводительность encode:\n";
         std::cout << "   Среднее время: " << std::fixed << std::setprecision(2) << avg_time << " мкс\n";
         std::cout << "   Минимальное: " << *std::min_element(encode_times.begin(), encode_times.end()) << " мкс\n";
         std::cout << "   Максимальное: " << *std::max_element(encode_times.begin(), encode_times.end()) << " мкс\n";
@@ -265,7 +266,7 @@ int main() {
     // ======================================================================
     
     std::cout << "\n========================================\n";
-    std::cout << " ТЕСТ ПРОИЗВОДИТЕЛЬНОСТИ\n";
+    std::cout << "ТЕСТ ПРОИЗВОДИТЕЛЬНОСТИ\n";
     std::cout << "========================================\n\n";
     
     // Создаем большой текст
@@ -291,7 +292,7 @@ int main() {
               << (large_tokens.size() / (perf_time.count() / 1'000'000.0)) << "\n";
     
     // Тест многопоточности
-    std::cout << "\n🔄 Тест многопоточности...\n";
+    std::cout << "\nТест многопоточности...\n";
     
     auto multi_start = std::chrono::high_resolution_clock::now();
     

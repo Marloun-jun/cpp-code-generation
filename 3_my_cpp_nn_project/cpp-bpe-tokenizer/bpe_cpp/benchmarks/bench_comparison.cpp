@@ -2,9 +2,9 @@
  * @file bench_comparison.cpp
  * @brief Бенчмарк для сравнения базовой и оптимизированной версий токенизатора
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 1.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.1.0
  * 
  * @details Прямое сравнение производительности между BPETokenizer (базовая версия) 
  *          и FastBPETokenizer (оптимизированная версия с SIMD, пулами памяти и кэшированием).
@@ -36,6 +36,7 @@
 
 #include "bpe_tokenizer.hpp"
 #include "fast_tokenizer.hpp"
+
 #include "utils.hpp"
 #include <fstream>
 #include <iostream>
@@ -136,7 +137,7 @@ bool load_models(BPETokenizer& basic, FastBPETokenizer& fast) {
             basic.set_unknown_token("<UNK>");
             if (basic.load_from_files(vocab, merges)) {
                 basic_loaded = true;
-                std::cout << "✅ Базовая модель загружена: " << vocab << std::endl;
+                std::cout << "Базовая модель загружена: " << vocab << std::endl;
             }
         }
         
@@ -144,7 +145,7 @@ bool load_models(BPETokenizer& basic, FastBPETokenizer& fast) {
             TokenizerConfig config{32000, 10000, true, true};
             if (fast.load(vocab, merges)) {
                 fast_loaded = true;
-                std::cout << "✅ Fast модель загружена: " << vocab << std::endl;
+                std::cout << "Fast модель загружена: " << vocab << std::endl;
             }
         }
         

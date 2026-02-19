@@ -1,26 +1,93 @@
-"""
-Модуль интеграции BPE токенизатора с PyTorch.
+#!/usr/bin/env python3
+# ======================================================================
+# pytorch_integration.py - Модуль интеграции BPE токенизатора с PyTorch
+# ======================================================================
+#
+# @file pytorch_integration.py
+# @brief Модуль интеграции BPE токенизатора с PyTorch
+#
+# @author Евгений П.
+# @date 2026
+# @version 3.2.0
+#
+# @details Предоставляет классы и функции для использования BPE токенизатора
+#          в пайплайнах машинного обучения на PyTorch:
+#          - Обертка токенизатора с поддержкой батчинга и паддинга
+#          - Dataset для C++ кода
+#          - DataLoader с коллацией
+#          - Работа со специальными токенами (PAD, UNK, BOS, EOS)
+#
+# @usage from pytorch_integration import BPETokenizerWrapper, CodeDataset, create_dataloader
+#
+# @example
+#   tokenizer = BPETokenizer.load('vocab.json', 'merges.txt')
+#   wrapper = BPETokenizerWrapper(tokenizer, max_length=128)
+#   dataset = CodeDataset(texts, wrapper)
+#   dataloader = create_dataloader(texts, wrapper, batch_size=32)
+#
+# ======================================================================
 
-Предоставляет классы и функции для использования BPE токенизатора
-в пайплайнах машинного обучения на PyTorch:
-- Обертка токенизатора с поддержкой батчинга и паддинга
-- Dataset для C++ кода
-- DataLoader с коллацией
-"""
-
-import torch
-from torch.utils.data import Dataset, DataLoader
-from typing import List, Dict, Union, Optional, Any, Tuple
-from pathlib import Path
 import logging
+import torch
 
-# Настройка логирования
+from pathlib import Path
+from typing import List, Dict, Union, Optional
+from torch.utils.data import Dataset, DataLoader
+
+# ======================================================================
+# НАСТРОЙКА ПУТЕЙ ДЛЯ ИМПОРТА
+# ======================================================================
+
+CURRENT_FILE = Path(__file__).resolve()           # pytorch_integration.py
+BPE_PYTHON_DIR = CURRENT_FILE.parent               # bpe_python/
+PROJECT_ROOT = BPE_PYTHON_DIR.parent               # cpp-bpe-tokenizer/
+
+# ======================================================================
+# НАСТРОЙКА ЛОГИРОВАНИЯ
+# ======================================================================
+
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger(__name__)
 
+
+# ======================================================================
+# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+# ======================================================================
+
+def get_project_paths() -> Dict[str, Path]:
+    """
+    Получить пути проекта.
+    
+    Returns:
+        Dict[str, Path]: Словарь с путями проекта
+    """
+    return {
+        "project_root": PROJECT_ROOT,
+        "bpe_python_dir": BPE_PYTHON_DIR,
+        "models_dir": BPE_PYTHON_DIR / 'models',
+    }
+
+
+def print_header(title: str, width: int = 60) -> None:
+    """
+    Вывести заголовок раздела.
+    
+    Args:
+        title: Заголовок
+        width: Ширина линии
+    """
+    print(f"\n{'=' * width}")
+    print(f"{title:^{width}}")
+    print(f"{'=' * width}")
+
+
+# ======================================================================
+# КЛАСС ОБЕРТКИ ТОКЕНИЗАТОРА
+# ======================================================================
 
 class BPETokenizerWrapper:
     """
@@ -30,17 +97,18 @@ class BPETokenizerWrapper:
     - Кодирования текста в тензоры input_ids и attention_mask
     - Декодирования тензоров обратно в текст
     - Работы со специальными токенами (PAD, UNK, BOS, EOS)
+    - Пакетной обработки с паддингом
     """
     
     def __init__(self, tokenizer, max_length: int = 512):
         """
         Инициализация обертки.
         
-        Аргументы:
+        Args:
             tokenizer: Обученный экземпляр BPETokenizer
             max_length: Максимальная длина последовательности
-        
-        Пример:
+            
+        Example:
             >>> tokenizer = BPETokenizer.load('vocab.json', 'merges.txt')
             >>> wrapper = BPETokenizerWrapper(tokenizer, max_length=128)
         """
@@ -58,6 +126,10 @@ class BPETokenizerWrapper:
         logger.info(f"  PAD ID: {self.pad_id}, UNK ID: {self.unk_id}")
         logger.info(f"  BOS ID: {self.bos_id}, EOS ID: {self.eos_id}")
     
+    # ======================================================================
+    # ОСНОВНЫЕ МЕТОДЫ
+    # ======================================================================
+    
     def encode(
         self, 
         text: str, 
@@ -69,19 +141,19 @@ class BPETokenizerWrapper:
         """
         Кодирование текста в тензоры PyTorch.
         
-        Аргументы:
+        Args:
             text: Входной текст
             add_special_tokens: Добавлять ли BOS/EOS токены
             padding: Добавлять ли паддинг ('max_length' или True)
             truncation: Обрезать ли до max_length
             return_tensors: Тип возвращаемых тензоров ('pt' или 'np')
             
-        Возвращает:
-            Словарь с полями:
-            - input_ids: Тензор ID токенов
-            - attention_mask: Маска внимания (1 для реальных токенов)
+        Returns:
+            Dict[str, torch.Tensor]: Словарь с полями:
+                - input_ids: Тензор ID токенов
+                - attention_mask: Маска внимания (1 для реальных токенов)
             
-        Пример:
+        Example:
             >>> encoded = wrapper.encode("int main()", padding=True)
             >>> encoded['input_ids'].shape
             torch.Size([128])
@@ -129,14 +201,14 @@ class BPETokenizerWrapper:
         """
         Декодирование тензора обратно в текст.
         
-        Аргументы:
+        Args:
             tokens: Список ID токенов или тензор
             skip_special_tokens: Пропускать ли специальные токены
             
-        Возвращает:
-            Декодированный текст
+        Returns:
+            str: Декодированный текст
             
-        Пример:
+        Example:
             >>> decoded = wrapper.decode(encoded['input_ids'])
             >>> print(decoded)
             "int main()"
@@ -169,19 +241,20 @@ class BPETokenizerWrapper:
         """
         Кодирование батча текстов.
         
-        Аргументы:
+        Args:
             texts: Список текстов
             add_special_tokens: Добавлять ли специальные токены
             padding: Добавлять ли паддинг
             truncation: Обрезать ли до max_length
             
-        Возвращает:
-            Словарь с батч-тензорами
+        Returns:
+            Dict[str, torch.Tensor]: Словарь с батч-тензорами
         """
+        # Кодируем каждый текст без паддинга
         encoded_batch = [self.encode(
             text, 
             add_special_tokens=add_special_tokens,
-            padding=False,  # Пока без паддинга
+            padding=False,
             truncation=truncation
         ) for text in texts]
         
@@ -231,6 +304,10 @@ class BPETokenizerWrapper:
         return self.encode(text, **kwargs)
 
 
+# ======================================================================
+# КЛАСС DATASET
+# ======================================================================
+
 class CodeDataset(Dataset):
     """
     Dataset для кода на C++.
@@ -245,7 +322,7 @@ class CodeDataset(Dataset):
         """
         Инициализация датасета.
         
-        Аргументы:
+        Args:
             texts: Список текстов (C++ код)
             tokenizer_wrapper: Обертка токенизатора
             max_length: Максимальная длина (если None, используется из wrapper)
@@ -264,21 +341,25 @@ class CodeDataset(Dataset):
         """
         Возвращает элемент датасета.
         
-        Аргументы:
+        Args:
             idx: Индекс элемента
             
-        Возвращает:
-            Словарь с input_ids и attention_mask
+        Returns:
+            Dict[str, torch.Tensor]: Словарь с input_ids и attention_mask
         """
         text = self.texts[idx]
         encoded = self.tokenizer.encode(
             text,
             add_special_tokens=True,
-            padding=True,  # Паддинг до max_length
+            padding=True,
             truncation=True
         )
         return encoded
 
+
+# ======================================================================
+# ФУНКЦИИ ДЛЯ СОЗДАНИЯ DATALOADER
+# ======================================================================
 
 def create_dataloader(
     texts: List[str],
@@ -290,17 +371,17 @@ def create_dataloader(
     """
     Создание DataLoader для PyTorch.
     
-    Аргументы:
+    Args:
         texts: Список текстов
         tokenizer_wrapper: Обертка токенизатора
         batch_size: Размер батча
         shuffle: Перемешивать ли данные
         num_workers: Количество рабочих процессов
         
-    Возвращает:
-        Настроенный DataLoader
+    Returns:
+        DataLoader: Настроенный DataLoader
         
-    Пример:
+    Example:
         >>> dataloader = create_dataloader(texts, wrapper, batch_size=32)
         >>> for batch in dataloader:
         ...     model(batch['input_ids'], batch['attention_mask'])
@@ -310,6 +391,12 @@ def create_dataloader(
     def collate_fn(batch: List[Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
         """
         Функция коллации для батча.
+        
+        Args:
+            batch: Список элементов датасета
+            
+        Returns:
+            Dict[str, torch.Tensor]: Батч тензоров
         """
         input_ids = torch.stack([item['input_ids'] for item in batch])
         attention_mask = torch.stack([item['attention_mask'] for item in batch])
@@ -324,7 +411,7 @@ def create_dataloader(
         shuffle=shuffle,
         num_workers=num_workers,
         collate_fn=collate_fn,
-        pin_memory=torch.cuda.is_available()  # Ускоряет передачу на GPU
+        pin_memory=torch.cuda.is_available()
     )
     
     logger.info(f"Создан DataLoader: batch_size={batch_size}, "
@@ -333,22 +420,11 @@ def create_dataloader(
     return dataloader
 
 
-def get_project_paths() -> Dict[str, Path]:
-    """
-    Получение путей проекта.
-    """
-    current_file = Path(__file__).resolve()  # pytorch_integration.py
-    bpe_python_dir = current_file.parent  # bpe_python/
-    project_root = bpe_python_dir.parent  # cpp-bpe-tokenizer/
-    
-    return {
-        "project_root": project_root,
-        "bpe_python_dir": bpe_python_dir,
-        "models_dir": bpe_python_dir / 'models',
-    }
+# ======================================================================
+# ПРИМЕР ИСПОЛЬЗОВАНИЯ
+# ======================================================================
 
-
-def example_usage():
+def example_usage() -> None:
     """
     Пример использования интеграции с PyTorch.
     
@@ -359,33 +435,35 @@ def example_usage():
     - Создание DataLoader
     - Работу с батчами
     """
-    print("\n" + "=" * 60)
-    print("ПРИМЕР ИСПОЛЬЗОВАНИЯ BPE TOKENIZER С PyTorch")
-    print("=" * 60)
+    print_header("ПРИМЕР ИСПОЛЬЗОВАНИЯ BPE TOKENIZER С PyTorch")
     
     try:
+        # Импортируем токенизатор только для примера
         from tokenizer import BPETokenizer
         
         # Получаем пути
         paths = get_project_paths()
         
-        # Загружаем обученный токенизатор (используем bpe_8000 как пример)
+        # Загружаем обученный токенизатор
         model_size = 8000
         vocab_path = paths['models_dir'] / f'bpe_{model_size}' / 'vocab.json'
         merges_path = paths['models_dir'] / f'bpe_{model_size}' / 'merges.txt'
         
         if not vocab_path.exists() or not merges_path.exists():
             print(f"\nМодель bpe_{model_size} не найдена!")
-            print(f"Поиск по пути: {paths['models_dir']}")
-            print("\nДоступные модели:")
-            for model_dir in paths['models_dir'].iterdir():
+            print(f"   Поиск по пути: {paths['models_dir']}")
+            print("\n   Доступные модели:")
+            for model_dir in sorted(paths['models_dir'].iterdir()):
                 if model_dir.is_dir() and model_dir.name.startswith('bpe_'):
-                    print(f"  • {model_dir.name}")
+                    vocab = model_dir / 'vocab.json'
+                    merges = model_dir / 'merges.txt'
+                    status = '✓' if vocab.exists() and merges.exists() else '✗'
+                    print(f"     {status} {model_dir.name}")
             return
         
         print(f"\nЗагрузка модели bpe_{model_size}...")
         tokenizer = BPETokenizer.load(str(vocab_path), str(merges_path))
-        print(f"  ✓ Загружено {len(tokenizer.vocab)} токенов")
+        print(f"Загружено {len(tokenizer.vocab)} токенов")
         
         # Создаем обертку
         print(f"\nСоздание обертки с max_length=128...")
@@ -403,50 +481,54 @@ def example_usage():
         
         print(f"\nТестовые тексты ({len(texts)} примеров):")
         for i, text in enumerate(texts, 1):
-            print(f"  {i}. {text[:50]}{'...' if len(text) > 50 else ''}")
+            preview = text[:50] + ('...' if len(text) > 50 else '')
+            print(f"   {i}. {preview}")
         
         # Кодируем один пример
         print(f"\nКодирование первого примера с паддингом:")
         encoded = wrapper.encode(texts[0], padding=True)
-        print(f"  input_ids shape: {encoded['input_ids'].shape}")
-        print(f"  attention_mask shape: {encoded['attention_mask'].shape}")
-        print(f"  input_ids: {encoded['input_ids'][:20]}...")
-        print(f"  attention_mask: {encoded['attention_mask'][:20]}...")
+        print(f"   input_ids shape: {encoded['input_ids'].shape}")
+        print(f"   attention_mask shape: {encoded['attention_mask'].shape}")
+        print(f"   input_ids[:20]: {encoded['input_ids'][:20].tolist()}...")
+        print(f"   attention_mask[:20]: {encoded['attention_mask'][:20].tolist()}...")
         
         # Декодируем обратно
         print(f"\nДекодирование:")
         decoded = wrapper.decode(encoded['input_ids'])
-        print(f"  Оригинал: {texts[0]}")
-        print(f"  Декод:    {decoded}")
-        print(f"  Совпадение: {'✓' if texts[0] == decoded else '✗'}")
+        print(f"   Оригинал: {texts[0]}")
+        print(f"   Декод:    {decoded}")
+        print(f"   Совпадение: {'[OK]' if texts[0] == decoded else '[BAD]'}")
         
         # Создаем DataLoader
-        print(f"\n🚀 Создание DataLoader с batch_size=2...")
+        print(f"\nСоздание DataLoader с batch_size=2...")
         dataloader = create_dataloader(texts, wrapper, batch_size=2, shuffle=False)
         
         # Проходим по батчам
         print(f"\nБатчи:")
         for i, batch in enumerate(dataloader):
-            print(f"\n  Батч {i + 1}:")
-            print(f"    input_ids shape: {batch['input_ids'].shape}")
-            print(f"    attention_mask shape: {batch['attention_mask'].shape}")
+            print(f"\n   Батч {i + 1}:")
+            print(f"     input_ids shape: {batch['input_ids'].shape}")
+            print(f"     attention_mask shape: {batch['attention_mask'].shape}")
             
             # Декодируем первый элемент батча
             first_text = wrapper.decode(batch['input_ids'][0])
-            print(f"    Первый текст: {first_text[:50]}...")
+            preview = first_text[:50] + ('...' if len(first_text) > 50 else '')
+            print(f"     Первый текст: {preview}")
         
-        print("\n" + "=" * 60)
-        print("ПРИМЕР УСПЕШНО ВЫПОЛНЕН!")
-        print("=" * 60)
+        print_header("ПРИМЕР УСПЕШНО ВЫПОЛНЕН")
         
-    except ImportError:
-        print("\nОшибка: Не удалось импортировать BPETokenizer")
-        print("Убедитесь, что tokenizer.py находится в той же директории")
+    except ImportError as e:
+        print(f"\nОшибка импорта: {e}")
+        print("   Убедитесь, что tokenizer.py находится в той же директории")
     except Exception as e:
         print(f"\nОшибка: {e}")
         import traceback
         traceback.print_exc()
 
+
+# ======================================================================
+# ТОЧКА ВХОДА
+# ======================================================================
 
 if __name__ == '__main__':
     example_usage()

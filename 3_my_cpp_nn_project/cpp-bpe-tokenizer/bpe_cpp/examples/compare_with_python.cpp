@@ -2,9 +2,9 @@
  * @file compare_with_python.cpp
  * @brief Инструмент для сравнения C++ и Python реализаций токенизатора
  * 
- * @author Ваше Имя
- * @date 2024
- * @version 2.0.0
+ * @author Евгений П.
+ * @date 2026
+ * @version 3.2.0
  * 
  * @details Утилита для валидации C++ токенизатора против Python эталона.
  *          Поддерживает различные режимы работы:
@@ -52,6 +52,7 @@
  * @see FastTokenizer
  */
 
+#include <nlohmann/json.hpp>
 #include "bpe_tokenizer.hpp"
 #include "fast_tokenizer.hpp"
 #include "utils.hpp"
@@ -64,8 +65,6 @@
 #include <iomanip>
 #include <chrono>
 #include <memory>
-
-#include <nlohmann/json.hpp>
 
 using namespace bpe;
 
@@ -139,7 +138,7 @@ bool compare_tokens(const std::vector<token_id_t>& a,
                     bool verbose = false) {
     if (a.size() != b.size()) {
         if (verbose) {
-            std::cerr << "  ❌ Размер разный: " << a.size() << " vs " << b.size() << std::endl;
+            std::cerr << "Размер разный: " << a.size() << " vs " << b.size() << std::endl;
         }
         return false;
     }
@@ -147,7 +146,7 @@ bool compare_tokens(const std::vector<token_id_t>& a,
     for (size_t i = 0; i < a.size(); ++i) {
         if (a[i] != b[i]) {
             if (verbose) {
-                std::cerr << "  ❌ Несовпадение на позиции " << i << ": "
+                std::cerr << "Несовпадение на позиции " << i << ": "
                           << a[i] << " vs " << b[i] << std::endl;
             }
             return false;
@@ -253,7 +252,7 @@ int main(int argc, char* argv[]) {
     }
     
     if (argc < 4) {
-        std::cerr << "❌ Недостаточно аргументов!" << std::endl;
+        std::cerr << "Недостаточно аргументов!" << std::endl;
         print_help(argv[0]);
         return 1;
     }
@@ -292,7 +291,7 @@ int main(int argc, char* argv[]) {
         } else if (arg == "--output" && i + 1 < argc) {
             output_path = argv[++i];
         } else {
-            std::cerr << "❌ Неизвестная опция: " << arg << std::endl;
+            std::cerr << "Неизвестная опция: " << arg << std::endl;
             print_help(argv[0]);
             return 1;
         }
@@ -303,15 +302,15 @@ int main(int argc, char* argv[]) {
     // ======================================================================
     
     std::cout << "========================================\n";
-    std::cout << "🔍 СРАВНЕНИЕ C++ И PYTHON ТОКЕНИЗАТОРОВ\n";
+    std::cout << "СРАВНЕНИЕ C++ И PYTHON ТОКЕНИЗАТОРОВ\n";
     std::cout << "========================================\n\n";
     
-    std::cout << "📂 Входной файл:  " << input_path << std::endl;
-    std::cout << "📂 Словарь:       " << vocab_path << std::endl;
-    std::cout << "📂 Слияния:       " << merges_path << std::endl;
-    std::cout << "🔄 Режим:         " << (decode_mode ? "декодирование" : "кодирование") << std::endl;
-    std::cout << "📦 Режим пакетный: " << (batch_mode ? "да" : "нет") << std::endl;
-    std::cout << "⚡ Токенизатор:   " << (use_fast ? "FastTokenizer" : "BPETokenizer") << std::endl;
+    std::cout << "Входной файл:  " << input_path << std::endl;
+    std::cout << "Словарь:       " << vocab_path << std::endl;
+    std::cout << "Слияния:       " << merges_path << std::endl;
+    std::cout << "Режим:         " << (decode_mode ? "декодирование" : "кодирование") << std::endl;
+    std::cout << "Режим пакетный: " << (batch_mode ? "да" : "нет") << std::endl;
+    std::cout << "Токенизатор:   " << (use_fast ? "FastTokenizer" : "BPETokenizer") << std::endl;
     std::cout << std::endl;
     
     try {
@@ -331,9 +330,9 @@ int main(int argc, char* argv[]) {
         }
         
         double load_time = timer.elapsed() * 1000;
-        std::cout << "✅ " << tokenizer->name() << " загружен за " 
+        std::cout << "[OK] " << tokenizer->name() << " загружен за " 
                   << std::fixed << std::setprecision(2) << load_time << " мс" << std::endl;
-        std::cout << "📚 Размер словаря: " << tokenizer->vocab_size() << std::endl;
+        std::cout << "Размер словаря: " << tokenizer->vocab_size() << std::endl;
         std::cout << std::endl;
         
         // ======================================================================
@@ -355,7 +354,7 @@ int main(int argc, char* argv[]) {
                 auto json_data = read_json(input_path);
                 
                 if (!json_data.is_array()) {
-                    std::cerr << "❌ Ожидался JSON массив для пакетного режима" << std::endl;
+                    std::cerr << "Ожидался JSON массив для пакетного режима" << std::endl;
                     return 1;
                 }
                 
@@ -403,7 +402,7 @@ int main(int argc, char* argv[]) {
         
         process_time = timer.elapsed() * 1000;
         
-        std::cout << "⏱️  Время обработки: " << std::fixed << std::setprecision(2) 
+        std::cout << "Время обработки: " << std::fixed << std::setprecision(2) 
                   << process_time << " мс" << std::endl;
         
         // ======================================================================
@@ -411,7 +410,7 @@ int main(int argc, char* argv[]) {
         // ======================================================================
         
         if (!compare_path.empty()) {
-            std::cout << "\n🔍 Сравнение с эталоном: " << compare_path << std::endl;
+            std::cout << "\nСравнение с эталоном: " << compare_path << std::endl;
             
             auto expected = read_json(compare_path);
             
@@ -429,7 +428,7 @@ int main(int argc, char* argv[]) {
                             
                             if (!compare_tokens(a, b, verbose)) {
                                 match = false;
-                                std::cout << "  ❌ Несовпадение в элементе " << i << std::endl;
+                                std::cout << "Несовпадение в элементе " << i << std::endl;
                             }
                         }
                     } else {
@@ -453,7 +452,7 @@ int main(int argc, char* argv[]) {
                 match = (result.get<std::string>() == expected.get<std::string>());
             }
             
-            std::cout << "  Результат: " << (match ? "✅ СОВПАДАЕТ" : "❌ НЕ СОВПАДАЕТ") << std::endl;
+            std::cout << "  Результат: " << (match ? "СОВПАДАЕТ" : "НЕ СОВПАДАЕТ") << std::endl;
         }
         
         // ======================================================================
@@ -462,9 +461,9 @@ int main(int argc, char* argv[]) {
         
         if (!output_path.empty()) {
             save_json(result, output_path);
-            std::cout << "\n💾 Результат сохранен в: " << output_path << std::endl;
+            std::cout << "\nРезультат сохранен в: " << output_path << std::endl;
         } else if (verbose) {
-            std::cout << "\n📄 Результат:\n" << result.dump(2) << std::endl;
+            std::cout << "\nРезультат:\n" << result.dump(2) << std::endl;
         }
         
         // ======================================================================
@@ -472,7 +471,7 @@ int main(int argc, char* argv[]) {
         // ======================================================================
         
         if (show_stats) {
-            std::cout << "\n📊 Статистика:\n";
+            std::cout << "\nСтатистика:\n";
             
             if (!decode_mode && !batch_mode) {
                 std::string text = read_file(input_path);
@@ -489,12 +488,12 @@ int main(int argc, char* argv[]) {
             tokenizer->print_stats();
         }
         
-        std::cout << "\n✅ Готово!" << std::endl;
+        std::cout << "\nГотово!" << std::endl;
         
         return 0;
         
     } catch (const std::exception& e) {
-        std::cerr << "\n❌ Ошибка: " << e.what() << std::endl;
+        std::cerr << "\nОшибка: " << e.what() << std::endl;
         return 1;
     }
 }

@@ -5,9 +5,9 @@
 # @file tests/CMakeLists.txt
 # @brief Конфигурация сборки модульных тестов
 #
-# @author Ваше Имя
-# @date 2024
-# @version 1.0.0
+# @author Евгений П.
+# @date 2026
+# @version 3.3.0
 # ======================================================================
 
 # Политика для устранения предупреждения о времени
@@ -19,7 +19,7 @@ endif()
 # Подключение Google Test
 # ======================================================================
 
-message(STATUS "📦 Загрузка Google Test...")
+message(STATUS "Загрузка Google Test...")
 
 include(FetchContent)
 FetchContent_Declare(
@@ -35,7 +35,7 @@ set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)  # Не устанавливать в
 
 FetchContent_MakeAvailable(googletest)
 
-message(STATUS "   ✅ Google Test загружен")
+message(STATUS "Google Test загружен")
 
 # ======================================================================
 # Общие настройки для всех тестов
@@ -66,14 +66,14 @@ function(add_bpe_test TEST_NAME TEST_SOURCE)
     include(GoogleTest)
     gtest_add_tests(${TEST_NAME} "" AUTO)
     
-    message(STATUS "   ✅ Добавлен тест: ${TEST_NAME}")
+    message(STATUS "Добавлен тест: ${TEST_NAME}")
 endfunction()
 
 # ======================================================================
 # Базовые тесты
 # ======================================================================
 
-message(STATUS "\n📋 Добавление тестов:")
+message(STATUS "\nДобавление тестов:")
 
 add_bpe_test(bpe_tests
     "test_vocabulary.cpp;test_tokenizer.cpp;test_utils.cpp"
@@ -131,7 +131,7 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../benchmarks/bench_data/sample_code.txt)
         ${CMAKE_CURRENT_BINARY_DIR}/data/sample_code.txt
         COPYONLY
     )
-    message(STATUS "   📋 Скопирован sample_code.txt")
+    message(STATUS "Скопирован sample_code.txt")
 endif()
 
 # Копируем тестовые модели если есть
@@ -139,7 +139,7 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../models)
     file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/../models
         DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
     )
-    message(STATUS "   📋 Скопированы тестовые модели")
+    message(STATUS "Скопированы тестовые модели")
 endif()
 
 # ======================================================================
@@ -177,7 +177,7 @@ add_custom_target(run_parallel_tests
 # ======================================================================
 
 message(STATUS "")
-message(STATUS "📊 Тесты:")
+message(STATUS "Тесты:")
 message(STATUS "   • bpe_tests - базовые тесты (vocabulary, tokenizer, utils)")
 message(STATUS "   • test_fast_tokenizer - оптимизированная версия")
 message(STATUS "   • test_parallel - параллельная обработка")
@@ -187,7 +187,7 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_trained_model.cpp)
     message(STATUS "   • test_trained_model - проверка обученной модели")
 endif()
 message(STATUS "")
-message(STATUS "🚀 Для запуска тестов:")
+message(STATUS "Для запуска тестов:")
 message(STATUS "   make run_tests           # все тесты")
 message(STATUS "   make run_fast_tests      # только FastTokenizer")
 message(STATUS "   make run_memory_tests    # только MemoryPool")

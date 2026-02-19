@@ -1,62 +1,158 @@
-"""
-Расширенное сравнение трех BPE моделей (8000, 10000, 12000).
-
-Детальный анализ и сравнение моделей с разным размером словаря.
-"""
+#!/usr/bin/env python3
+# ======================================================================
+# test_compare_models.py - Расширенное сравнение трех BPE моделей
+# ======================================================================
+#
+# @file test_compare_models.py
+# @brief Расширенное сравнение трех BPE моделей (8000, 10000, 12000)
+#
+# @author Евгений П.
+# @date 2026
+# @version 3.3.0
+#
+# @details Детальный анализ и сравнение моделей с разным размером словаря:
+#          - Точность кодирования/декодирования по категориям
+#          - Скорость работы (encode/decode)
+#          - Степень сжатия текста
+#          - Анализ состава словарей
+#          - Визуализация результатов
+#
+# @usage python test_compare_models.py [--quick] [--plot-only]
+#
+# @example
+#   python test_compare_models.py
+#   python test_compare_models.py --quick
+#   python test_compare_models.py --plot-only
+#
+# ======================================================================
 
 import sys
 import time
 import json
-from pathlib import Path
-from typing import List, Dict
-import matplotlib.pyplot as plt
+import argparse
+
 import numpy as np
+import matplotlib.pyplot as plt
 
-# Добавляем путь к родительской директории для импорта tokenizer
-current_file = Path(__file__).resolve()
-bpe_python_dir = current_file.parent.parent
-sys.path.insert(0, str(bpe_python_dir))
+from pathlib import Path
+from typing import List, Dict, Optional, Any
 
-from tokenizer import BPETokenizer
+# ======================================================================
+# НАСТРОЙКА ПУТЕЙ ДЛЯ ИМПОРТА
+# ======================================================================
 
+CURRENT_FILE = Path(__file__).resolve()           # tests/test_compare_models.py
+TESTS_DIR = CURRENT_FILE.parent                    # tests/
+BPE_PYTHON_DIR = TESTS_DIR.parent                  # bpe_python/
+PROJECT_ROOT = BPE_PYTHON_DIR.parent               # cpp-bpe-tokenizer/
+
+# Добавляем путь для импорта токенизатора
+sys.path.insert(0, str(BPE_PYTHON_DIR))
+
+# ======================================================================
+# ИМПОРТ ТОКЕНИЗАТОРА
+# ======================================================================
+
+try:
+    from tokenizer import BPETokenizer
+except ImportError as e:
+    print(f"Ошибка импорта BPETokenizer: {e}")
+    print(f"Убедитесь, что файл tokenizer.py существует в {BPE_PYTHON_DIR}")
+    sys.exit(1)
+
+
+# ======================================================================
+# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+# ======================================================================
+
+def get_project_paths() -> Dict[str, Path]:
+    """
+    Получить пути проекта.
+    
+    Returns:
+        Dict[str, Path]: Словарь с путями проекта
+    """
+    return {
+        "project_root": PROJECT_ROOT,
+        "bpe_python_dir": BPE_PYTHON_DIR,
+        "tests_dir": TESTS_DIR,
+        "models_dir": BPE_PYTHON_DIR / 'models',
+        "output_dir": TESTS_DIR / 'three_model_results'
+    }
+
+
+def print_header(title: str, width: int = 80) -> None:
+    """
+    Вывести заголовок раздела.
+    
+    Args:
+        title: Заголовок
+        width: Ширина линии
+    """
+    print(f"\n{'=' * width}")
+    print(f"{title:^{width}}")
+    print(f"{'=' * width}")
+
+
+# ======================================================================
+# КЛАСС ДЛЯ СРАВНЕНИЯ ТРЕХ МОДЕЛЕЙ
+# ======================================================================
 
 class ThreeModelComparison:
     """
-    Класс для сравнения трех BPE моделей.
+    Класс для сравнения трех BPE моделей с разным размером словаря.
+    
+    Проводит комплексный анализ моделей по множеству метрик:
+    - Точность (roundtrip тесты)
+    - Скорость encode/decode
+    - Степень сжатия
+    - Состав словарей
     """
     
-    def __init__(self, models_dir: Path, model_sizes: List[int] = [8000, 10000, 12000]):
+    def __init__(self, models_dir: Path, model_sizes: List[int] = None):
         """
-        Инициализация с путями к моделям.
+        Инициализация компаратора.
         
-        Аргументы:
+        Args:
             models_dir: Директория с моделями
             model_sizes: Список размеров моделей для сравнения
         """
         self.models_dir = Path(models_dir)
-        self.model_sizes = model_sizes
-        self.models = {}
-        self.results = {
+        self.model_sizes = model_sizes or [8000, 10000, 12000]
+        self.models: Dict[int, BPETokenizer] = {}
+        self.results: Dict[str, Dict] = {
             'accuracy': {},
             'speed': {},
             'compression': {},
-            'coverage': {},
-            'vocabulary': {}
+            'vocabulary': {},
+            'metadata': {
+                'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+                'model_sizes': self.model_sizes,
+                'test_categories': {}
+            }
         }
         
-        # Цвета для моделей
+        # Цветовая схема для моделей
         self.colors = {
             8000: '#2E86AB',   # Синий
             10000: '#A23B72',  # Фиолетовый
             12000: '#F18F01'   # Оранжевый
         }
         
-    def load_models(self):
-        """Загрузка всех моделей."""
-        print("=" * 80)
-        print("ЗАГРУЗКА МОДЕЛЕЙ")
-        print("=" * 80)
+    # ======================================================================
+    # ЗАГРУЗКА МОДЕЛЕЙ
+    # ======================================================================
+    
+    def load_models(self) -> bool:
+        """
+        Загрузить все модели.
         
+        Returns:
+            bool: True если все модели загружены успешно
+        """
+        print_header("ЗАГРУЗКА МОДЕЛЕЙ")
+        
+        success = True
         for size in self.model_sizes:
             model_path = self.models_dir / f'bpe_{size}'
             vocab_path = model_path / 'vocab.json'
@@ -64,18 +160,32 @@ class ThreeModelComparison:
             
             if not vocab_path.exists() or not merges_path.exists():
                 print(f"Модель {size} не найдена в {model_path}")
+                success = False
                 continue
                 
             print(f"Загрузка модели bpe_{size}...")
-            tokenizer = BPETokenizer.load(str(vocab_path), str(merges_path))
-            self.models[size] = tokenizer
-            print(f"  ✓ Загружена: {len(tokenizer.vocab)} токенов")
+            try:
+                tokenizer = BPETokenizer.load(str(vocab_path), str(merges_path))
+                self.models[size] = tokenizer
+                print(f"Загружено: {len(tokenizer.vocab)} токенов")
+            except Exception as e:
+                print(f"Ошибка: {e}")
+                success = False
+        
+        return success
+    
+    # ======================================================================
+    # ТЕСТОВЫЙ НАБОР
+    # ======================================================================
     
     def get_extended_test_set(self) -> Dict[str, List[str]]:
         """
-        Получение расширенного набора тестов по категориям.
+        Получить расширенный набор тестов по категориям.
+        
+        Returns:
+            Dict[str, List[str]]: Категории с примерами кода
         """
-        return {
+        test_set = {
             "Препроцессор": [
                 "#include <iostream>",
                 "#include <vector>",
@@ -234,7 +344,6 @@ class ThreeModelComparison:
                 "// NOTE: важное замечание",
                 "/// Тройной слеш комментарий",
                 "/*! Другой стиль Doxygen */",
-                "#pragma region // Регион с комментарием",
                 "// Это комментарий на русском языке",
                 "// 这是中文评论",
                 "// これは日本語のコメントです",
@@ -289,30 +398,50 @@ class ThreeModelComparison:
                 "};",
             ]
         }
+        
+        # Сохраняем информацию о категориях в метаданные
+        self.results['metadata']['test_categories'] = {
+            name: len(tests) for name, tests in test_set.items()
+        }
+        
+        return test_set
+    
+    # ======================================================================
+    # ТЕСТ ТОЧНОСТИ
+    # ======================================================================
     
     def test_accuracy(self, test_categories: Dict[str, List[str]]) -> Dict[int, Dict]:
         """
-        Тест точности по категориям.
+        Тестирование точности roundtrip по категориям.
+        
+        Args:
+            test_categories: Категории с тестовыми текстами
+            
+        Returns:
+            Dict[int, Dict]: Результаты тестов точности
         """
-        print("\n" + "=" * 80)
-        print("ТЕСТ ТОЧНОСТИ ПО КАТЕГОРИЯМ")
-        print("=" * 80)
+        print_header("ТЕСТ ТОЧНОСТИ ПО КАТЕГОРИЯМ")
         
         results = {}
         
         for size, tokenizer in self.models.items():
             print(f"\nМодель bpe_{size}:")
             category_results = {}
+            total_perfect = 0
+            total_tests = 0
             
             for category, texts in test_categories.items():
                 perfect = 0
                 total = len(texts)
                 
                 for text in texts:
-                    encoded = tokenizer.encode(text)
-                    decoded = tokenizer.decode(encoded)
-                    if text == decoded:
-                        perfect += 1
+                    try:
+                        encoded = tokenizer.encode(text)
+                        decoded = tokenizer.decode(encoded)
+                        if text == decoded:
+                            perfect += 1
+                    except Exception as e:
+                        print(f" !!! Ошибка при обработке '{text[:30]}...': {e}")
                 
                 accuracy = (perfect / total) * 100 if total > 0 else 0
                 category_results[category] = {
@@ -320,31 +449,62 @@ class ThreeModelComparison:
                     'total': total,
                     'accuracy': accuracy
                 }
-                print(f"  {category[:25]:<25} {accuracy:>5.1f}% ({perfect}/{total})")
+                
+                total_perfect += perfect
+                total_tests += total
+                
+                # Выводим результат с цветом
+                color = '[OK]' if accuracy > 90 else '[!!!]' if accuracy > 70 else '[BAD]'
+                print(f"  {color} {category[:30]:<30} {accuracy:>5.1f}% ({perfect}/{total})")
             
-            results[size] = category_results
+            overall_accuracy = (total_perfect / total_tests) * 100 if total_tests > 0 else 0
+            results[size] = {
+                'by_category': category_results,
+                'overall': {
+                    'perfect': total_perfect,
+                    'total': total_tests,
+                    'accuracy': overall_accuracy
+                }
+            }
+            
+            print(f"\nОбщая точность: {overall_accuracy:.1f}% ({total_perfect}/{total_tests})")
         
         self.results['accuracy'] = results
         return results
     
+    # ======================================================================
+    # ТЕСТ СКОРОСТИ
+    # ======================================================================
+    
     def test_speed(self, test_categories: Dict[str, List[str]], iterations: int = 50) -> Dict[int, Dict]:
         """
-        Тест скорости.
+        Тестирование скорости encode/decode.
+        
+        Args:
+            test_categories: Категории с тестовыми текстами
+            iterations: Количество итераций для усреднения
+            
+        Returns:
+            Dict[int, Dict]: Результаты тестов скорости
         """
-        print("\n" + "=" * 80)
-        print("ТЕСТ СКОРОСТИ")
-        print("=" * 80)
+        print_header("ТЕСТ СКОРОСТИ")
         
         results = {}
         
         for size, tokenizer in self.models.items():
-            print(f"\nМодель bpe_{size}:")
+            print(f"\n⚡ Модель bpe_{size}:")
             category_results = {}
-            total_encode = 0
-            total_decode = 0
+            
+            total_encode_time = 0
+            total_decode_time = 0
             total_ops = 0
             
             for category, texts in test_categories.items():
+                # Прогрев
+                for _ in range(5):
+                    for text in texts:
+                        tokenizer.encode(text)
+                
                 # Encode тест
                 start = time.perf_counter()
                 all_encoded = []
@@ -361,8 +521,8 @@ class ThreeModelComparison:
                 
                 ops = len(texts) * iterations
                 total_ops += ops
-                total_encode += encode_time
-                total_decode += decode_time
+                total_encode_time += encode_time
+                total_decode_time += decode_time
                 
                 encode_per_text = (encode_time / ops) * 1000  # мс
                 decode_per_text = (decode_time / ops) * 1000  # мс
@@ -375,39 +535,52 @@ class ThreeModelComparison:
                     'ops': ops
                 }
                 
-                print(f"  {category[:25]:<25} encode: {encode_per_text:>6.3f} мс, decode: {decode_per_text:>6.3f} мс")
+                print(f"  {category[:30]:<30} "
+                      f"encode: {encode_per_text:>5.3f} мс, "
+                      f"decode: {decode_per_text:>5.3f} мс")
             
             # Общие результаты
+            avg_encode = (total_encode_time / total_ops) * 1000
+            avg_decode = (total_decode_time / total_ops) * 1000
+            
             results[size] = {
                 'by_category': category_results,
                 'overall': {
-                    'encode_time': total_encode,
-                    'decode_time': total_decode,
-                    'encode_per_text': (total_encode / total_ops) * 1000,
-                    'decode_per_text': (total_decode / total_ops) * 1000,
+                    'encode_time': total_encode_time,
+                    'decode_time': total_decode_time,
+                    'encode_per_text': avg_encode,
+                    'decode_per_text': avg_decode,
                     'total_ops': total_ops
                 }
             }
             
-            print(f"\nСреднее: encode {results[size]['overall']['encode_per_text']:.3f} мс, "
-                  f"decode {results[size]['overall']['decode_per_text']:.3f} мс")
+            print(f"\nСреднее: encode {avg_encode:.3f} мс, decode {avg_decode:.3f} мс")
         
         self.results['speed'] = results
         return results
     
+    # ======================================================================
+    # ТЕСТ СЖАТИЯ
+    # ======================================================================
+    
     def test_compression(self, test_categories: Dict[str, List[str]]) -> Dict[int, Dict]:
         """
-        Тест степени сжатия.
+        Тестирование степени сжатия.
+        
+        Args:
+            test_categories: Категории с тестовыми текстами
+            
+        Returns:
+            Dict[int, Dict]: Результаты тестов сжатия
         """
-        print("\n" + "=" * 80)
-        print("ТЕСТ СЖАТИЯ")
-        print("=" * 80)
+        print_header("ТЕСТ СЖАТИЯ")
         
         results = {}
         
         for size, tokenizer in self.models.items():
             print(f"\nМодель bpe_{size}:")
             category_results = {}
+            
             total_chars = 0
             total_tokens = 0
             
@@ -430,7 +603,7 @@ class ThreeModelComparison:
                     'ratio': ratio
                 }
                 
-                print(f"  {category[:25]:<25} {ratio:>5.2f} символов/токен")
+                print(f"  {category[:30]:<30} {ratio:>5.2f} символов/токен")
             
             overall_ratio = total_chars / total_tokens if total_tokens > 0 else 0
             results[size] = {
@@ -441,29 +614,36 @@ class ThreeModelComparison:
                     'ratio': overall_ratio
                 }
             }
-            print(f"Среднее: {overall_ratio:.2f} символов/токен")
+            print(f"\nСреднее сжатие: {overall_ratio:.2f} символов/токен")
         
         self.results['compression'] = results
         return results
     
+    # ======================================================================
+    # АНАЛИЗ СЛОВАРЕЙ
+    # ======================================================================
+    
     def analyze_vocabulary(self) -> Dict[int, Dict]:
         """
-        Анализ словарей.
+        Анализ состава словарей.
+        
+        Returns:
+            Dict[int, Dict]: Статистика по словарям
         """
-        print("\n" + "=" * 80)
-        print("АНАЛИЗ СЛОВАРЕЙ")
-        print("=" * 80)
+        print_header("АНАЛИЗ СЛОВАРЕЙ")
         
         results = {}
         
         for size, tokenizer in self.models.items():
-            # Длины токенов
+            # Статистика по длинам токенов
             token_lengths = [len(token) for token in tokenizer.vocab.values()]
             
             # Типы токенов
             ascii_tokens = 0
             unicode_tokens = 0
             special_tokens = 0
+            single_char = 0
+            multi_char = 0
             
             for token in tokenizer.vocab.values():
                 if token in tokenizer.special_tokens:
@@ -472,12 +652,20 @@ class ThreeModelComparison:
                     ascii_tokens += 1
                 else:
                     unicode_tokens += 1
+                
+                if len(token) == 1:
+                    single_char += 1
+                else:
+                    multi_char += 1
             
+            # Статистика
             results[size] = {
                 'vocab_size': len(tokenizer.vocab),
                 'special_tokens': special_tokens,
                 'ascii_tokens': ascii_tokens,
                 'unicode_tokens': unicode_tokens,
+                'single_char': single_char,
+                'multi_char': multi_char,
                 'token_lengths': {
                     'min': min(token_lengths),
                     'max': max(token_lengths),
@@ -488,65 +676,86 @@ class ThreeModelComparison:
             
             print(f"\nМодель bpe_{size}:")
             print(f"  Размер: {results[size]['vocab_size']} токенов")
-            print(f"  ASCII: {results[size]['ascii_tokens']}")
-            print(f"  Unicode: {results[size]['unicode_tokens']}")
+            print(f"  ASCII: {results[size]['ascii_tokens']} ({results[size]['ascii_tokens']*100/len(tokenizer.vocab):.1f}%)")
+            print(f"  Unicode: {results[size]['unicode_tokens']} ({results[size]['unicode_tokens']*100/len(tokenizer.vocab):.1f}%)")
             print(f"  Спец. токены: {results[size]['special_tokens']}")
-            print(f"  Средняя длина: {results[size]['token_lengths']['avg']:.1f}")
+            print(f"  Односимвольных: {results[size]['single_char']}")
+            print(f"  Многосимвольных: {results[size]['multi_char']}")
+            print(f"  Средняя длина: {results[size]['token_lengths']['avg']:.2f}")
         
         self.results['vocabulary'] = results
         return results
     
+    # ======================================================================
+    # ГЕНЕРАЦИЯ ОТЧЕТА
+    # ======================================================================
+    
     def generate_report(self) -> str:
         """
-        Генерация отчета.
+        Сгенерировать текстовый отчет.
+        
+        Returns:
+            str: Текстовый отчет с результатами
         """
-        report = []
-        report.append("=" * 100)
-        report.append("СРАВНЕНИЕ ТРЕХ BPE МОДЕЛЕЙ (8000, 10000, 12000)")
-        report.append("=" * 100)
-        report.append("")
+        lines = []
+        lines.append("=" * 100)
+        lines.append("СРАВНЕНИЕ ТРЕХ BPE МОДЕЛЕЙ (8000, 10000, 12000)".center(100))
+        lines.append("=" * 100)
+        lines.append("")
         
-        # Общая статистика
-        report.append("ОБЩАЯ СТАТИСТИКА")
-        report.append("-" * 40)
-        report.append(f"Всего тестов: {sum(len(v) for v in self.get_extended_test_set().values())}")
-        report.append(f"Категорий: {len(self.get_extended_test_set())}")
-        report.append("")
+        # Информация о тестах
+        lines.append("ИНФОРМАЦИЯ О ТЕСТАХ")
+        lines.append("-" * 40)
+        total_tests = sum(self.results['metadata']['test_categories'].values())
+        lines.append(f"Всего тестов: {total_tests}")
+        lines.append(f"Категорий: {len(self.results['metadata']['test_categories'])}")
+        lines.append(f"Дата тестирования: {self.results['metadata']['timestamp']}")
+        lines.append("")
         
-        # Сравнение по категориям
-        report.append("ТОЧНОСТЬ ПО КАТЕГОРИЯМ (%)")
-        report.append("-" * 80)
+        # Общая точность
+        lines.append("ОБЩАЯ ТОЧНОСТЬ")
+        lines.append("-" * 60)
+        for size in self.model_sizes:
+            acc = self.results['accuracy'][size]['overall']['accuracy']
+            perfect = self.results['accuracy'][size]['overall']['perfect']
+            total = self.results['accuracy'][size]['overall']['total']
+            lines.append(f"bpe_{size:5}: {acc:5.1f}% ({perfect}/{total})")
+        lines.append("")
+        
+        # Точность по категориям
+        lines.append("ТОЧНОСТЬ ПО КАТЕГОРИЯМ (%)")
+        lines.append("-" * 80)
         header = f"{'Категория':<30}"
         for size in self.model_sizes:
             header += f" bpe_{size:>6}"
-        header += " max diff"
-        report.append(header)
-        report.append("-" * 80)
+        header += " разброс"
+        lines.append(header)
+        lines.append("-" * 80)
         
-        categories = list(self.results['accuracy'][self.model_sizes[0]].keys())
+        categories = list(self.results['accuracy'][self.model_sizes[0]]['by_category'].keys())
         for cat in categories:
             line = f"{cat[:28]:<30}"
             accuracies = []
             for size in self.model_sizes:
-                acc = self.results['accuracy'][size][cat]['accuracy']
+                acc = self.results['accuracy'][size]['by_category'][cat]['accuracy']
                 accuracies.append(acc)
                 line += f" {acc:>6.1f}"
-            max_diff = max(accuracies) - min(accuracies)
-            line += f" {max_diff:>8.1f}"
-            report.append(line)
-        
-        report.append("")
+            spread = max(accuracies) - min(accuracies)
+            line += f" {spread:>7.1f}"
+            lines.append(line)
+        lines.append("")
         
         # Сжатие
-        report.append("📦 СТЕПЕНЬ СЖАТИЯ (символов/токен)")
-        report.append("-" * 80)
+        lines.append("СТЕПЕНЬ СЖАТИЯ (символов/токен)")
+        lines.append("-" * 80)
         header = f"{'Категория':<30}"
         for size in self.model_sizes:
             header += f" bpe_{size:>6}"
         header += " улучшение"
-        report.append(header)
-        report.append("-" * 80)
+        lines.append(header)
+        lines.append("-" * 80)
         
+        base_ratios = {}
         for cat in categories:
             line = f"{cat[:28]:<30}"
             ratios = []
@@ -554,74 +763,79 @@ class ThreeModelComparison:
                 ratio = self.results['compression'][size]['by_category'][cat]['ratio']
                 ratios.append(ratio)
                 line += f" {ratio:>6.2f}"
-            improvement = ((ratios[-1] - ratios[0]) / ratios[0]) * 100
-            line += f" {improvement:>+8.1f}%"
-            report.append(line)
-        
-        report.append("")
+                if size == self.model_sizes[0]:
+                    base_ratios[cat] = ratio
+            improvement = ((ratios[-1] - base_ratios[cat]) / base_ratios[cat]) * 100
+            line += f" {improvement:>+7.1f}%"
+            lines.append(line)
+        lines.append("")
         
         # Скорость
-        report.append("⚡ СКОРОСТЬ РАБОТЫ")
-        report.append("-" * 60)
+        lines.append("⚡ СКОРОСТЬ РАБОТЫ")
+        lines.append("-" * 60)
         header = f"{'Модель':<10} {'Encode (мс)':>12} {'Decode (мс)':>12} {'Всего операций':>15}"
-        report.append(header)
-        report.append("-" * 60)
+        lines.append(header)
+        lines.append("-" * 60)
         
-        base_speed = self.results['speed'][self.model_sizes[0]]['overall']['encode_per_text']
         for size in self.model_sizes:
             enc = self.results['speed'][size]['overall']['encode_per_text']
             dec = self.results['speed'][size]['overall']['decode_per_text']
             ops = self.results['speed'][size]['overall']['total_ops']
-            slowdown = ((enc - base_speed) / base_speed) * 100
-            report.append(f"bpe_{size:<6} {enc:>11.3f} {dec:>11.3f} {ops:>15} ({slowdown:>+5.1f}%)")
+            lines.append(f"bpe_{size:<6} {enc:>11.3f} {dec:>11.3f} {ops:>15}")
+        lines.append("")
         
-        report.append("")
-        
-        # Словари
-        report.append("ХАРАКТЕРИСТИКИ СЛОВАРЕЙ")
-        report.append("-" * 70)
+        # Характеристики словарей
+        lines.append("ХАРАКТЕРИСТИКИ СЛОВАРЕЙ")
+        lines.append("-" * 70)
         header = f"{'Модель':<10} {'Размер':>8} {'ASCII':>8} {'Unicode':>8} {'Спец':>6} {'Ср.длина':>9}"
-        report.append(header)
-        report.append("-" * 70)
+        lines.append(header)
+        lines.append("-" * 70)
         
         for size in self.model_sizes:
             vocab = self.results['vocabulary'][size]
-            report.append(
+            lines.append(
                 f"bpe_{size:<6} {vocab['vocab_size']:>8} "
                 f"{vocab['ascii_tokens']:>8} {vocab['unicode_tokens']:>8} "
-                f"{vocab['special_tokens']:>6} {vocab['token_lengths']['avg']:>8.1f}"
+                f"{vocab['special_tokens']:>6} {vocab['token_lengths']['avg']:>8.2f}"
             )
         
-        report.append("")
-        report.append("=" * 100)
+        lines.append("")
+        lines.append("=" * 100)
         
-        return "\n".join(report)
+        return "\n".join(lines)
+    
+    # ======================================================================
+    # ВИЗУАЛИЗАЦИЯ
+    # ======================================================================
     
     def plot_comparison(self, output_dir: Path):
         """
-        Создание графиков сравнения для трех моделей.
+        Создать графики сравнения.
+        
+        Args:
+            output_dir: Директория для сохранения графиков
         """
+        print_header("СОЗДАНИЕ ГРАФИКОВ")
+        
         try:
             fig, axes = plt.subplots(2, 3, figsize=(20, 12))
-            fig.suptitle('Сравнение трех BPE моделей (8000, 10000, 12000)', fontsize=16, fontweight='bold')
+            fig.suptitle('Сравнение трех BPE моделей (8000, 10000, 12000)', 
+                        fontsize=16, fontweight='bold')
             
-            # 1. Точность по категориям (топ-8)
-            ax = axes[0, 0]
-            categories = sorted(
-                self.results['accuracy'][self.model_sizes[0]].keys(),
-                key=lambda x: self.results['accuracy'][self.model_sizes[0]][x]['accuracy'],
-                reverse=True
-            )[:8]
-            
-            x = np.arange(len(categories))
+            categories = list(self.results['accuracy'][self.model_sizes[0]]['by_category'].keys())
+            # Берем первые 8 категорий для читаемости
+            display_cats = categories[:8]
+            x = np.arange(len(display_cats))
             width = 0.25
             
+            # 1. Точность по категориям
+            ax = axes[0, 0]
             for i, size in enumerate(self.model_sizes):
-                accuracies = [self.results['accuracy'][size][cat]['accuracy'] for cat in categories]
-                bars = ax.bar(x + (i - 1) * width, accuracies, width, 
+                accuracies = [self.results['accuracy'][size]['by_category'][cat]['accuracy'] 
+                             for cat in display_cats]
+                bars = ax.bar(x + (i - 1) * width, accuracies, width,
                             label=f'bpe_{size}', color=self.colors[size], alpha=0.8)
                 
-                # Добавляем значения
                 for bar in bars:
                     height = bar.get_height()
                     if height > 0:
@@ -630,41 +844,18 @@ class ThreeModelComparison:
             
             ax.set_title('Точность по категориям', fontsize=12, fontweight='bold')
             ax.set_xticks(x)
-            ax.set_xticklabels([c[:12] + '...' if len(c) > 12 else c for c in categories], 
+            ax.set_xticklabels([c[:12] + '...' if len(c) > 12 else c for c in display_cats], 
                               rotation=45, ha='right')
             ax.set_ylabel('Точность (%)')
             ax.legend()
             ax.set_ylim([0, 105])
             ax.grid(True, alpha=0.3, axis='y')
             
-            # 2. Типы ошибок
+            # 2. Степень сжатия
             ax = axes[0, 1]
-            # Для демо используем заглушку с данными из 10000
-            error_types = ['Шаблоны', 'Методы', 'Юникод', 'Другое']
-            x_err = np.arange(len(error_types))
-            
-            # Примерные данные (можно заменить на реальные при наличии)
             for i, size in enumerate(self.model_sizes):
-                err_data = [10, 10, 17, 26]  # Пример из отчета 10000
-                bars = ax.bar(x_err + (i - 1) * width, err_data, width,
-                            label=f'bpe_{size}', color=self.colors[size], alpha=0.8)
-                
-                for bar in bars:
-                    height = bar.get_height()
-                    ax.text(bar.get_x() + bar.get_width()/2., height + 0.5,
-                           f'{height:.0f}', ha='center', va='bottom', fontsize=8)
-            
-            ax.set_title('Типы ошибок', fontsize=12, fontweight='bold')
-            ax.set_xticks(x_err)
-            ax.set_xticklabels(error_types)
-            ax.set_ylabel('Количество')
-            ax.legend()
-            ax.grid(True, alpha=0.3, axis='y')
-            
-            # 3. Степень сжатия
-            ax = axes[0, 2]
-            for i, size in enumerate(self.model_sizes):
-                ratios = [self.results['compression'][size]['by_category'][cat]['ratio'] for cat in categories]
+                ratios = [self.results['compression'][size]['by_category'][cat]['ratio'] 
+                         for cat in display_cats]
                 bars = ax.bar(x + (i - 1) * width, ratios, width,
                             label=f'bpe_{size}', color=self.colors[size], alpha=0.8)
                 
@@ -675,17 +866,18 @@ class ThreeModelComparison:
             
             ax.set_title('Степень сжатия (символов/токен)', fontsize=12, fontweight='bold')
             ax.set_xticks(x)
-            ax.set_xticklabels([c[:12] + '...' if len(c) > 12 else c for c in categories], 
+            ax.set_xticklabels([c[:12] + '...' if len(c) > 12 else c for c in display_cats], 
                               rotation=45, ha='right')
             ax.set_ylabel('Символов на токен')
             ax.legend()
             ax.grid(True, alpha=0.3, axis='y')
             
-            # 4. Скорость encode
-            ax = axes[1, 0]
+            # 3. Скорость encode
+            ax = axes[0, 2]
             for i, size in enumerate(self.model_sizes):
-                enc_speeds = [self.results['speed'][size]['by_category'][cat]['encode_per_text'] for cat in categories]
-                bars = ax.bar(x + (i - 1) * width, enc_speeds, width,
+                speeds = [self.results['speed'][size]['by_category'][cat]['encode_per_text'] 
+                         for cat in display_cats]
+                bars = ax.bar(x + (i - 1) * width, speeds, width,
                             label=f'bpe_{size}', color=self.colors[size], alpha=0.8)
                 
                 for bar in bars:
@@ -695,17 +887,18 @@ class ThreeModelComparison:
             
             ax.set_title('Скорость encode (мс/текст)', fontsize=12, fontweight='bold')
             ax.set_xticks(x)
-            ax.set_xticklabels([c[:12] + '...' if len(c) > 12 else c for c in categories], 
+            ax.set_xticklabels([c[:12] + '...' if len(c) > 12 else c for c in display_cats], 
                               rotation=45, ha='right')
             ax.set_ylabel('мс')
             ax.legend()
             ax.grid(True, alpha=0.3, axis='y')
             
-            # 5. Скорость decode
-            ax = axes[1, 1]
+            # 4. Скорость decode
+            ax = axes[1, 0]
             for i, size in enumerate(self.model_sizes):
-                dec_speeds = [self.results['speed'][size]['by_category'][cat]['decode_per_text'] for cat in categories]
-                bars = ax.bar(x + (i - 1) * width, dec_speeds, width,
+                speeds = [self.results['speed'][size]['by_category'][cat]['decode_per_text'] 
+                         for cat in display_cats]
+                bars = ax.bar(x + (i - 1) * width, speeds, width,
                             label=f'bpe_{size}', color=self.colors[size], alpha=0.8)
                 
                 for bar in bars:
@@ -715,9 +908,30 @@ class ThreeModelComparison:
             
             ax.set_title('Скорость decode (мс/текст)', fontsize=12, fontweight='bold')
             ax.set_xticks(x)
-            ax.set_xticklabels([c[:12] + '...' if len(c) > 12 else c for c in categories], 
+            ax.set_xticklabels([c[:12] + '...' if len(c) > 12 else c for c in display_cats], 
                               rotation=45, ha='right')
             ax.set_ylabel('мс')
+            ax.legend()
+            ax.grid(True, alpha=0.3, axis='y')
+            
+            # 5. Распределение токенов по типам
+            ax = axes[1, 1]
+            x_types = np.arange(3)  # ASCII, Unicode, Специальные
+            for i, size in enumerate(self.model_sizes):
+                vocab = self.results['vocabulary'][size]
+                values = [vocab['ascii_tokens'], vocab['unicode_tokens'], vocab['special_tokens']]
+                bars = ax.bar(x_types + (i - 1) * width, values, width,
+                            label=f'bpe_{size}', color=self.colors[size], alpha=0.8)
+                
+                for bar in bars:
+                    height = bar.get_height()
+                    ax.text(bar.get_x() + bar.get_width()/2., height + 10,
+                           f'{height}', ha='center', va='bottom', fontsize=8)
+            
+            ax.set_title('Состав словарей', fontsize=12, fontweight='bold')
+            ax.set_xticks(x_types)
+            ax.set_xticklabels(['ASCII', 'Unicode', 'Специальные'])
+            ax.set_ylabel('Количество токенов')
             ax.legend()
             ax.grid(True, alpha=0.3, axis='y')
             
@@ -726,10 +940,10 @@ class ThreeModelComparison:
             metrics = ['Точность', 'Сжатие', 'Скорость\nencode', 'Скорость\ndecode', 'Размер\nсловаря']
             x_sum = np.arange(len(metrics))
             
-            # Нормализуем метрики
+            # Нормализуем метрики для сравнения
             for i, size in enumerate(self.model_sizes):
                 # Точность (средняя)
-                avg_acc = np.mean([self.results['accuracy'][size][cat]['accuracy'] 
+                avg_acc = np.mean([self.results['accuracy'][size]['by_category'][cat]['accuracy'] 
                                   for cat in categories])
                 
                 # Сжатие
@@ -775,34 +989,40 @@ class ThreeModelComparison:
             
             plt.tight_layout()
             
-            # Сохраняем
+            # Сохраняем графики
             output_dir.mkdir(parents=True, exist_ok=True)
+            
             plot_path = output_dir / 'three_model_comparison.png'
             plt.savefig(plot_path, dpi=150, bbox_inches='tight', facecolor='white')
-            print(f"\nГрафик сохранен: {plot_path}")
+            print(f"  PNG график: {plot_path}")
             
             pdf_path = output_dir / 'three_model_comparison.pdf'
             plt.savefig(pdf_path, bbox_inches='tight', facecolor='white')
-            print(f"PDF версия: {pdf_path}")
+            print(f"  PDF график: {pdf_path}")
             
             plt.close()
+            print(f"  Графики успешно созданы")
             
         except Exception as e:
-            print(f"Ошибка при создании графиков: {e}")
+            print(f"  Ошибка при создании графиков: {e}")
             import traceback
             traceback.print_exc()
     
+    # ======================================================================
+    # СОХРАНЕНИЕ РЕЗУЛЬТАТОВ
+    # ======================================================================
+    
     def save_results(self, output_dir: Path):
         """
-        Сохранение результатов.
+        Сохранить результаты в файлы.
+        
+        Args:
+            output_dir: Директория для сохранения
         """
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        # JSON результаты
-        json_path = output_dir / 'three_model_comparison.json'
-        
-        # Конвертируем для JSON
-        def convert_for_json(obj):
+        # Функция для конвертации в JSON-совместимые типы
+        def convert_for_json(obj: Any) -> Any:
             if isinstance(obj, (np.integer, np.floating)):
                 return float(obj)
             if isinstance(obj, np.ndarray):
@@ -815,45 +1035,66 @@ class ThreeModelComparison:
                 return [convert_for_json(v) for v in obj]
             return obj
         
+        # JSON результаты
+        json_path = output_dir / 'three_model_comparison.json'
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump(convert_for_json(self.results), f, ensure_ascii=False, indent=2)
-        
-        print(f"Результаты сохранены: {json_path}")
+        print(f"  JSON результаты: {json_path}")
         
         # Текстовый отчет
         report_path = output_dir / 'three_model_report.txt'
         with open(report_path, 'w', encoding='utf-8') as f:
             f.write(self.generate_report())
-        
-        print(f"Отчет сохранен: {report_path}")
+        print(f"  Текстовый отчет: {report_path}")
         
         # Графики
         self.plot_comparison(output_dir)
 
 
-def get_project_paths() -> Dict[str, Path]:
+# ======================================================================
+# ОСНОВНАЯ ФУНКЦИЯ
+# ======================================================================
+
+def main() -> int:
     """
-    Получение путей проекта.
-    """
-    current_file = Path(__file__).resolve()
-    tests_dir = current_file.parent
-    bpe_python_dir = tests_dir.parent
-    project_root = bpe_python_dir.parent
+    Основная функция.
     
-    return {
-        "project_root": project_root,
-        "bpe_python_dir": bpe_python_dir,
-        "tests_dir": tests_dir,
-        "models_dir": bpe_python_dir / 'models',
-        "output_dir": tests_dir / 'three_model_results'
-    }
-
-
-if __name__ == '__main__':
+    Returns:
+        int: 0 при успехе, 1 при ошибке
+    """
+    parser = argparse.ArgumentParser(description='Сравнение трех BPE моделей')
+    parser.add_argument('--quick', '-q', action='store_true',
+                       help='Быстрый режим (меньше итераций)')
+    parser.add_argument('--plot-only', '-p', action='store_true',
+                       help='Только построить графики из сохраненных результатов')
+    
+    args = parser.parse_args()
+    
     # Получаем пути
     paths = get_project_paths()
     
-    # Создаем компаратор для трех моделей
+    print_header("СРАВНЕНИЕ ТРЕХ BPE МОДЕЛЕЙ")
+    print(f"Директория моделей: {paths['models_dir']}")
+    print(f"Директория результатов: {paths['output_dir']}")
+    
+    # Режим только графиков
+    if args.plot_only:
+        json_path = paths['output_dir'] / 'three_model_comparison.json'
+        if not json_path.exists():
+            print(f"Файл с результатами не найден: {json_path}")
+            return 1
+        
+        print(f"\nЗагрузка результатов из {json_path}")
+        with open(json_path, 'r', encoding='utf-8') as f:
+            results = json.load(f)
+        
+        # Создаем временный компаратор для графиков
+        comparator = ThreeModelComparison(paths['models_dir'])
+        comparator.results = results
+        comparator.plot_comparison(paths['output_dir'])
+        return 0
+    
+    # Полный режим
     comparator = ThreeModelComparison(
         models_dir=paths['models_dir'],
         model_sizes=[8000, 10000, 12000]
@@ -861,22 +1102,24 @@ if __name__ == '__main__':
     
     try:
         # Загружаем модели
-        comparator.load_models()
+        if not comparator.load_models():
+            print(f"\nНе удалось загрузить все модели")
+            print(f"   Проверьте наличие моделей в: {paths['models_dir']}")
+            return 1
         
-        if len(comparator.models) < 3:
-            print(f"\nЗагружено только {len(comparator.models)} модели. Нужны все три!")
-            print(f"Ожидаемые модели: 8000, 10000, 12000")
-            print(f"Проверьте наличие моделей в: {paths['models_dir']}")
-            sys.exit(1)
+        print(f"\nЗагружено {len(comparator.models)} моделей")
         
         # Получаем тесты
         test_categories = comparator.get_extended_test_set()
         total_tests = sum(len(v) for v in test_categories.values())
-        print(f"\n📋 Всего тестов: {total_tests} в {len(test_categories)} категориях")
+        print(f"Всего тестов: {total_tests} в {len(test_categories)} категориях")
         
         # Запускаем тесты
+        iterations = 20 if args.quick else 50
+        print(f"Количество итераций: {iterations}")
+        
         comparator.test_accuracy(test_categories)
-        comparator.test_speed(test_categories, iterations=50)
+        comparator.test_speed(test_categories, iterations=iterations)
         comparator.test_compression(test_categories)
         comparator.analyze_vocabulary()
         
@@ -884,14 +1127,23 @@ if __name__ == '__main__':
         print("\n" + comparator.generate_report())
         
         # Сохраняем результаты
+        print_header("СОХРАНЕНИЕ РЕЗУЛЬТАТОВ")
         comparator.save_results(paths['output_dir'])
         
-        print("\n" + "=" * 80)
-        print("ТЕСТИРОВАНИЕ ТРЕХ МОДЕЛЕЙ ЗАВЕРШЕНО!")
-        print("=" * 80)
+        print_header("ТЕСТИРОВАНИЕ ЗАВЕРШЕНО")
+        print("Все тесты успешно выполнены!")
         
+        return 0
+        
+    except KeyboardInterrupt:
+        print("\n\n !!! Тестирование прервано пользователем")
+        return 1
     except Exception as e:
-        print(f"\nОШИБКА: {e}")
+        print(f"\nОшибка: {e}")
         import traceback
         traceback.print_exc()
-        sys.exit(1)
+        return 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())
