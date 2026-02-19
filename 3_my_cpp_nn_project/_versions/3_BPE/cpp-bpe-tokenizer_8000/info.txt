@@ -1,0 +1,32 @@
+├── bpe/                    # BPE токенизатор (свой)
+│   ├── tokenizer.py            # encode/decode
+│   ├── trainer.py              # обучение
+│   └── vocab.json              # словарь
+
+
+
+
+
+├── data/                   # Подготовка dataset
+│   ├── corpus/
+│   │   ├── corpus.txt		    # все C++ программы поля code (построчно)
+│   │   ├── train_code.txt          # train split (8000)
+│   │   ├── test_code.txt           # test split (500)
+│   │   └── val_code.txt            # val split (800)
+│   ├── metadata/               # метаданные
+│   │   └── dataset_stats.json      # статистика по по результатам очистки датасет
+│   └── raw/                    # не обработанные (не подготовленные) данные
+        └── 2_cpp_code_generation_dataset.csv       # исходный CSV (бэкап)
+
+├── reports/                # Отчеты
+│   ├── figures/                # рисунки по результатам очистки датасет
+│   │   ├── char_frequency.png
+│   │   ├── code_length_distribution.png
+│   │   ├── code_length_violin.png
+│   │   ├── cpp_keywords_wordcloud.png
+│   │   └── train_val_test_distribution.png
+│   └── dataset_report.md       # отчет по результатам очистки датасет
+
+├── scripts/                # Программы
+│   ├── analyze_dataset.py      # анализ очищенного датасет
+│   └── clean_dataset.py        # очистка dataset (извлечение и сохранение данных поля code)

@@ -1,0 +1,12 @@
+# Веб-сервер для токенизатора
+add_executable(tokenizer_server server.cpp)
+# Добавляем пути для Crow
+target_include_directories(tokenizer_server PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/crow/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(tokenizer_server PRIVATE bpe_tokenizer)
+
+# Веб-сервер
+add_subdirectory(web)

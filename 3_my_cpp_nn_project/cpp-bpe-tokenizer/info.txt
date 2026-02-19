@@ -1,0 +1,142 @@
+NS (корневая папка, в которой находится .venv)
+├── .venv    # виртуальное окружение Python
+├── .vscode    # настройки VS Code
+└── 3_my_cpp_nn_project/
+        │
+        cpp-bpe-tokenizer/    # свой BPE токенизатор
+        │   ├── bpe_python/    # Python реализация своего BPE токенизатора
+        │   │   ├── __pycache__/    # Кэш скомпилированных Python файлов
+        │   │   │   └── tokenizer.cpython-312.pyc
+        │   │   ├── models/    # обученные модели
+        │   │   │   ├── bpe_8000/    # модель с размером 8000
+        │   │   │   │   ├── vocab.json    # словарь для модели 8000
+        │   │   │   │   └── merges.txt    # операции слияния для модели 8000
+        │   │   │   ├── bpe_10000/    # модель с размером 10000
+        │   │   │   │   ├── vocab.json    # словарь для модели 10000
+        │   │   │   │   └── merges.txt    # операции слияния для модели 10000
+        │   │   │   └── bpe_12000/    # модель с размером 12000
+        │   │   │       ├── vocab.json    # словарь для модели 12000
+        │   │   │       └── merges.txt    # операции слияния для модели 12000
+        │   │   ├── tests/    # тесты Python реализации
+        │   │   │   ├── three_model_results/    # результаты сравнения моделей
+        │   │   │   │   ├── three_model_comparison.json    # JSON с результатами сравнения
+        │   │   │   │   ├── three_model_comparison.pdf    # PDF отчет
+        │   │   │   │   ├── three_model_comparison.png    # график сравнения
+        │   │   │   │   └── three_model_report.txt    # текстовый отчет
+        │   │   │   ├── test_bpe_tokenizer.py    # тест BPE токенизатора
+        │   │   │   ├── test_compare_models.py    # тест сравнения словарей
+        │   │   │   └── test_compare_speed.py    # тест сравнения скорости
+        │   │   ├── pytorch_integration.py    # связывает токенайзер с PyTorch
+        │   │   ├── tokenizer.py    # класс PETokenizer
+        │   │   └── trainer.py    # обучение tokenizer
+        │   ├── bpe_cpp/ # Cpp реализация своего BPE токенизатора
+        │   │   ├── benchmarks/    # бенчмарки производительности
+        │   │   │   ├── bench_data/    # данные для бенчмарков
+        │   │   │   │   └── sample_code.txt    # примеры кода для тестов
+        │   │   │   ├── bench_comparison.cpp    # прямое сравнение производительности базовой версии и оптимизированной версии
+        │   │   │   ├── bench_fast_tokenizer.cpp    # бенчмарк для оптимизированной версии FastBPETokenizer
+        │   │   │   ├── bench_tokenizer.cpp    # бенчмарк для базовой версии BPETokenizer
+        │   │   │   └── CMakeLists.txt    # сборка бенчмарков
+        │   │   ├── build/    # директория сборки (создается автоматически)
+        │   │   │   └── ... сгенерированные файлы сборки
+        │   │   ├── examples/    # примеры использования
+        │   │   │   ├── batch_example.cpp    # пример пакетной обработки
+        │   │   │   ├── CMakeLists.txt    # сборка примеров
+        │   │   │   ├── compare_with_python.cpp    # сравнение с Python эталоном
+        │   │   │   ├── fast_tokenizer_demo.cpp    # демо оптимизированной версии
+        │   │   │   ├── simple_example.cpp    # простой пример использования
+        │   │   │   └── train_example.cpp    # пример обучения токенизатора
+        │   │   ├── include/    # заголовочные файлы
+        │   │   │   ├── bpe_export.hpp    # заголовочный файл экспорта
+        │   │   │   ├── bpe_tokenizer.hpp    # заголовочный файл базового токенизатора
+        │   │   │   ├── config.h    # сгенерированный конфигурационный файл
+        │   │   │   ├── config.h.in    # шаблон для генерации config.h
+        │   │   │   ├── config.hpp    # конфигурационные параметры
+        │   │   │   ├── fast_tokenizer.hpp    # заголовочный файл оптимизированной версии
+        │   │   │   ├── memory_pool.hpp    # реализация пула памяти
+        │   │   │   ├── optimized_types.hpp    # компактные типы данных
+        │   │   │   ├── parallel_trainer.hpp    # параллельное обучение
+        │   │   │   ├── profiler.hpp    # свой профайлер (профилировщик)
+        │   │   │   ├── simd_utils.hpp    # SIMD оптимизации
+        │   │   │   ├── thread_safe_cache.hpp    # потокобезопасный кэш
+        │   │   │   ├── utils.hpp    # потокобезопасный кэш
+        │   │   │   └── vocabulary.hpp    # управление словарем
+        │   │   ├── models/    # обученные модели для C++
+        │   │   │   │   └── ... файлы моделей (создаются при обучении)
+        │   │   ├── scripts/    # вспомогательные скрипты
+        │   │   │   ├── build.sh    # скрипт сборки проекта
+        │   │   │   ├── compare_performance.py    # сравнение с Python реализацией
+        │   │   │   ├── profile.sh    # запуск профилировщика
+        │   │   │   ├── run_benchmarks.sh    # запуск бенчмарков
+        │   │   │   ├── run_tests.sh    # запуск тестов
+        │   │   │   ├── train_tokenizer.py    # обучение токенизатора
+        │   │   │   └── validate.sh    # валидация против Python эталона
+        │   │   ├── src/    # исходные файлы
+        │   │   │   ├── bpe_export.cpp    # реализацция импорта
+        │   │   │   ├── bpe_tokenizer.cpp    # реализация базового токенизатора
+        │   │   │   ├── fast_tokenizer.cpp    # реализация оптимизированной версии
+        │   │   │   ├── parallel_trainer.cpp    # реализация параллельного обучения
+        │   │   │   ├── python_bindings.cpp    # привязки к Python через pybind11
+        │   │   │   ├── utils.cpp    # реализация утилит
+        │   │   │   └── vocabulary.cpp    # реализация управления словарем
+        │   │   ├── tests/    # модульные тесты
+        │   │   │   ├── CMakeLists.txt    # сборка тестов
+        │   │   │   ├── test_compatibility.cpp    # тест совместимости с Python
+        │   │   │   ├── test_fast_tokenizer.cpp    # тесты оптимизированной версии
+        │   │   │   ├── test_memory_pool.cpp    # тесты пула памяти
+        │   │   │   ├── test_parallel.cpp    # тесты параллельного обучения
+        │   │   │   ├── test_tokenizer.cpp    # тесты базового токенизатора
+        │   │   │   ├── test_trained_model.cpp    # тест обученной модели
+        │   │   │   ├── test_utils.cpp    # тесты утилит
+        │   │   │   └── test_vocabulary.cpp    # тесты управления словарем
+        +│   │   ├── tools/    # вспомогательные утилиты
+        +│   │   │   └── convert_vocab.py    # конвертация словаря из Python в C++
+        │   │   ├── web/    # веб-сервер
+        │   │   │   ├── CMakeLists.txt    # сборка веб-сервера
+        │   │   │   ├── server_crow.cpp    # сервер на базе CrowCpp
+        │   │   │   └── server.cpp    # простой сервер на сокетах
+        +│   │   ├── CMakeLists.txt    # основной CMake файл
+        │   │   └── README.md    # инструкции по сборке
+
+
+
+
+		├── data/                   	# Подготовка dataset
+		│   ├── benchmark_results
+		│   │   ├── charts/			# графики производительности
+		│   │   │   └── ...
+		│   │   ├── benchmark_comparison.json		# сравнение версий
+		│   │   └── profile_results.json		# результаты профилирования
+		│   ├── corpus/
+		│   │   ├── corpus.txt		    	# все C++ программы поля code (построчно)
+		│   │   ├── train_code.txt          	# train split (8000)
+		│   │   ├── test_code.txt           	# test split (500)
+		│   │   └── val_code.txt            	# val split (800)
+		│   ├── metadata/               	# метаданные
+		│   │   └── dataset_stats.json      		# статистика по по результатам очистки датасет
+		│   └── raw/                    	# не обработанные (не подготовленные) данные
+		│       └── 2_cpp_code_generation_dataset.csv	# исходный CSV (бэкап)
+		├── reports/			# Отчеты
+		│   ├── figures/			# рисунки по результатам очистки датасет
+		│   │   ├── char_frequency.png
+		│   │   ├── code_length_distribution.png
+		│   │   ├── code_length_violin.png
+		│   │   ├── cpp_keywords_wordcloud.png
+		│   │   └── train_val_test_distribution.png
+		│   ├── cpp_benchmark_report.md		# отчет по результатам бенчмарков C++
+		│   ├── dataset_report.md       	# отчет по результатам очистки датасет
+		│   └── optimization_report.md		# отчет об оптимизациях
+		├── scripts/                	# Python скрипты
+		│   ├── analyze_dataset.py      	# анализ очищенного датасет
+		│   ├── clean_dataset.py        	# очистка dataset (извлечение и сохранение данных поля code)
+		│   ├── generate_performance_report.py	# генерация отчета
+		│   ├── run_full_benchmark.py		# полное бенчмаркирование
+		│   └── validate_cpp_tokenizer.py	# валидация C++
+		├── test_output/		# Для временных файлов
+		│   └── profile_logs/			# логи профилирования
+		└── docs/			# Для временных файлов
+		    ├── api_reference.md		# API документация
+		    ├── architecture.md			# архитектура проекта
+		    ├── benchmark_results.md		# результаты бенчмарков
+		    └── optimization_notes.md		# заметки по оптимизации
+		.
