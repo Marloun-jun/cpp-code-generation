@@ -1,0 +1,5 @@
+if(EXISTS "/home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/tests/bpe_tests[1]_tests.cmake")
+  include("/home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/tests/bpe_tests[1]_tests.cmake")
+else()
+  add_test(bpe_tests_NOT_BUILT bpe_tests_NOT_BUILT)
+endif()

@@ -1,0 +1,5 @@
+if(EXISTS "/home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/tests/test_parallel[1]_tests.cmake")
+  include("/home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/tests/test_parallel[1]_tests.cmake")
+else()
+  add_test(test_parallel_NOT_BUILT test_parallel_NOT_BUILT)
+endif()

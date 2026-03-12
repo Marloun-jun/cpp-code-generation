@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG -flto=auto -fno-fat-lto-objects CMakeFiles/simple_example.dir/simple_example.cpp.o -o simple_example  ../libbpe_tokenizer.a ../_deps/fmt-build/libfmt.a /usr/lib/gcc/x86_64-linux-gnu/13/libgomp.so /usr/lib/x86_64-linux-gnu/libpthread.a 

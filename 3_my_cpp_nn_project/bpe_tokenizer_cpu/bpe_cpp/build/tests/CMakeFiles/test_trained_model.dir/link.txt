@@ -1,0 +1,1 @@
+/usr/bin/c++  -w -O3 -DNDEBUG -flto=auto -fno-fat-lto-objects CMakeFiles/test_trained_model.dir/test_trained_model.cpp.o -o bin/test_trained_model  ../libbpe_tokenizer.a ../lib/libgtest_main.a ../lib/libgtest.a -lpthread ../_deps/fmt-build/libfmt.a /usr/lib/gcc/x86_64-linux-gnu/13/libgomp.so /usr/lib/x86_64-linux-gnu/libpthread.a 

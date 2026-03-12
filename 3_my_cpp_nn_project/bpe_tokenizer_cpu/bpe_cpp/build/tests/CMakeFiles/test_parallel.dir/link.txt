@@ -1,0 +1,1 @@
+/usr/bin/c++  -w -O3 -DNDEBUG -flto=auto -fno-fat-lto-objects CMakeFiles/test_parallel.dir/test_parallel.cpp.o -o bin/test_parallel  ../libbpe_tokenizer.a ../lib/libgtest_main.a ../lib/libgtest.a -lpthread /usr/lib/gcc/x86_64-linux-gnu/13/libgomp.so /usr/lib/x86_64-linux-gnu/libpthread.a ../_deps/fmt-build/libfmt.a 

@@ -1,0 +1,157 @@
+# ======================================================================
+# CMakeLists_optimized.txt - Оптимизированная конфигурация сборки BPE токенизатора
+# ======================================================================
+#
+# @file CMakeLists_optimized.txt
+# @brief Альтернативная конфигурация с агрессивными оптимизациями
+#
+# @author Евгений П.
+# @date 2026
+# @version 3.0.0
+#
+# @details Этот файл содержит настройки для максимальной производительности:
+#          - Агрессивные оптимизации компилятора (-O3, -march=native)
+#          - LTO (Link Time Optimization)
+#          - Профильная оптимизация (PGO)
+#          - Статическая линковка
+#          - Минимизация размера бинарного файла
+#
+# @usage cmake -C CMakeLists_optimized.txt ..
+# ======================================================================
+
+# ======================================================================
+# Базовые настройки
+# ======================================================================
+
+cmake_minimum_required(VERSION 3.16)
+project(CPPBpeTokenizer VERSION 0.1.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# ======================================================================
+# Режим сборки (всегда Release для оптимизированной версии)
+# ======================================================================
+
+set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+
+# ======================================================================
+# Агрессивные оптимизации
+# ======================================================================
+
+# Базовые оптимизации
+add_compile_options(-O3)
+add_compile_options(-DNDEBUG)
+
+# Архитектурные оптимизации
+add_compile_options(-march=native)
+add_compile_options(-mtune=native)
+add_compile_options(-funroll-loops)
+add_compile_options(-ffast-math)
+add_compile_options(-fomit-frame-pointer)
+
+# Link Time Optimization
+add_compile_options(-flto)
+add_link_options(-flto)
+
+# Оптимизация для конкретных процессоров (раскомментировать при необходимости)
+# add_compile_options(-mavx2 -mbmi2 -mfma)  # Для современных Intel/AMD
+# add_compile_options(-march=skylake)        # Для Intel Skylake
+# add_compile_options(-march=znver3)         # Для AMD Zen 3
+
+# ======================================================================
+# Профильная оптимизация (PGO)
+# ======================================================================
+
+option(USE_PGO "Use Profile Guided Optimization" OFF)
+
+if(USE_PGO)
+    # Генерация профиля
+    add_compile_options(-fprofile-generate)
+    add_link_options(-fprofile-generate)
+    
+    # После запуска сгенерированного бинарного файла для сбора профиля,
+    # переключите на использование профиля:
+    # add_compile_options(-fprofile-use)
+    # add_link_options(-fprofile-use)
+endif()
+
+# ======================================================================
+# Статическая линковка
+# ======================================================================
+
+option(BUILD_STATIC "Build static libraries" ON)
+
+if(BUILD_STATIC)
+    set(BUILD_SHARED_LIBS OFF)
+    add_link_options(-static-libstdc++)
+    add_link_options(-static-libgcc)
+endif()
+
+# ======================================================================
+# Минимизация размера (опционально)
+# ======================================================================
+
+option(MINIMIZE_SIZE "Minimize binary size" OFF)
+
+if(MINIMIZE_SIZE)
+    add_compile_options(-Os)  # Оптимизация по размеру вместо скорости
+    add_compile_options(-fdata-sections)
+    add_compile_options(-ffunction-sections)
+    add_link_options(-Wl,--gc-sections)
+    add_link_options(-Wl,--strip-all)
+endif()
+
+# ======================================================================
+# Подавление предупреждений
+# ======================================================================
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    add_compile_options(-w)  # Отключить все предупреждения
+endif()
+
+# ======================================================================
+# Подключение основного CMakeLists.txt с оптимизированными опциями
+# ======================================================================
+
+# Устанавливаем опции по умолчанию
+set(BUILD_TESTING ON CACHE BOOL "Build tests" FORCE)
+set(BUILD_BENCHMARKS ON CACHE BOOL "Build benchmarks" FORCE)
+set(BUILD_EXAMPLES ON CACHE BOOL "Build examples" FORCE)
+set(BUILD_PYTHON_BINDINGS OFF CACHE BOOL "Build Python bindings" FORCE)  # Отключаем для максимальной производительности
+set(BUILD_WEB_SERVER OFF CACHE BOOL "Build web server" FORCE)            # Отключаем для максимальной производительности
+
+# set(USE_OPENMP ON CACHE BOOL "Use OpenMP" FORCE)
+set(USE_SIMD ON CACHE BOOL "Use SIMD optimizations" FORCE)
+set(USE_CACHE ON CACHE BOOL "Use caching" FORCE)
+
+# Подключаем основной файл конфигурации
+include(${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt)
+
+# ======================================================================
+# Дополнительные оптимизации после подключения основного файла
+# ======================================================================
+
+# Для конкретных таргетов можно добавить специфические оптимизации
+set_property(TARGET bpe_tokenizer APPEND_STRING PROPERTY COMPILE_FLAGS " -ffast-math")
+set_property(TARGET fast_tokenizer_demo APPEND_STRING PROPERTY COMPILE_FLAGS " -ffast-math")
+
+# ======================================================================
+# Информация о сборке
+# ======================================================================
+
+message(STATUS "")
+message(STATUS "========================================")
+message(STATUS "🔥 ОПТИМИЗИРОВАННАЯ СБОРКА")
+message(STATUS "========================================")
+message(STATUS "Уровень оптимизации: -O3 -march=native")
+message(STATUS "LTO: Включен")
+message(STATUS "Статическая линковка: ${BUILD_STATIC}")
+if(USE_PGO)
+    message(STATUS "PGO: Включен")
+endif()
+if(MINIMIZE_SIZE)
+    message(STATUS "Минимизация размера: Включена")
+endif()
+message(STATUS "========================================\n")

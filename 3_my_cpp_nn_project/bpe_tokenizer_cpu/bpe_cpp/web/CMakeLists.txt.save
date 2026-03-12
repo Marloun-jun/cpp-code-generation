@@ -1,0 +1,225 @@
+# ======================================================================
+# @file web/CMakeLists.txt
+# @brief Конфигурация сборки веб-серверов для BPE токенизатора
+# 
+# @version 3.3.0
+# ======================================================================
+
+cmake_minimum_required(VERSION 3.15)
+project(BPEWebServers)
+
+# ======================================================================
+# Опции сборки
+# ======================================================================
+
+option(BUILD_SIMPLE_SERVER "Сборка простого сервера на сокетах" ON)
+option(BUILD_CROW_SERVER "Сборка REST API сервера на CrowCpp" ON)
+option(COPY_MODELS "Копировать модели в директорию сборки" ON)
+
+# ======================================================================
+# Вариант 1: Простой сервер на сокетах (без зависимостей)
+# ======================================================================
+
+if(BUILD_SIMPLE_SERVER AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/server.cpp)
+    message(STATUS "✅ Найден простой сервер: server.cpp")
+    
+    # Добавляем исполняемый файл
+    add_executable(tokenizer_server server.cpp)
+    
+    # Подключаем заголовочные файлы
+    target_include_directories(tokenizer_server PRIVATE 
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include    # Заголовки токенизатора
+    )
+    
+    # Линкуем с библиотекой токенизатора
+    target_link_libraries(tokenizer_server PRIVATE 
+        bpe_tokenizer
+        Threads::Threads
+    )
+    
+    # Устанавливаем C++17 стандарт
+    set_target_properties(tokenizer_server PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+    )
+    
+    # Копируем модели
+    if(COPY_MODELS)
+        add_custom_command(TARGET tokenizer_server POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${CMAKE_CURRENT_SOURCE_DIR}/../models
+                ${CMAKE_CURRENT_BINARY_DIR}/models
+            COMMENT "📁 Копирование моделей для простого сервера"
+        )
+    endif()
+    
+    # Цель для запуска
+    add_custom_target(run_simple_server
+        COMMAND $<TARGET_FILE:tokenizer_server>
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        COMMENT "🚀 Запуск простого сервера на http://localhost:8080"
+        DEPENDS tokenizer_server
+    )
+    
+    message(STATUS "   Сборка: tokenizer_server")
+    message(STATUS "   Запуск: make run_simple_server")
+else()
+    message(STATUS "ℹ️ Простой сервер пропущен (server.cpp не найден)")
+endif()
+
+# ======================================================================
+# Вариант 2: Полноценный REST API сервер на CrowCpp
+# ======================================================================
+
+if(BUILD_CROW_SERVER AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/server_crow.cpp)
+    message(STATUS "✅ Найден Crow сервер: server_crow.cpp")
+    
+    # Поиск CrowCpp в различных местах
+    set(CROW_POSSIBLE_PATHS
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/crow/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/crow/include
+        ${CMAKE_SOURCE_DIR}/third_party/crow/include
+        /usr/local/include/crow
+        /usr/include/crow
+    )
+    
+    set(CROW_INCLUDE_DIR "")
+    foreach(PATH ${CROW_POSSIBLE_PATHS})
+        if(EXISTS ${PATH}/crow/app.h)
+            set(CROW_INCLUDE_DIR ${PATH})
+            break()
+        endif()
+    endforeach()
+    
+    if(CROW_INCLUDE_DIR)
+        message(STATUS "   Crow найден: ${CROW_INCLUDE_DIR}")
+        
+        # Добавляем исполняемый файл Crow сервера
+        add_executable(tokenizer_server_crow server_crow.cpp)
+        
+        # Подключаем заголовочные файлы
+        target_include_directories(tokenizer_server_crow PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/../include
+            ${CROW_INCLUDE_DIR}
+        )
+        
+        # Опционально ищем zlib для сжатия
+        find_package(ZLIB QUIET)
+        if(ZLIB_FOUND)
+            target_include_directories(tokenizer_server_crow PRIVATE ${ZLIB_INCLUDE_DIRS})
+            target_link_libraries(tokenizer_server_crow PRIVATE ZLIB::ZLIB)
+            target_compile_definitions(tokenizer_server_crow PRIVATE CROW_ENABLE_COMPRESSION)
+            message(STATUS "   ZLIB найден: сжатие включено")
+        endif()
+        
+        # Линковка
+        target_link_libraries(tokenizer_server_crow PRIVATE
+            bpe_tokenizer
+            Threads::Threads
+        )
+        
+        # C++17 стандарт
+        set_target_properties(tokenizer_server_crow PROPERTIES
+            CXX_STANDARD 17
+            CXX_STANDARD_REQUIRED ON
+        )
+        
+        # Копируем модели
+        if(COPY_MODELS)
+            add_custom_command(TARGET tokenizer_server_crow POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_directory
+                    ${CMAKE_CURRENT_SOURCE_DIR}/../models
+                    ${CMAKE_CURRENT_BINARY_DIR}/models
+                COMMENT "📁 Копирование моделей для Crow сервера"
+            )
+        endif()
+        
+        # Цель для запуска
+        add_custom_target(run_crow_server
+            COMMAND $<TARGET_FILE:tokenizer_server_crow>
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            COMMENT "🌐 Запуск Crow сервера на http://localhost:8080 (документация: /swagger)"
+            DEPENDS tokenizer_server_crow
+        )
+        
+        message(STATUS "   Сборка: tokenizer_server_crow")
+        message(STATUS "   Запуск: make run_crow_server")
+        message(STATUS "   Swagger UI: http://localhost:8080/swagger")
+        
+    else()
+        message(WARNING "⚠️ Crow не найден! Crow сервер не будет собран.
+   Установите Crow:
+   git clone https://github.com/CrowCpp/Crow.git ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/crow")
+    endif()
+else()
+    message(STATUS "ℹ️ Crow сервер пропущен (server_crow.cpp не найден)")
+endif()
+
+# ======================================================================
+# Общие цели
+# ======================================================================
+
+# Цель для запуска всех серверов
+set(RUN_TARGETS "")
+if(TARGET run_simple_server)
+    list(APPEND RUN_TARGETS run_simple_server)
+endif()
+if(TARGET run_crow_server)
+    list(APPEND RUN_TARGETS run_crow_server)
+endif()
+
+if(RUN_TARGETS)
+    add_custom_target(run_all_servers
+        COMMAND ${CMAKE_COMMAND} -E echo "🚀 Запуск всех серверов..."
+        DEPENDS ${RUN_TARGETS}
+        COMMENT "Запуск всех доступных серверов"
+    )
+endif()
+
+# Цель для очистки
+add_custom_target(clean_servers
+    COMMAND ${CMAKE_COMMAND} -E remove -f
+        ${CMAKE_CURRENT_BINARY_DIR}/tokenizer_server
+        ${CMAKE_CURRENT_BINARY_DIR}/tokenizer_server_crow
+    COMMENT "🧹 Очистка серверов"
+)
+
+# ======================================================================
+# Информация о сборке
+# ======================================================================
+
+message(STATUS "")
+message(STATUS "========================================")
+message(STATUS "📋 Итог:")
+message(STATUS "========================================")
+
+if(TARGET tokenizer_server)
+    message(STATUS "✅ Простой сервер: tokenizer_server")
+    message(STATUS "   Запуск: ./tokenizer_server")
+    message(STATUS "   make run_simple_server")
+endif()
+
+if(TARGET tokenizer_server_crow)
+    message(STATUS "✅ Crow сервер: tokenizer_server_crow")
+    message(STATUS "   Запуск: ./tokenizer_server_crow")
+    message(STATUS "   make run_crow_server")
+    message(STATUS "   Документация: http://localhost:8080/swagger")
+endif()
+
+if(NOT TARGET tokenizer_server AND NOT TARGET tokenizer_server_crow)
+    message(STATUS "⚠️ Серверы не собраны!")
+endif()
+
+message(STATUS "")
+message(STATUS "📌 Цели:")
+if(TARGET run_simple_server)
+    message(STATUS "   make run_simple_server  - запуск простого сервера")
+endif()
+if(TARGET run_crow_server)
+    message(STATUS "   make run_crow_server    - запуск Crow сервера")
+endif()
+if(TARGET run_all_servers)
+    message(STATUS "   make run_all_servers    - запуск всех серверов")
+endif()
+message(STATUS "   make clean_servers      - очистка")
+message(STATUS "========================================\n")
