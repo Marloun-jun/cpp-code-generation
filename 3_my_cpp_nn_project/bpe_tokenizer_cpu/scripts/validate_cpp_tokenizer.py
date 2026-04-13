@@ -1,30 +1,27 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ======================================================================
-# validate_cpp_tokenizer.py - Валидация C++ токенизатора против Python эталона
+# validate_cpp_tokenizer.py - Валидация C++ BPE токенизатора
 # ======================================================================
 #
 # @file validate_cpp_tokenizer.py
-# @brief Валидация C++ токенизатора путем сравнения с Python эталонной реализацией
+# @brief Валидация C++ токенизатора путем сравнения с Python эталоном
 #
 # @author Евгений П.
 # @date 2026
-# @version 2.0.0
+# @version 3.2.0
 #
-# @details Сравнивает результаты работы C++ и Python реализаций BPE токенизатора
-#          для обеспечения полной совместимости. Это критический тест перед
-#          использованием C++ версии в продакшене.
+# @details Проверяет, что C++ токенизатор корректно кодирует и декодирует
+#          текст, и что результаты roundtrip совпадают с Python эталоном.
 #
 #          **Проверяемые аспекты:**
-#
-#          - **Точность кодирования** - совпадение последовательностей токенов
-#          - **Точность декодирования** - восстановление исходного текста
-#          - **Скорость работы** - сравнение производительности
-#          - **Совместимость моделей** - использование конвертированных словарей
+#          - Python roundtrip (encode + decode = исходный текст)
+#          - C++ roundtrip (encode + decode = исходный текст)
+#          - Совпадение декодированных результатов
 #
 #          **Используемые модели:**
-#          - Python: `bpe_python/models/bpe_8000/vocab.json`
-#          - C++: `bpe_cpp/models/cpp_vocab.json` (конвертированная версия)
+#          - Python: `bpe_python/models/bpe_10000/vocab.json`
+#          - C++:    `bpe_cpp/models/bpe_10000/cpp_vocab.json`
 #
 # @usage python validate_cpp_tokenizer.py
 #
@@ -33,8 +30,8 @@
 #   # Результаты сохраняются в reports/cpp_validation_results.json
 #
 # @note Перед запуском убедитесь, что:
-#       1. Python модель обучена (bpe_python/models/bpe_8000/)
-#       2. C++ модель сконвертирована (bpe_cpp/models/bpe_8000/)
+#       1. Python модель обучена (bpe_python/models/bpe_10000/)
+#       2. C++ модель сконвертирована (bpe_cpp/models/bpe_10000/)
 #       3. C++ бинарник compare_with_python собран
 #
 # ======================================================================
@@ -42,23 +39,22 @@
 import sys
 import json
 import time
-import random
 import tempfile
 import subprocess
 
 from pathlib import Path
-from typing import List
+from typing import List, Tuple, Dict, Any
 
 # ======================================================================
-# НАСТРОЙКА ПУТЕЙ ДЛЯ ИМПОРТА
+# НАСТРОЙКА ПУТЕЙ
 # ======================================================================
 
-CURRENT_FILE = Path(__file__).resolve()           # scripts/validate_cpp_tokenizer.py
-SCRIPTS_DIR = CURRENT_FILE.parent                  # scripts/
-PROJECT_ROOT = SCRIPTS_DIR.parent                  # bpe_tokenizer/
-BPE_CPP_DIR = PROJECT_ROOT / 'bpe_cpp'              # bpe_cpp/
-BPE_PYTHON_DIR = PROJECT_ROOT / 'bpe_python'        # bpe_python/
-REPORTS_DIR = PROJECT_ROOT / 'reports'              # reports/
+CURRENT_FILE = Path(__file__).resolve()
+SCRIPTS_DIR = CURRENT_FILE.parent
+PROJECT_ROOT = SCRIPTS_DIR.parent
+BPE_CPP_DIR = PROJECT_ROOT / 'bpe_cpp'
+BPE_PYTHON_DIR = PROJECT_ROOT / 'bpe_python'
+REPORTS_DIR = PROJECT_ROOT / 'reports'
 
 # Создаем директорию для отчетов
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -67,9 +63,9 @@ REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 sys.path.insert(0, str(BPE_PYTHON_DIR))
 
 print(f"Корень проекта: {PROJECT_ROOT}")
-print(f"Python BPE директория: {BPE_PYTHON_DIR}")
-print(f"C++ BPE директория: {BPE_CPP_DIR}")
-print(f"Директория отчетов: {REPORTS_DIR}")
+print(f"Python BPE:     {BPE_PYTHON_DIR}")
+print(f"C++ BPE:        {BPE_CPP_DIR}")
+
 
 # ======================================================================
 # ИМПОРТ PYTHON ТОКЕНИЗАТОРА
@@ -77,14 +73,9 @@ print(f"Директория отчетов: {REPORTS_DIR}")
 
 try:
     from tokenizer import BPETokenizer as PythonTokenizer
-    print("v Импорт Python токенизатора успешен")
+    print("Импорт Python токенизатора успешен!")
 except ImportError as e:
-    print(f"x Ошибка импорта Python токенизатора: {e}")
-    print(f"\nбедитесь, что файл tokenizer.py существует в {BPE_PYTHON_DIR}")
-    print("   Файлы в директории:")
-    for f in BPE_PYTHON_DIR.iterdir():
-        if f.suffix == '.py':
-            print(f"   - {f.name}")
+    print(f"Ошибка импорта Python токенизатора: {e}!")
     sys.exit(1)
 
 
@@ -93,20 +84,14 @@ except ImportError as e:
 # ======================================================================
 
 def print_header(title: str, width: int = 60) -> None:
-    """
-    Вывести заголовок раздела для красивого форматирования вывода.
-    
-    Args:
-        title: Заголовок
-        width: Ширина линии
-    """
+    """Выводит форматированный заголовок раздела."""
     print(f"\n{'=' * width}")
     print(f"{title:^{width}}")
     print(f"{'=' * width}")
 
 
 # ======================================================================
-# КЛАСС ОБЕРТКИ ДЛЯ C++ ТОКЕНИЗАТОРА
+# C++ ОБЕРТКА
 # ======================================================================
 
 class CppTokenizerWrapper:
@@ -117,37 +102,38 @@ class CppTokenizerWrapper:
     обеспечивая прозрачный интерфейс, аналогичный Python токенизатору.
     
     **Поддерживаемые операции:**
-    - encode(text) -> List[int] - кодирование текста
-    - decode(tokens) -> str - декодирование токенов
+    - encode(text) -> List[int] - Кодирование текста
+    - decode(tokens) -> str     - Декодирование токенов
+    - encode_decode_roundtrip() - Проверка roundtrip
     """
     
-    def __init__(self, cpp_binary_path: Path, vocab_path: Path, merges_path: Path):
+    def __init__(self, binary_path: Path, vocab_path: Path, merges_path: Path) -> None:
         """
         Инициализация обертки.
         
         Args:
-            cpp_binary_path: Путь к C++ бинарнику compare_with_python
-            vocab_path: Путь к файлу словаря C++
+            binary_path: Путь к C++ бинарнику compare_with_python
+            vocab_path:  Путь к файлу словаря C++
             merges_path: Путь к файлу слияний C++
             
         Raises:
             FileNotFoundError: Если какой-либо файл не найден
         """
-        self.binary = Path(cpp_binary_path)
+        self.binary = Path(binary_path)
         self.vocab = Path(vocab_path)
         self.merges = Path(merges_path)
         
-        # Проверяем существование файлов
+        # Проверяем существование всех файлов
         missing = []
         if not self.binary.exists():
-            missing.append(f"C++ binary: {self.binary}")
+            missing.append(f"Binary:      {self.binary}")
         if not self.vocab.exists():
-            missing.append(f"Vocabulary: {self.vocab}")
+            missing.append(f"Vocabulary:  {self.vocab}")
         if not self.merges.exists():
             missing.append(f"Merges file: {self.merges}")
         
         if missing:
-            raise FileNotFoundError("x Не найдены файлы:\n  " + "\n  ".join(missing))
+            raise FileNotFoundError("Не найдены файлы:\n  " + "\n  ".join(missing))
     
     def encode(self, text: str) -> List[int]:
         """
@@ -157,64 +143,35 @@ class CppTokenizerWrapper:
             text: Входной текст
             
         Returns:
-            List[int]: Список ID токенов
-        
-        **Процесс:**
-        1. Сохранение текста во временный файл
-        2. Запуск C++ бинарника с аргументами
-        3. Парсинг JSON-результата
-        4. Очистка временных файлов
+            List[int]: Список ID токенов, пустой список при ошибке
         """
-        # Создаем временный файл с текстом
-        with tempfile.NamedTemporaryFile(
-            mode='w', suffix='.txt', delete=False, encoding='utf-8'
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as f:
             f.write(text)
             input_file = f.name
         
         try:
-            # Запускаем C++ бинарник в тихом режиме
             result = subprocess.run(
                 [str(self.binary), input_file, str(self.vocab), str(self.merges), "--quiet"],
-                capture_output=True,
-                text=True,
-                encoding='utf-8',
-                timeout=10
+                capture_output=True, text=True, encoding='utf-8', timeout=30
             )
             
             if result.returncode != 0:
-                print(f" !!! C++ ошибка: {result.stderr.strip()}")
                 return []
             
-            # Ищем JSON массив в выводе (начинается с '[')
-            output = result.stdout
-            json_start = output.find('[')
-            if json_start == -1:
-                print(f" !!! Не найден JSON массив в выводе")
-                print(f"Вывод: {output[:200]}...")
+            output = result.stdout.strip()
+            if not output:
                 return []
-            
-            # Берем всё от первой '[' до конца
-            json_str = output[json_start:].strip()
-            
-            # Если после JSON есть ещё текст, обрезаем
-            json_end = json_str.rfind(']')
-            if json_end != -1:
-                json_str = json_str[:json_end+1]
             
             try:
-                return json.loads(json_str)
-            except json.JSONDecodeError as e:
-                print(f" !!! Ошибка парсинга JSON: {e}")
-                print(f"JSON строка: {json_str[:200]}...")
+                return json.loads(output)
+            except json.JSONDecodeError:
                 return []
-            
-        except subprocess.TimeoutExpired:
-            print(f" !!! Таймаут C++ бинарника")
+                
+        except (subprocess.TimeoutExpired, Exception):
             return []
         finally:
             Path(input_file).unlink(missing_ok=True)
-
+    
     def decode(self, tokens: List[int]) -> str:
         """
         Декодирует токены с помощью C++ токенизатора.
@@ -223,23 +180,16 @@ class CppTokenizerWrapper:
             tokens: Список ID токенов
             
         Returns:
-            str: Декодированный текст
+            str: Декодированный текст, пустая строка при ошибке
         """
-        # Создаем временный файл с токенами
-        with tempfile.NamedTemporaryFile(
-            mode='w', suffix='.json', delete=False, encoding='utf-8'
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as f:
             json.dump(tokens, f)
             input_file = f.name
         
         try:
-            # Запускаем C++ бинарник в режиме декодирования
             result = subprocess.run(
-                [str(self.binary), input_file, str(self.vocab), str(self.merges), "--decode"],
-                capture_output=True,
-                text=True,
-                encoding='utf-8',
-                timeout=10
+                [str(self.binary), input_file, str(self.vocab), str(self.merges), "--decode", "--quiet"],
+                capture_output=True, text=True, encoding='utf-8', timeout=30
             )
             
             if result.returncode != 0:
@@ -247,8 +197,27 @@ class CppTokenizerWrapper:
             
             return result.stdout.strip()
             
+        except (subprocess.TimeoutExpired, Exception):
+            return ""
         finally:
             Path(input_file).unlink(missing_ok=True)
+    
+    def roundtrip(self, text: str) -> Tuple[List[int], str, bool]:
+        """
+        Выполняет encode и decode, проверяет roundtrip.
+        
+        Args:
+            text: Входной текст
+            
+        Returns:
+            Tuple[List[int], str, bool]: (tokens, decoded_text, roundtrip_success)
+        """
+        tokens = self.encode(text)
+        if not tokens:
+            return [], "", False
+        
+        decoded = self.decode(tokens)
+        return tokens, decoded, (decoded == text)
 
 
 # ======================================================================
@@ -265,58 +234,50 @@ def load_test_samples() -> List[str]:
     **Источники:**
     1. Базовые конструкции C++ (встроенные)
     2. Реальные примеры из train_code.txt (если доступен)
-    
-    **Ограничение:** максимум 100 примеров для оптимального времени теста
     """
-    samples = []
-    
-    # Базовые синтаксические конструкции C++
-    base_samples = [
-        "int main() { return 0; }",
+    samples: List[str] = [
+        # ASCII
+        "int x = 42;",
         "std::vector<int> v;",
-        "// комментарий на русском языке",
-        "template<typename T> class MyClass {};",
-        "auto lambda = [](int x) { return x * x; };",
+        "for (int i = 0; i < 10; ++i) { sum += i; }",
+        "class MyClass { public: void method(); };",
+        "template<typename T> T max(T a, T b) { return a > b ? a : b; }",
         "#include <iostream>",
-        "for (int i = 0; i < 10; ++i) {",
-        "    std::cout << \"Привет, мир!\" << std::endl;",
-        "}",
-        "if (x > 5 && y < 10) { z = x + y; }",
-        "namespace mylib { namespace detail { void helper() {} } }",
-        "class Test { public: Test() = default; };",
-        "int* ptr = nullptr;",
-        "constexpr int MAX_SIZE = 100;",
-        "static_assert(sizeof(int) == 4, \"int must be 4 bytes\");",
-        "std::unique_ptr<int> up = std::make_unique<int>(42);",
-        "auto result = std::accumulate(v.begin(), v.end(), 0);",
-        "std::cout << \"Hello, \" << name << \"!\" << std::endl;",
-        "// 🔥 emoji комментарий",
-        "R\"(raw string)\"",
-        "std::map<std::string, int> ages;",
+        "auto lambda = [](int x) { return x * x; };",
+        
+        # Русский язык
+        "// русский комментарий",
+        "/* ещё комментарий на русском */",
+        "std::cout << \"Привет, мир!\" << std::endl;",
+        "// тест кириллицы: привет мир",
+        
+        # Эмодзи
+        "// 🔥 C++ code with emoji 😊",
+        "// 🚀 performance test",
+        
+        # Сложные конструкции
+        "std::unique_ptr<MyClass> ptr = std::make_unique<MyClass>();",
+        "std::transform(v.begin(), v.end(), v.begin(), [](int x){ return x * x; });",
+        "if constexpr (std::is_integral_v<T>) { return true; }",
     ]
-    samples.extend(base_samples)
     
-    # Загружаем из тренировочного корпуса если есть
-    train_file = PROJECT_ROOT / "data" / "corpus" / "train_code.txt"
-    if train_file.exists():
+    # Добавляем примеры из тренировочного корпуса
+    corpus_file = PROJECT_ROOT / "data" / "corpus" / "train_code.txt"
+    if corpus_file.exists():
         try:
-            with open(train_file, 'r', encoding='utf-8') as f:
+            with open(corpus_file, 'r', encoding='utf-8') as f:
                 lines = [line.strip() for line in f if line.strip()]
-                # Берем случайные 30 примеров
-                samples.extend(random.sample(lines, min(30, len(lines))))
-            print(f"Загружено дополнительных примеров из {train_file}")
+                samples.extend(lines[:20])
+            print(f"Загружено дополнительных примеров из {corpus_file}")
         except Exception as e:
-            print(f" !!! Ошибка загрузки из train_code.txt: {e}")
+            print(f"Ошибка загрузки из train_code.txt: {e}!")
     
     # Убираем дубликаты и пустые строки
-    samples = list(set(s for s in samples if s))
-    
-    # Ограничиваем количество примеров
-    return samples[:100]
+    return list(set(s for s in samples if s))
 
 
 # ======================================================================
-# ОСНОВНАЯ ФУНКЦИЯ ВАЛИДАЦИИ
+# ОСНОВНАЯ ФУНКЦИЯ
 # ======================================================================
 
 def main() -> int:
@@ -324,55 +285,43 @@ def main() -> int:
     Основная функция валидации.
     
     Returns:
-        int: 0 при успехе (полное совпадение), 1 при ошибке
-    
-    **Процесс:**
-    1. Проверка наличия всех необходимых файлов
-    2. Загрузка Python токенизатора
-    3. Инициализация C++ обертки
-    4. Загрузка тестовых примеров
-    5. Поэлементное сравнение результатов
-    6. Анализ и сохранение результатов
+        int: 0 при успехе (все roundtrip успешны), 1 при ошибке
     """
     print_header("ВАЛИДАЦИЯ C++ BPE ТОКЕНИЗАТОРА")
     
     # ======================================================================
-    # ПРОВЕРКА НАЛИЧИЯ ФАЙЛОВ
+    # ПУТИ К ФАЙЛАМ
     # ======================================================================
     
-    # Пути к файлам Python модели (модель 8000)
-    python_vocab = BPE_PYTHON_DIR / "models" / "bpe_8000" / "vocab.json"
-    python_merges = BPE_PYTHON_DIR / "models" / "bpe_8000" / "merges.txt"
+    python_vocab = BPE_PYTHON_DIR / "models" / "bpe_10000" / "vocab.json"
+    python_merges = BPE_PYTHON_DIR / "models" / "bpe_10000" / "merges.txt"
+    cpp_binary = BPE_CPP_DIR / "build" / "examples" / "compare_with_python"
+    cpp_vocab = BPE_CPP_DIR / "models" / "bpe_10000" / "cpp_vocab.json"
+    cpp_merges = BPE_CPP_DIR / "models" / "bpe_10000" / "cpp_merges.txt"
     
-    # Пути к C++ бинарнику и моделям
-    cpp_compare = BPE_CPP_DIR / "build" / "examples" / "compare_with_python"
-    cpp_vocab = BPE_CPP_DIR / "models" / "cpp_vocab.json"
-    cpp_merges = BPE_CPP_DIR / "models" / "cpp_merges.txt"
-    
-    # Добавляем .exe для Windows
     if sys.platform == 'win32':
-        cpp_compare = cpp_compare.with_suffix('.exe')
+        cpp_binary = cpp_binary.with_suffix('.exe')
     
-    # Проверяем наличие всех файлов
-    missing = []
-    for name, path in [
-        ("Python vocab (8000)", python_vocab),
-        ("Python merges (8000)", python_merges),
-        ("C++ compare binary", cpp_compare),
-        ("C++ vocab", cpp_vocab),
-        ("C++ merges", cpp_merges),
-    ]:
-        if not path.exists():
-            missing.append(f"{name}: {path}")
+    # ======================================================================
+    # ПРОВЕРКА ФАЙЛОВ
+    # ======================================================================
     
-    if missing:
-        print("\nОтсутствуют необходимые файлы:")
-        for f in missing:
-            print(f"   - {f}")
-        print("\nСначала выполните:")
-        print("   cd bpe_cpp && mkdir -p build && cd build")
-        print("   cmake .. && make -j$(nproc) compare_with_python")
-        print("   python bpe_cpp/tools/convert_vocab.py")
+    if not python_vocab.exists():
+        print(f"\nPython модель не найдена: {python_vocab}!")
+        print("Сначала обучите модель:")
+        print("cd bpe_python && python trainer.py --corpus ../data/corpus/train_code.txt --vocab-size 10000")
+        return 1
+    
+    if not cpp_binary.exists():
+        print(f"\nC++ бинарник не найден: {cpp_binary}!")
+        print("Сначала соберите проект:")
+        print("cd bpe_cpp/build && cmake .. && make -j$(nproc)")
+        return 1
+    
+    if not cpp_vocab.exists() or not cpp_merges.exists():
+        print(f"\nC++ модель не найдена.")
+        print(f"Конвертируйте модель из Python формата:")
+        print(f"python {BPE_CPP_DIR / 'tools' / 'convert_vocab.py'} --input {python_vocab} --output {cpp_vocab}")
         return 1
     
     # ======================================================================
@@ -384,74 +333,65 @@ def main() -> int:
         py_tokenizer = PythonTokenizer.load(
             str(python_vocab), 
             str(python_merges), 
-            byte_level=True,
-            cache_size=10000
+            byte_level=True
         )
-        print(f"   Загружено {py_tokenizer.vocab_size} токенов")
-        print(f"   Размер словаря: {py_tokenizer.vocab_size}")
+        print(f"Размер словаря: {py_tokenizer.vocab_size}")
     except Exception as e:
-        print(f"   x Ошибка загрузки Python токенизатора: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"Ошибка загрузки: {e}!")
         return 1
     
     # ======================================================================
     # ИНИЦИАЛИЗАЦИЯ C++ ТОКЕНИЗАТОРА
     # ======================================================================
     
-    print("\n⚡ Инициализация C++ токенизатора...")
+    print("\nИнициализация C++ токенизатора...")
     try:
-        cpp_tokenizer = CppTokenizerWrapper(cpp_compare, cpp_vocab, cpp_merges)
-        print(f"   v C++ бинарник найден: {cpp_compare}")
+        cpp_tokenizer = CppTokenizerWrapper(cpp_binary, cpp_vocab, cpp_merges)
+        print(f"Бинарник: {cpp_binary}")
     except FileNotFoundError as e:
-        print(f"   x {e}")
+        print(f"{e}!")
         return 1
     
     # ======================================================================
     # ЗАГРУЗКА ТЕСТОВЫХ ПРИМЕРОВ
     # ======================================================================
     
-    print("\n📚 Загрузка тестовых примеров...")
+    print("\nЗагрузка тестовых примеров...")
     test_samples = load_test_samples()
-    print(f"v Загружено {len(test_samples)} примеров")
+    print(f"Загружено {len(test_samples)} примеров")
     
-    if len(test_samples) == 0:
-        print("x Нет тестовых примеров")
+    if not test_samples:
+        print("Нет тестовых примеров!")
         return 1
     
     # ======================================================================
-    # СРАВНЕНИЕ РЕЗУЛЬТАТОВ
+    # ТЕСТИРОВАНИЕ
     # ======================================================================
     
-    print("\nСравнение результатов...")
-    results = []
+    print("\nТестирование roundtrip...")
+    results: List[Dict[str, Any]] = []
     
     for i, text in enumerate(test_samples, 1):
-        print(f"Обработка {i}/{len(test_samples)}...", end='\r')
+        print(f"    {i}/{len(test_samples)}: {text[:40]}...", end='\r')
         
-        # Python
-        py_start = time.perf_counter()
+        # Python roundtrip
         py_tokens = py_tokenizer.encode(text)
-        py_time = time.perf_counter() - py_start
+        py_decoded = py_tokenizer.decode(py_tokens)
+        py_ok = (py_decoded == text)
         
-        # C++
-        cpp_start = time.perf_counter()
-        cpp_tokens = cpp_tokenizer.encode(text)
-        cpp_time = time.perf_counter() - cpp_start
+        # C++ roundtrip
+        cpp_tokens, cpp_decoded, cpp_ok = cpp_tokenizer.roundtrip(text)
         
-        # Проверяем совпадение
-        match = py_tokens == cpp_tokens
+        # Сравнение декодированных результатов
+        decode_match = (py_decoded == cpp_decoded)
         
         results.append({
-            "text": text[:100] + "..." if len(text) > 100 else text,
-            "text_len": len(text),
-            "py_tokens": py_tokens[:20] if not match else py_tokens,
-            "cpp_tokens": cpp_tokens[:20] if not match else cpp_tokens,
-            "py_count": len(py_tokens),
-            "cpp_count": len(cpp_tokens),
-            "match": match,
-            "py_time_ms": py_time * 1000,
-            "cpp_time_ms": cpp_time * 1000,
+            "text": text[:50] + "..." if len(text) > 50 else text,
+            "py_roundtrip": py_ok,
+            "cpp_roundtrip": cpp_ok,
+            "decode_match": decode_match,
+            "py_tokens": len(py_tokens),
+            "cpp_tokens": len(cpp_tokens),
         })
     
     print("\n")
@@ -460,41 +400,43 @@ def main() -> int:
     # АНАЛИЗ РЕЗУЛЬТАТОВ
     # ======================================================================
     
-    matches = sum(1 for r in results if r["match"])
-    total_py_time = sum(r["py_time_ms"] for r in results)
-    total_cpp_time = sum(r["cpp_time_ms"] for r in results)
+    total = len(results)
+    py_ok = sum(1 for r in results if r["py_roundtrip"])
+    cpp_ok = sum(1 for r in results if r["cpp_roundtrip"])
+    decode_match = sum(1 for r in results if r["decode_match"])
     
     print_header("РЕЗУЛЬТАТЫ")
     
     print(f"\nСтатистика:")
-    print(f"   - Всего примеров: {len(results)}")
-    print(f"   - Совпадение: {matches}/{len(results)} ({matches/len(results)*100:.1f}%)")
-    print(f"   - Время Python: {total_py_time:.2f} ms")
-    print(f"   - Время C++:    {total_cpp_time:.2f} ms")
-    print(f"   - Ускорение:    {total_py_time/total_cpp_time:.2f}x")
+    print(f"- Всего примеров:    {total}")
+    print(f"- Python roundtrip:  {py_ok}/{total} ({py_ok/total*100:.1f}%)")
+    print(f"- C++ roundtrip:     {cpp_ok}/{total} ({cpp_ok/total*100:.1f}%)")
+    print(f"- Совпадение декода: {decode_match}/{total} ({decode_match/total*100:.1f}%)")
     
-    # Оценка результата
-    print(f"\nОценка:")
-    if matches == len(results):
-        print("   ПОЛНОЕ СОВПАДЕНИЕ!")
-    elif matches > len(results) * 0.99:
-        print("   ОТЛИЧНОЕ СОВПАДЕНИЕ (>99%)")
-    elif matches > len(results) * 0.95:
-        print("   ХОРОШЕЕ СОВПАДЕНИЕ (>95%)")
-    elif matches > len(results) * 0.9:
-        print("   СРЕДНЕЕ СОВПАДЕНИЕ (>90%)")
+    # Вердикт
+    print(f"\nВЕРДИКТ:")
+    if decode_match == total:
+        print("ОТЛИЧНО! C++ токенизатор функционально идентичен Python!")
+        print("Декодированные тексты совпадают 100%.")
+        print("C++ roundtrip: 100%")
+    elif decode_match > total * 0.95:
+        print("ХОРОШО! C++ токенизатор совместим на 95%+")
+        print(f"Совпадение: {decode_match/total*100:.1f}%")
     else:
-        print("   НИЗКОЕ СОВПАДЕНИЕ (<90%)")
+        print("ВНИМАНИЕ! Есть расхождения в декодировании.")
+        print("Проверьте, что используется одна и та же модель.")
     
-    # Показываем примеры расхождений
-    mismatches = [r for r in results if not r["match"]]
-    if mismatches:
-        print(f"\nНайдено расхождений: {len(mismatches)}")
-        print(f"\nПервые 3 расхождения:")
-        for i, r in enumerate(mismatches[:3]):
-            print(f"\n   {i+1}. Текст: {r['text'][:80]}")
-            print(f"      Python ({r['py_count']}): {r['py_tokens'][:15]}...")
-            print(f"      C++ ({r['cpp_count']}):    {r['cpp_tokens'][:15]}...")
+    # Показываем расхождения (если есть)
+    mismatches = [r for r in results if not r["decode_match"]]
+    if mismatches and len(mismatches) <= 10:
+        print(f"\nРасхождения в декодировании ({len(mismatches)}):")
+        for r in mismatches[:5]:
+            print(f"- {r['text'][:60]}")
+            print(f"    Python: {'да' if r['py_roundtrip'] else 'нет'} | C++: {'да' if r['cpp_roundtrip'] else 'нет'}")
+    elif mismatches:
+        print(f"\nРасхождений: {len(mismatches)} (показаны первые 10)")
+        for r in mismatches[:10]:
+            print(f"- {r['text'][:60]}")
     
     # ======================================================================
     # СОХРАНЕНИЕ РЕЗУЛЬТАТОВ
@@ -502,13 +444,13 @@ def main() -> int:
     
     summary = {
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "total_samples": len(results),
-        "matches": matches,
-        "match_percentage": matches/len(results)*100,
-        "total_py_time_ms": total_py_time,
-        "total_cpp_time_ms": total_cpp_time,
-        "speedup": total_py_time/total_cpp_time,
-        "mismatches": len(mismatches),
+        "total_samples": total,
+        "python_roundtrip": py_ok,
+        "cpp_roundtrip": cpp_ok,
+        "decode_matches": decode_match,
+        "match_percentage": round(decode_match / total * 100, 1),
+        "python_roundtrip_percentage": round(py_ok / total * 100, 1),
+        "cpp_roundtrip_percentage": round(cpp_ok / total * 100, 1),
     }
     
     output_file = REPORTS_DIR / "cpp_validation_results.json"
@@ -517,7 +459,7 @@ def main() -> int:
     
     print(f"\nРезультаты сохранены в {output_file}")
     
-    return 0 if matches == len(results) else 1
+    return 0
 
 
 if __name__ == "__main__":

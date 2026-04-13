@@ -1,7 +1,0 @@
-# requirements.txt
-numpy
-torch
-matplotlib
-plotly
-psutil
-tokenizers

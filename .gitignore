@@ -103,3 +103,13 @@ Thumbs.db
 # Игнорируем все CSV, кроме нужных
 **/*.csv
 !3_my_cpp_nn_project/cpp-bpe-tokenizer/bpe_cpp/benchmarks/bench_data/sample_code.txt
+
+# ======================================================================
+# Docker образы (большие файлы)
+# ======================================================================
+*.tar
+*.tar.gz
+*.tar.xz
+*.tar.bz2
+docker-images/
+*.docker-image

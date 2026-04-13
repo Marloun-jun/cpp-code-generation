@@ -24,8 +24,8 @@
 #
 #          3. **Проверка соответствия коду (только для нарушителей):**
 #             - Если в explicit_std слово без std::, проверяем его в коде
-#             - Если в коде оно используется с std:: → ОШИБКА НЕСООТВЕТСТВИЯ
-#             - Если в коде тоже без std:: → просто предупреждение
+#             - Если в коде оно используется с std:: -> ОШИБКА НЕСООТВЕТСТВИЯ
+#             - Если в коде тоже без std:: -> просто предупреждение
 #
 #          4. **Автоматическое исправление (опционально):**
 #             - Добавление std:: к ключевым словам в explicit_std, если в коде они с std::
@@ -38,8 +38,8 @@
 # @usage python p_5_keywords.py
 #
 # @example
-#   python p_5_keywords.py                    # только проверка
-#   python p_5_keywords.py --fix              # проверка + исправление
+#   python p_5_keywords.py          # Только проверка
+#   python p_5_keywords.py --fix    # Проверка + исправление
 #   python p_5_keywords.py --fix --output fixed_dataset.csv
 #
 # ======================================================================
@@ -48,6 +48,7 @@ import sys
 import os
 import random
 import argparse
+
 from typing import List, Tuple, Dict, Set
 
 
@@ -55,14 +56,14 @@ from typing import List, Tuple, Dict, Set
 # КОНСТАНТЫ
 # ======================================================================
 
-# ключевые слова, которые ВСЕГДА требуют std:: в explicit_std
+# Ключевые слова, которые требуют std:: в explicit_std
 ALWAYS_STD_KEYWORDS = {
     # IO streams
     'cout', 'endl', 'cin', 'cerr', 'clog',
     'ostream', 'istream', 'iostream', 'fstream', 'sstream',
     'stringstream', 'ostringstream', 'istringstream',
     
-    # strings
+    # Strings
     'string', 'wstring', 'u16string', 'u32string',
     'string_view', 'wstring_view',
     
@@ -78,30 +79,30 @@ ALWAYS_STD_KEYWORDS = {
     'binary_search', 'lower_bound', 'upper_bound',
     'generate',
     
-    # smart pointers
+    # Smart pointers
     'unique_ptr', 'shared_ptr', 'weak_ptr',
     
-    # threading
+    # Threading
     'thread', 'mutex', 'lock_guard', 'unique_lock',
     'condition_variable', 'future', 'promise', 'async',
     
-    # utilities
+    # Utilities
     'pair', 'tuple', 'optional', 'variant', 'any',
     'function', 'bind', 'ref', 'cref',
     
-    # chrono
+    # Chrono
     'chrono', 'steady_clock', 'system_clock', 'high_resolution_clock',
     'hours', 'minutes', 'seconds', 'milliseconds', 'microseconds',
     
-    # filesystem
+    # Filesystem
     'filesystem', 'path', 'directory_iterator', 'recursive_directory_iterator',
     
-    # other std
+    # Other std
     'regex', 'random', 'ratio', 'complex', 'valarray',
     'bitset', 'type_info', 'type_index', 'bad_cast',
     'bad_alloc', 'exception', 'runtime_error', 'logic_error',
     
-    # common patterns
+    # Common patterns
     'getline', 'stoi', 'stod', 'to_string', 'move', 'forward'
 }
 
@@ -109,13 +110,13 @@ ALWAYS_STD_KEYWORDS = {
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 # ======================================================================
 
-def print_header(title: str, width: int = 70) -> None:
+def print_header(title: str, width: int = 60) -> None:
     """Вывести заголовок раздела."""
     print(f"\n{'=' * width}")
     print(f"{title:^{width}}")
     print(f"{'=' * width}")
 
-def print_subheader(title: str, width: int = 70) -> None:
+def print_subheader(title: str, width: int = 60) -> None:
     """Вывести подзаголовок раздела."""
     print(f"\n{'-' * width}")
     print(f"{title}")
@@ -126,10 +127,10 @@ def is_std_library_keyword(keyword: str) -> bool:
     Проверяет, относится ли ключевое слово к стандартной библиотеке C++.
     
     Args:
-        keyword:    Проверяемое ключевое слово (без префикса std::)
+        keyword: Проверяемое ключевое слово (без префикса std::)
         
     Returns:
-        bool:    True если слово должно иметь префикс std:: в explicit_std
+        bool: True если слово должно иметь префикс std:: в explicit_std
     """
     base_keyword = keyword[5:] if keyword.startswith('std::') else keyword
     return base_keyword in ALWAYS_STD_KEYWORDS
@@ -139,13 +140,13 @@ def keyword_in_code(keyword: str, code: str) -> bool:
     Проверяет, присутствует ли ключевое слово в коде.
     
     Args:
-        keyword:    Ключевое слово для поиска
-        code:       Код программы
+        keyword: Ключевое слово для поиска
+        code:    Код программы
         
     Returns:
-        bool:       True если слово найдено в коде
+        bool: True если слово найдено в коде
     """
-    # ищем как отдельное слово
+    # Ищем как отдельное слово
     patterns = [
         f" {keyword} ", f"{keyword} ", f" {keyword}",
         f"({keyword}", f"{keyword})", f"<{keyword}>",
@@ -157,7 +158,7 @@ def keyword_in_code(keyword: str, code: str) -> bool:
         if pattern in code:
             return True
     
-    # проверяем начало и конец строки
+    # Проверяем начало и конец строки
     if code.startswith(keyword) or code.endswith(keyword):
         return True
     
@@ -168,10 +169,10 @@ def extract_fields(line: str) -> List[str]:
     Извлекает поля из CSV строки с учётом кавычек.
     
     Args:
-        line:    Строка CSV
+        line: Строка CSV
         
     Returns:
-        List[str]:    Список полей
+        List[str]: Список полей
     """
     fields = []
     current_field = []
@@ -214,18 +215,18 @@ def fix_keywords_in_file(input_filename: str, output_filename: str) -> Dict:
     Исправляет ключевые слова в датасете.
     
     Args:
-        input_filename:     Исходный файл
-        output_filename:    Файл для сохранения исправленной версии
+        input_filename:  Исходный файл
+        output_filename: Файл для сохранения исправленной версии
         
     Returns:
-        Dict:    Статистика исправлений
+        Dict: Статистика исправлений
     
     **Что исправляется:**
     - В explicit_std: добавление std:: к ключевым словам, если в коде они используются с std::
     - В using_namespace_std: пока ничего не исправляем (может быть добавлено позже)
     """
     print_header("ИСПРАВЛЕНИЕ КЛЮЧЕВЫХ СЛОВ")
-    print(f"Исходный файл: {input_filename}")
+    print(f"Исходный файл:     {input_filename}")
     print(f"Исправленный файл: {output_filename}")
     
     stats = {
@@ -236,7 +237,7 @@ def fix_keywords_in_file(input_filename: str, output_filename: str) -> Dict:
         'errors': 0
     }
     
-    fixes = []    # для детального отчёта
+    fixes = []    # Для детального отчёта
     
     try:
         with open(input_filename, 'r', encoding='utf-8') as fin, \
@@ -246,38 +247,38 @@ def fix_keywords_in_file(input_filename: str, output_filename: str) -> Dict:
                 line = line.rstrip('\n')
                 stats['total_lines'] += 1
                 
-                # пропускаем пустые строки и комментарии
+                # Пропускаем пустые строки и комментарии
                 if not line or line.startswith('#'):
                     fout.write(line + '\n')
                     stats['skipped_lines'] += 1
                     continue
                 
                 try:
-                    # парсим строку
+                    # Парсим строку
                     fields = extract_fields(line)
                     
                     if len(fields) < 5:
-                        # недостаточно полей, сохраняем как есть
+                        # Недостаточно полей, сохраняем как есть
                         fout.write(line + '\n')
                         stats['errors'] += 1
                         continue
                     
-                    # извлекаем поля
+                    # Извлекаем поля
                     desc = fields[0]
                     code = fields[1]
                     style = fields[2]
                     topic = fields[3]
                     keywords_field = fields[4]
                     
-                    # убираем внешние кавычки у keywords для обработки
+                    # Убираем внешние кавычки у keywords для обработки
                     if keywords_field.startswith('"') and keywords_field.endswith('"'):
                         keywords_field = keywords_field[1:-1]
                     
-                    # разбиваем ключевые слова
+                    # Разбиваем ключевые слова
                     keywords = [k.strip() for k in keywords_field.split(',') if k.strip()]
                     original_keywords = keywords.copy()
                     
-                    # анализируем и исправляем
+                    # Анализируем и исправляем
                     line_fixed = False
                     line_fixes = []
                     
@@ -285,17 +286,17 @@ def fix_keywords_in_file(input_filename: str, output_filename: str) -> Dict:
                         for i, kw in enumerate(keywords):
                             base_kw = kw[5:] if kw.startswith('std::') else kw
                             
-                            # если это std-ключевое слово и оно без std::
+                            # Если это std-ключевое слово и оно без std::
                             if is_std_library_keyword(base_kw) and not kw.startswith('std::'):
-                                # проверяем, используется ли в коде с std::
+                                # Проверяем, используется ли в коде с std::
                                 if f"std::{base_kw}" in code:
-                                    # исправляем: добавляем std::
+                                    # Исправляем: добавляем std::
                                     keywords[i] = f"std::{base_kw}"
                                     line_fixed = True
                                     stats['fixed_keywords'] += 1
-                                    line_fixes.append(f"{kw} → std::{base_kw}")
+                                    line_fixes.append(f"{kw} -> std::{base_kw}")
                     
-                    # если были исправления, обновляем строку
+                    # Если были исправления, обновляем строку
                     if line_fixed:
                         stats['fixed_lines'] += 1
                         fixes.append({
@@ -304,38 +305,38 @@ def fix_keywords_in_file(input_filename: str, output_filename: str) -> Dict:
                             'fixes': line_fixes
                         })
                         
-                        # собираем исправленную строку
+                        # Собираем исправленную строку
                         new_keywords_field = ', '.join(keywords)
                         
-                        # восстанавливаем кавычки
+                        # Восстанавливаем кавычки
                         new_line = f'{desc},{code},{style},{topic},"{new_keywords_field}"'
                         fout.write(new_line + '\n')
                     else:
                         fout.write(line + '\n')
                         
                 except Exception as e:
-                    print(f"X Ошибка в строке {line_num}: {e}")
+                    print(f"Ошибка в строке {line_num}: {e}!")
                     fout.write(line + '\n')
                     stats['errors'] += 1
     
     except Exception as e:
-        print(f"X Критическая ошибка: {e}")
+        print(f"Критическая ошибка: {e}!")
         return stats
     
-    # выводим статистику
+    # Выводим статистику
     print_subheader("СТАТИСТИКА ИСПРАВЛЕНИЙ:")
-    print(f"- всего строк обработано: {stats['total_lines']}")
-    print(f"- строк с исправлениями: {stats['fixed_lines']}")
-    print(f"- исправлено ключевых слов: {stats['fixed_keywords']}")
-    print(f"- пропущено (пустые/комментарии): {stats['skipped_lines']}")
-    print(f"- ошибок: {stats['errors']}")
+    print(f"- Всего строк обработано:         {stats['total_lines']}")
+    print(f"- Строк с исправлениями:          {stats['fixed_lines']}")
+    print(f"- Исправлено ключевых слов:       {stats['fixed_keywords']}")
+    print(f"- Пропущено (пустые/комментарии): {stats['skipped_lines']}")
+    print(f"- Ошибок:                         {stats['errors']}")
     
     if fixes:
         print_subheader("ПРИМЕРЫ ИСПРАВЛЕНИЙ:")
         for fix in fixes[:5]:
             print(f"\nСтрока {fix['line']} ({fix['style']}):")
             for f in fix['fixes']:
-                print(f"     • {f}")
+                print(f"-  {f}")
         if len(fixes) > 5:
             print(f"\n... и еще {len(fixes) - 5} строк с исправлениями")
     
@@ -350,17 +351,17 @@ def check_keywords(filename: str, sample_size: int = 10000) -> Dict[str, int]:
     Выборочная проверка ключевых слов в датасете.
     
     Args:
-        filename:       Путь к файлу датасета
-        sample_size:    Количество случайных примеров для проверки
+        filename:    Путь к файлу датасета
+        sample_size: Количество случайных примеров для проверки
         
     Returns:
-        Dict[str, int]:    Статистика проблем
+        Dict[str, int]: Статистика проблем
     """
     print_header("ПРОВЕРКА КЛЮЧЕВЫХ СЛОВ (KEYWORDS)")
     print(f"Проверяем {sample_size} случайных примеров")
-    print("=" * 70)
+    print("=" * 60)
     
-    # собираем все строки с данными
+    # Собираем все строки с данными
     data_lines: List[Tuple[int, str]] = []
     
     try:
@@ -376,17 +377,17 @@ def check_keywords(filename: str, sample_size: int = 10000) -> Dict[str, int]:
                 
                 data_lines.append((line_num, raw_line))
     except FileNotFoundError:
-        print(f"X Ошибка: Файл '{filename}' не найден!")
+        print(f"Ошибка: Файл '{filename}' не найден!")
         return {}
     except Exception as e:
-        print(f"X Ошибка при чтении файла: {e}")
+        print(f"Ошибка при чтении файла: {e}!")
         return {}
     
     print(f"Всего строк с данными: {len(data_lines)}")
     
     if sample_size > len(data_lines):
         sample_size = len(data_lines)
-        print(f"!!! Размер выборки уменьшен до {sample_size} (максимум)")
+        print(f"Размер выборки уменьшен до {sample_size} (максимум)")
     
     sample = random.sample(data_lines, sample_size)
     
@@ -491,15 +492,15 @@ def check_keywords(filename: str, sample_size: int = 10000) -> Dict[str, int]:
     if total_issues == 0:
         print("ВСЕ ключевые слова в выборке корректны!")
     else:
-        print(f"!!! Найдено проблем в {total_issues} из {sample_size} проверенных строк:")
-        print(f"- нет ключевых слов: {issues['no_keywords']}")
-        print(f"- слишком мало (<2): {issues['too_few']}")
-        print(f"- слишком много (>15): {issues['too_many']}")
-        print(f"- explicit_std без std:: у std-ключевых: {issues['wrong_prefix_explicit']}")
-        print(f"  └─ из них несоответствие коду (в коде с std::): {issues['mismatch_explicit']} ← ИСПРАВЛЯЕМЫЕ")
+        print(f"Найдено проблем в {total_issues} из {sample_size} проверенных строк:")
+        print(f"- Нет ключевых слов:          {issues['no_keywords']}")
+        print(f"- Слишком мало (<2):          {issues['too_few']}")
+        print(f"- Слишком много (>15):        {issues['too_many']}")
+        print(f"- explicit_std без std::      {issues['wrong_prefix_explicit']}")
+        print(f"  └─ Из них несоответствие коду (в коде с std::):   {issues['mismatch_explicit']} - ИСПРАВЛЯЕМЫЕ")
         print(f"- using_namespace_std с std:: {issues['wrong_prefix_using']}")
-        print(f"  └─ из них несоответствие коду (в коде без std::): {issues['mismatch_using']}")
-        print(f"- проблемы формата: {issues['format_issues']}")
+        print(f"  └─ Из них несоответствие коду (в коде без std::): {issues['mismatch_using']}")
+        print(f"- Проблемы формата:           {issues['format_issues']}")
     
     if prefix_examples:
         print_subheader("ПРИМЕРЫ НАРУШЕНИЙ ПРЕФИКСОВ:")
@@ -526,10 +527,10 @@ def check_keyword_consistency(filename: str) -> Tuple[List[str], Dict]:
     Проверяет консистентность ключевых слов для одинаковых тем.
     
     Args:
-        filename:    Путь к файлу датасета
+        filename: Путь к файлу датасета
         
     Returns:
-        Tuple[List[str], Dict]:    Список неконсистентных тем и детальная статистика
+        Tuple[List[str], Dict]: Список неконсистентных тем и детальная статистика
     """
     print_subheader("ПРОВЕРКА КОНСИСТЕНТНОСТИ КЛЮЧЕВЫХ СЛОВ")
     print("(учитываются только ключевые слова, реально присутствующие в коде)")
@@ -563,7 +564,7 @@ def check_keyword_consistency(filename: str) -> Tuple[List[str], Dict]:
                     
                     all_keywords = [k.strip() for k in keywords_field.split(',') if k.strip()]
                     
-                    # оставляем только те ключевые слова, которые есть в коде
+                    # Оставляем только те ключевые слова, которые есть в коде
                     present_keywords = set()
                     for kw in all_keywords:
                         base_kw = kw[5:] if kw.startswith('std::') else kw
@@ -585,7 +586,7 @@ def check_keyword_consistency(filename: str) -> Tuple[List[str], Dict]:
                     continue
                     
     except Exception as e:
-        print(f"X Ошибка при проверке консистентности: {e}")
+        print(f"Ошибка при проверке консистентности: {e}!")
         return [], {}
     
     print("\nАнализ консистентности ключевых слов по темам:\n")
@@ -649,8 +650,8 @@ def check_keyword_consistency(filename: str) -> Tuple[List[str], Dict]:
             consistent_topics.append(topic)
     
     print(f"Всего тем с обоими стилями: {len(consistent_topics) + len(inconsistent_topics)}")
-    print(f"- консистентных тем: {len(consistent_topics)}")
-    print(f"- неконсистентных тем: {len(inconsistent_topics)}")
+    print(f"- Консистентных тем: {len(consistent_topics)}")
+    print(f"- Неконсистентных тем: {len(inconsistent_topics)}")
     
     if inconsistent_topics:
         print("\nДетали по неконсистентным темам (первые 5):")
@@ -676,9 +677,9 @@ def main() -> int:
     Основная функция.
     
     Returns:
-        int:    0 при успехе, 1 при ошибке
+        int: 0 при успехе, 1 при ошибке
     """
-    # определяем путь к файлу относительно текущей директории
+    # Определяем путь к файлу относительно текущей директории
     current_dir = os.path.dirname(os.path.abspath(__file__))
     default_path = os.path.join(current_dir, '2_cpp_code_generation_dataset.csv')
     
@@ -698,17 +699,17 @@ def main() -> int:
     filename = args.filename
     print(f"Анализируемый файл: {filename}")
     
-    # проверяем ключевые слова
+    # Проверяем ключевые слова
     issues = check_keywords(filename, sample_size=args.sample)
     
     if not issues:
         return 1
     
-    # проверяем консистентность
+    # Проверяем консистентность
     inconsistent, topic_stats = check_keyword_consistency(filename)
     
     # ======================================================================
-    # ИСПРАВЛЕНИЕ (если запрошено)
+    # ИСПРАВЛЕНИЕ (если запрошено!)
     # ======================================================================
     
     if args.fix and issues.get('mismatch_explicit', 0) > 0:
@@ -756,9 +757,9 @@ def main() -> int:
     
     print("\nИтоговая статистика:")
     total_issues = sum(issues.values())
-    print(f"- всего проблем в выборке: {total_issues}")
-    print(f"- неконсистентных тем: {len(inconsistent)}")
-    print(f"- автоматически исправляемых: {issues.get('mismatch_explicit', 0)}")
+    print(f"- Всего проблем в выборке:    {total_issues}")
+    print(f"- Неконсистентных тем:        {len(inconsistent)}")
+    print(f"- Автоматически исправляемых: {issues.get('mismatch_explicit', 0)}")
     
     return 0 if total_issues == 0 and not inconsistent else 1
 

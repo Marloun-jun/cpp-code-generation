@@ -173,6 +173,19 @@ depend:
 .PHONY : depend
 
 #=============================================================================
+# Target rules for targets named bpe_tokenizer_cpp
+
+# Build rule for target.
+bpe_tokenizer_cpp: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 bpe_tokenizer_cpp
+.PHONY : bpe_tokenizer_cpp
+
+# fast build rule for target.
+bpe_tokenizer_cpp/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bpe_tokenizer_cpp.dir/build.make CMakeFiles/bpe_tokenizer_cpp.dir/build
+.PHONY : bpe_tokenizer_cpp/fast
+
+#=============================================================================
 # Target rules for targets named bpe_tokenizer
 
 # Build rule for target.
@@ -524,6 +537,32 @@ run_bench_comparison/fast:
 .PHONY : run_bench_comparison/fast
 
 #=============================================================================
+# Target rules for targets named run_benchmarks_silent
+
+# Build rule for target.
+run_benchmarks_silent: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 run_benchmarks_silent
+.PHONY : run_benchmarks_silent
+
+# fast build rule for target.
+run_benchmarks_silent/fast:
+	$(MAKE) $(MAKESILENT) -f benchmarks/CMakeFiles/run_benchmarks_silent.dir/build.make benchmarks/CMakeFiles/run_benchmarks_silent.dir/build
+.PHONY : run_benchmarks_silent/fast
+
+#=============================================================================
+# Target rules for targets named run_benchmarks_verbose
+
+# Build rule for target.
+run_benchmarks_verbose: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 run_benchmarks_verbose
+.PHONY : run_benchmarks_verbose
+
+# fast build rule for target.
+run_benchmarks_verbose/fast:
+	$(MAKE) $(MAKESILENT) -f benchmarks/CMakeFiles/run_benchmarks_verbose.dir/build.make benchmarks/CMakeFiles/run_benchmarks_verbose.dir/build
+.PHONY : run_benchmarks_verbose/fast
+
+#=============================================================================
 # Target rules for targets named run_benchmarks
 
 # Build rule for target.
@@ -535,6 +574,71 @@ run_benchmarks: cmake_check_build_system
 run_benchmarks/fast:
 	$(MAKE) $(MAKESILENT) -f benchmarks/CMakeFiles/run_benchmarks.dir/build.make benchmarks/CMakeFiles/run_benchmarks.dir/build
 .PHONY : run_benchmarks/fast
+
+#=============================================================================
+# Target rules for targets named show_last_results
+
+# Build rule for target.
+show_last_results: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 show_last_results
+.PHONY : show_last_results
+
+# fast build rule for target.
+show_last_results/fast:
+	$(MAKE) $(MAKESILENT) -f benchmarks/CMakeFiles/show_last_results.dir/build.make benchmarks/CMakeFiles/show_last_results.dir/build
+.PHONY : show_last_results/fast
+
+#=============================================================================
+# Target rules for targets named view_last_results
+
+# Build rule for target.
+view_last_results: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 view_last_results
+.PHONY : view_last_results
+
+# fast build rule for target.
+view_last_results/fast:
+	$(MAKE) $(MAKESILENT) -f benchmarks/CMakeFiles/view_last_results.dir/build.make benchmarks/CMakeFiles/view_last_results.dir/build
+.PHONY : view_last_results/fast
+
+#=============================================================================
+# Target rules for targets named check_models
+
+# Build rule for target.
+check_models: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 check_models
+.PHONY : check_models
+
+# fast build rule for target.
+check_models/fast:
+	$(MAKE) $(MAKESILENT) -f benchmarks/CMakeFiles/check_models.dir/build.make benchmarks/CMakeFiles/check_models.dir/build
+.PHONY : check_models/fast
+
+#=============================================================================
+# Target rules for targets named clean_benchmark_results
+
+# Build rule for target.
+clean_benchmark_results: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 clean_benchmark_results
+.PHONY : clean_benchmark_results
+
+# fast build rule for target.
+clean_benchmark_results/fast:
+	$(MAKE) $(MAKESILENT) -f benchmarks/CMakeFiles/clean_benchmark_results.dir/build.make benchmarks/CMakeFiles/clean_benchmark_results.dir/build
+.PHONY : clean_benchmark_results/fast
+
+#=============================================================================
+# Target rules for targets named benchmarks_help
+
+# Build rule for target.
+benchmarks_help: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 benchmarks_help
+.PHONY : benchmarks_help
+
+# fast build rule for target.
+benchmarks_help/fast:
+	$(MAKE) $(MAKESILENT) -f benchmarks/CMakeFiles/benchmarks_help.dir/build.make benchmarks/CMakeFiles/benchmarks_help.dir/build
+.PHONY : benchmarks_help/fast
 
 #=============================================================================
 # Target rules for targets named simple_example
@@ -641,19 +745,6 @@ run_train_example/fast:
 .PHONY : run_train_example/fast
 
 #=============================================================================
-# Target rules for targets named run_all_examples
-
-# Build rule for target.
-run_all_examples: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 run_all_examples
-.PHONY : run_all_examples
-
-# fast build rule for target.
-run_all_examples/fast:
-	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/run_all_examples.dir/build.make examples/CMakeFiles/run_all_examples.dir/build
-.PHONY : run_all_examples/fast
-
-#=============================================================================
 # Target rules for targets named compare_with_python
 
 # Build rule for target.
@@ -667,6 +758,32 @@ compare_with_python/fast:
 .PHONY : compare_with_python/fast
 
 #=============================================================================
+# Target rules for targets named run_all_examples
+
+# Build rule for target.
+run_all_examples: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 run_all_examples
+.PHONY : run_all_examples
+
+# fast build rule for target.
+run_all_examples/fast:
+	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/run_all_examples.dir/build.make examples/CMakeFiles/run_all_examples.dir/build
+.PHONY : run_all_examples/fast
+
+#=============================================================================
+# Target rules for targets named compare_with_python_script
+
+# Build rule for target.
+compare_with_python_script: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 compare_with_python_script
+.PHONY : compare_with_python_script
+
+# fast build rule for target.
+compare_with_python_script/fast:
+	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/compare_with_python_script.dir/build.make examples/CMakeFiles/compare_with_python_script.dir/build
+.PHONY : compare_with_python_script/fast
+
+#=============================================================================
 # Target rules for targets named run_compare_with_python
 
 # Build rule for target.
@@ -678,6 +795,97 @@ run_compare_with_python: cmake_check_build_system
 run_compare_with_python/fast:
 	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/run_compare_with_python.dir/build.make examples/CMakeFiles/run_compare_with_python.dir/build
 .PHONY : run_compare_with_python/fast
+
+#=============================================================================
+# Target rules for targets named tokenizer_server_crow
+
+# Build rule for target.
+tokenizer_server_crow: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 tokenizer_server_crow
+.PHONY : tokenizer_server_crow
+
+# fast build rule for target.
+tokenizer_server_crow/fast:
+	$(MAKE) $(MAKESILENT) -f web/CMakeFiles/tokenizer_server_crow.dir/build.make web/CMakeFiles/tokenizer_server_crow.dir/build
+.PHONY : tokenizer_server_crow/fast
+
+#=============================================================================
+# Target rules for targets named run_crow_server
+
+# Build rule for target.
+run_crow_server: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 run_crow_server
+.PHONY : run_crow_server
+
+# fast build rule for target.
+run_crow_server/fast:
+	$(MAKE) $(MAKESILENT) -f web/CMakeFiles/run_crow_server.dir/build.make web/CMakeFiles/run_crow_server.dir/build
+.PHONY : run_crow_server/fast
+
+#=============================================================================
+# Target rules for targets named run_crow_server_custom
+
+# Build rule for target.
+run_crow_server_custom: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 run_crow_server_custom
+.PHONY : run_crow_server_custom
+
+# fast build rule for target.
+run_crow_server_custom/fast:
+	$(MAKE) $(MAKESILENT) -f web/CMakeFiles/run_crow_server_custom.dir/build.make web/CMakeFiles/run_crow_server_custom.dir/build
+.PHONY : run_crow_server_custom/fast
+
+#=============================================================================
+# Target rules for targets named server
+
+# Build rule for target.
+server: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 server
+.PHONY : server
+
+# fast build rule for target.
+server/fast:
+	$(MAKE) $(MAKESILENT) -f web/CMakeFiles/server.dir/build.make web/CMakeFiles/server.dir/build
+.PHONY : server/fast
+
+#=============================================================================
+# Target rules for targets named run_simple_server
+
+# Build rule for target.
+run_simple_server: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 run_simple_server
+.PHONY : run_simple_server
+
+# fast build rule for target.
+run_simple_server/fast:
+	$(MAKE) $(MAKESILENT) -f web/CMakeFiles/run_simple_server.dir/build.make web/CMakeFiles/run_simple_server.dir/build
+.PHONY : run_simple_server/fast
+
+#=============================================================================
+# Target rules for targets named run_all_servers
+
+# Build rule for target.
+run_all_servers: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 run_all_servers
+.PHONY : run_all_servers
+
+# fast build rule for target.
+run_all_servers/fast:
+	$(MAKE) $(MAKESILENT) -f web/CMakeFiles/run_all_servers.dir/build.make web/CMakeFiles/run_all_servers.dir/build
+.PHONY : run_all_servers/fast
+
+#=============================================================================
+# Target rules for targets named clean_servers
+
+# Build rule for target.
+clean_servers: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 clean_servers
+.PHONY : clean_servers
+
+# fast build rule for target.
+clean_servers/fast:
+	$(MAKE) $(MAKESILENT) -f web/CMakeFiles/clean_servers.dir/build.make web/CMakeFiles/clean_servers.dir/build
+.PHONY : clean_servers/fast
 
 src/bpe_export.o: src/bpe_export.cpp.o
 .PHONY : src/bpe_export.o
@@ -775,6 +983,30 @@ src/parallel_trainer.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/bpe_tokenizer.dir/build.make CMakeFiles/bpe_tokenizer.dir/src/parallel_trainer.cpp.s
 .PHONY : src/parallel_trainer.cpp.s
 
+src/python_bindings.o: src/python_bindings.cpp.o
+.PHONY : src/python_bindings.o
+
+# target to build an object file
+src/python_bindings.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bpe_tokenizer_cpp.dir/build.make CMakeFiles/bpe_tokenizer_cpp.dir/src/python_bindings.cpp.o
+.PHONY : src/python_bindings.cpp.o
+
+src/python_bindings.i: src/python_bindings.cpp.i
+.PHONY : src/python_bindings.i
+
+# target to preprocess a source file
+src/python_bindings.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bpe_tokenizer_cpp.dir/build.make CMakeFiles/bpe_tokenizer_cpp.dir/src/python_bindings.cpp.i
+.PHONY : src/python_bindings.cpp.i
+
+src/python_bindings.s: src/python_bindings.cpp.s
+.PHONY : src/python_bindings.s
+
+# target to generate assembly for a file
+src/python_bindings.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bpe_tokenizer_cpp.dir/build.make CMakeFiles/bpe_tokenizer_cpp.dir/src/python_bindings.cpp.s
+.PHONY : src/python_bindings.cpp.s
+
 src/utils.o: src/utils.cpp.o
 .PHONY : src/utils.o
 
@@ -836,26 +1068,38 @@ help:
 	@echo "... list_install_components"
 	@echo "... rebuild_cache"
 	@echo "... test"
+	@echo "... benchmarks_help"
+	@echo "... check_models"
+	@echo "... clean_benchmark_results"
+	@echo "... clean_servers"
 	@echo "... clean_test_data"
-	@echo "... compare_with_python"
+	@echo "... compare_with_python_script"
 	@echo "... debug_tests"
 	@echo "... run_all_examples"
+	@echo "... run_all_servers"
 	@echo "... run_base_tests"
 	@echo "... run_batch_example"
 	@echo "... run_bench_comparison"
 	@echo "... run_bench_fast_tokenizer"
 	@echo "... run_bench_tokenizer"
 	@echo "... run_benchmarks"
+	@echo "... run_benchmarks_silent"
+	@echo "... run_benchmarks_verbose"
 	@echo "... run_compare_with_python"
 	@echo "... run_compatibility_tests"
+	@echo "... run_crow_server"
+	@echo "... run_crow_server_custom"
 	@echo "... run_fast_tests"
 	@echo "... run_fast_tokenizer_demo"
 	@echo "... run_memory_tests"
 	@echo "... run_parallel_tests"
 	@echo "... run_simple_example"
+	@echo "... run_simple_server"
 	@echo "... run_tests"
 	@echo "... run_train_example"
+	@echo "... show_last_results"
 	@echo "... stress_tests"
+	@echo "... view_last_results"
 	@echo "... batch_example"
 	@echo "... bench_comparison"
 	@echo "... bench_fast_tokenizer"
@@ -864,16 +1108,20 @@ help:
 	@echo "... benchmark_main"
 	@echo "... bpe_tests"
 	@echo "... bpe_tokenizer"
+	@echo "... bpe_tokenizer_cpp"
+	@echo "... compare_with_python"
 	@echo "... fast_tokenizer_demo"
 	@echo "... fmt"
 	@echo "... gtest"
 	@echo "... gtest_main"
+	@echo "... server"
 	@echo "... simple_example"
 	@echo "... test_compatibility"
 	@echo "... test_fast_tokenizer"
 	@echo "... test_memory_pool"
 	@echo "... test_parallel"
 	@echo "... test_trained_model"
+	@echo "... tokenizer_server_crow"
 	@echo "... train_example"
 	@echo "... src/bpe_export.o"
 	@echo "... src/bpe_export.i"
@@ -887,6 +1135,9 @@ help:
 	@echo "... src/parallel_trainer.o"
 	@echo "... src/parallel_trainer.i"
 	@echo "... src/parallel_trainer.s"
+	@echo "... src/python_bindings.o"
+	@echo "... src/python_bindings.i"
+	@echo "... src/python_bindings.s"
 	@echo "... src/utils.o"
 	@echo "... src/utils.i"
 	@echo "... src/utils.s"

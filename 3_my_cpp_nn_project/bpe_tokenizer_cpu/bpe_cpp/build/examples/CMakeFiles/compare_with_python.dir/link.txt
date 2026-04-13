@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG -flto=auto -fno-fat-lto-objects CMakeFiles/compare_with_python.dir/compare_with_python.cpp.o -o compare_with_python  ../libbpe_tokenizer.a ../_deps/fmt-build/libfmt.a /usr/lib/gcc/x86_64-linux-gnu/13/libgomp.so /usr/lib/x86_64-linux-gnu/libpthread.a 

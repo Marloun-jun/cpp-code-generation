@@ -9,7 +9,7 @@
 #
 # @author Евгений П.
 # @date 2026
-# @version 3.1.0
+# @version 3.2.0
 #
 # @details Этот скрипт выполняет быстрое тестирование производительности
 #          Python реализации BPE токенизатора и предоставляет инструкции
@@ -19,23 +19,16 @@
 #          - Среднее время encode (мс)
 #          - Среднее количество токенов на текст
 #          - Скорость обработки (байт/сек)
-#          - Пропускная способность (KB/сек)
+#          - Пропускная способность (КБ/сек)
 #
 #          **Для C++ предоставляются:**
 #          - Путь к собранному бенчмарку
 #          - Инструкции по сборке, если бенчмарк не найден
 #          - Рекомендация запустить полное сравнение
 #
-# @note Использует модель bpe_8000 из bpe_python/models/
+# @note Использует модель bpe_10000 из bpe_python/models/
 #
 # @usage python compare_speed_fixed.py
-#
-# @example
-#   python compare_speed_fixed.py
-#   # Результаты для Python:
-#   #   • Среднее время: 1.234 ms
-#   #   • Среднее токенов: 45
-#   #   • Скорость: 12345 байт/сек
 #
 # ======================================================================
 
@@ -43,22 +36,24 @@ import sys
 import time
 
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Optional
 
 # ======================================================================
 # НАСТРОЙКА ПУТЕЙ ДЛЯ ИМПОРТА
 # ======================================================================
 
-CURRENT_FILE = Path(__file__).resolve()           # scripts/compare_speed_fixed.py
-SCRIPTS_DIR = CURRENT_FILE.parent                  # scripts/
-PROJECT_ROOT = SCRIPTS_DIR.parent                  # bpe_tokenizer/
-BPE_PYTHON_DIR = PROJECT_ROOT / 'bpe_python'       # bpe_python/
+CURRENT_FILE = Path(__file__).resolve()         # scripts/compare_speed_fixed.py
+SCRIPTS_DIR = CURRENT_FILE.parent               # scripts/
+PROJECT_ROOT = SCRIPTS_DIR.parent               # bpe_tokenizer_cpu/
+BPE_PYTHON_DIR = PROJECT_ROOT / 'bpe_python'    # bpe_python/
+BPE_CPP_DIR = PROJECT_ROOT / 'bpe_cpp'          # bpe_cpp/
 
 # Добавляем путь для импорта токенизатора
 sys.path.insert(0, str(BPE_PYTHON_DIR))
 
-print(f"📁 Корень проекта: {PROJECT_ROOT}")
-print(f"📁 Python BPE директория: {BPE_PYTHON_DIR}")
+print(f"Корень проекта:        {PROJECT_ROOT}")
+print(f"Python BPE директория: {BPE_PYTHON_DIR}")
+print(f"C++ BPE директория:    {BPE_CPP_DIR}")
 
 # ======================================================================
 # ИМПОРТ ТОКЕНИЗАТОРА
@@ -66,14 +61,14 @@ print(f"📁 Python BPE директория: {BPE_PYTHON_DIR}")
 
 try:
     from tokenizer import BPETokenizer
-    print("✅ Импорт BPETokenizer успешен")
+    print("Импорт BPETokenizer успешен")
 except ImportError as e:
-    print(f"❌ Ошибка импорта BPETokenizer: {e}")
-    print(f"\n📋 Проверьте наличие файла tokenizer.py в {BPE_PYTHON_DIR}")
-    print("   Файлы в директории:")
+    print(f"Ошибка импорта BPETokenizer: {e}!")
+    print(f"\nПроверьте наличие файла tokenizer.py в {BPE_PYTHON_DIR}")
+    print("Файлы в директории:")
     for f in BPE_PYTHON_DIR.iterdir():
         if f.suffix == '.py':
-            print(f"   - {f.name}")
+            print(f"- {f.name}")
     sys.exit(1)
 
 
@@ -82,22 +77,31 @@ except ImportError as e:
 # ======================================================================
 
 def print_header(title: str, width: int = 60) -> None:
-    """
-    Вывести заголовок раздела для красивого форматирования вывода.
-    
-    Args:
-        title: Заголовок
-        width: Ширина линии
-    
-    Example:
-        >>> print_header("ТЕСТИРОВАНИЕ PYTHON")
-        ============================================================
-                          ТЕСТИРОВАНИЕ PYTHON                     
-        ============================================================
-    """
+    """Вывести заголовок раздела."""
     print(f"\n{'=' * width}")
     print(f"{title:^{width}}")
     print(f"{'=' * width}")
+
+
+def find_cpp_benchmark() -> Optional[Path]:
+    """
+    Поиск собранного C++ бенчмарка в стандартных местах.
+    
+    Returns:
+        Optional[Path]: Путь к бенчмарку или None
+    """
+    candidates = [
+        BPE_CPP_DIR / 'build' / 'bench_fast_tokenizer',
+        BPE_CPP_DIR / 'build' / 'benchmarks' / 'bench_fast_tokenizer',
+        BPE_CPP_DIR / 'build' / 'bin' / 'bench_fast_tokenizer',
+        PROJECT_ROOT / 'build' / 'bench_fast_tokenizer',
+    ]
+    
+    for path in candidates:
+        if path.exists():
+            return path
+    
+    return None
 
 
 # ======================================================================
@@ -106,15 +110,26 @@ def print_header(title: str, width: int = 60) -> None:
 
 TEST_TEXT = """#include <iostream>
 #include <vector>
+#include <string>
 
 class Test {
 public:
     Test(const std::string& name) : name_(name) {}
+    
     void process() {
         for (int i = 0; i < 10; ++i) {
-            data_.push_back(i);
+            data_.push_back(i * i);
         }
     }
+    
+    void print() const {
+        std::cout << "Test: " << name_ << std::endl;
+        for (auto val : data_) {
+            std::cout << val << " ";
+        }
+        std::cout << std::endl;
+    }
+
 private:
     std::string name_;
     std::vector<int> data_;
@@ -123,6 +138,7 @@ private:
 int main() {
     Test t("example");
     t.process();
+    t.print();
     return 0;
 }
 """
@@ -136,131 +152,136 @@ def test_python_tokenizer(
     text: str,
     vocab_path: str,
     merges_path: str,
+    vocab_size: int = 10000,
     iterations: int = 50
 ) -> Tuple[int, float]:
     """
     Тестирование Python токенизатора.
-    
-    Args:
-        text: Тестовый текст
-        vocab_path: Относительный путь к файлу словаря (относительно BPE_PYTHON_DIR)
-        merges_path: Относительный путь к файлу слияний
-        iterations: Количество итераций для усреднения
-        
-    Returns:
-        Tuple[int, float]: (среднее количество токенов, среднее время в мс)
-    
-    **Процесс:**
-    1. Формирование полных путей к файлам модели
-    2. Проверка существования файлов
-    3. Инициализация токенизатора
-    4. Прогрев (3 итерации на части текста)
-    5. Измерение на iterations итерациях
-    6. Расчет средних значений
     """
-    print(f"\n🐍 Загрузка Python токенизатора...")
+    print(f"\nЗагрузка Python токенизатора...")
     
     # Формируем полные пути
     vocab_full = BPE_PYTHON_DIR / vocab_path
     merges_full = BPE_PYTHON_DIR / merges_path
     
-    print(f"     Vocab: {vocab_full}")
-    print(f"     Merges: {merges_full}")
+    print(f"    Vocab: {vocab_full}")
+    print(f"    Merges: {merges_full}")
     
     # Проверяем существование файлов
     if not vocab_full.exists():
-        print(f"❌ Файл словаря не найден: {vocab_full}")
+        print(f"Файл словаря не найден: {vocab_full}!")
         return 0, 0
     
     if not merges_full.exists():
-        print(f"❌ Файл слияний не найден: {merges_full}")
+        print(f"Файл слияний не найден: {merges_full}!")
         return 0, 0
     
-    # Инициализируем токенизатор
-    tokenizer = BPETokenizer(32000, byte_level=True)
-    tokenizer.load(str(vocab_full), str(merges_full))
-    
-    print(f"     ✓ Токенизатор загружен")
-    print(f"     📊 Размер словаря: {len(tokenizer.vocab)}")
-    
-    # Прогрев
-    print(f"     🔥 Прогрев ({min(3, iterations)} итераций)...")
-    for i in range(3):
-        tokenizer.encode(text[:100])
-    
-    # Измерение
-    print(f"     ⏱️  Измерение ({iterations} итераций)...")
-    start = time.time()
-    total_tokens = 0
-    
-    for i in range(iterations):
-        tokens = tokenizer.encode(text)
-        total_tokens += len(tokens)
+    try:
+        # Создаем и загружаем токенизатор
+        tokenizer = BPETokenizer(vocab_size=vocab_size, byte_level=True)
+        tokenizer.load(str(vocab_full), str(merges_full))
         
-        if (i + 1) % 10 == 0:
-            print(f"        Прогресс: {i + 1}/{iterations}")
-    
-    total_time = (time.time() - start) * 1000  # ms
-    
-    avg_tokens = total_tokens // iterations
-    avg_time = total_time / iterations
-    
-    print(f"✅ Готово!")
-    
-    return avg_tokens, avg_time
-
+        print(f"Токенизатор загружен")
+        
+        # ДИАГНОСТИКА
+        print(f"Размер словаря:     {len(tokenizer.vocab)}")
+        
+        # Проверяем наличие атрибутов
+        if hasattr(tokenizer, 'token_to_id'):
+            print(f"Размер token_to_id: {len(tokenizer.token_to_id)}")
+        elif hasattr(tokenizer, 'token2id'):
+            print(f"Размер token2id:    {len(tokenizer.token2id)}")
+        
+        if hasattr(tokenizer, 'id_to_token'):
+            print(f"Пример токена ID 0: {tokenizer.id_to_token[0]}")
+            print(f"Пример токена ID 1: {tokenizer.id_to_token[1]}")
+            print(f"Пример токена ID 2: {tokenizer.id_to_token[2]}")
+        elif hasattr(tokenizer, 'id2token'):
+            print(f"Пример токена ID 0: {tokenizer.id2token[0]}")
+            print(f"Пример токена ID 1: {tokenizer.id2token[1]}")
+        # ============================================
+        
+        # Прогрев
+        print(f"Прогрев ({min(3, iterations)} итераций)...")
+        for i in range(3):
+            tokenizer.encode(text[:100])
+        
+        # Измерение
+        print(f"Измерение ({iterations} итераций)...")
+        start = time.time()
+        total_tokens = 0
+        
+        for i in range(iterations):
+            tokens = tokenizer.encode(text)
+            total_tokens += len(tokens)
+            
+            if (i + 1) % 10 == 0:
+                print(f"Прогресс: {i + 1}/{iterations}")
+        
+        total_time = (time.time() - start) * 1000    # мс
+        
+        avg_tokens = total_tokens // iterations
+        avg_time = total_time / iterations
+        
+        print(f"Готово!")
+        
+        return avg_tokens, avg_time
+        
+    except Exception as e:
+        print(f"Ошибка при тестировании: {e}!")
+        import traceback
+        traceback.print_exc()
+        return 0, 0
 
 # ======================================================================
 # ОСНОВНАЯ ФУНКЦИЯ
 # ======================================================================
 
 def main() -> int:
-    """
-    Основная функция.
-
-    Returns:
-        int: 0 при успехе, 1 при ошибке
-    """
-    print_header("⚡ СРАВНЕНИЕ PYTHON И C++ ТОКЕНИЗАТОРОВ")
+    """Основная функция."""
+    print_header("СРАВНЕНИЕ PYTHON И C++ ТОКЕНИЗАТОРОВ")
     
     # Информация о путях
-    print(f"\n📁 Директория проекта: {PROJECT_ROOT}")
-    print(f"📁 Python BPE директория: {BPE_PYTHON_DIR}")
+    print(f"\nДиректория проекта:    {PROJECT_ROOT}")
+    print(f"Python BPE директория: {BPE_PYTHON_DIR}")
+    print(f"C++ BPE директория:    {BPE_CPP_DIR}")
     
     # Информация о тестовом тексте
     text_size = len(TEST_TEXT)
-    print(f"\n📝 Тестовый текст:")
-    print(f"   • Размер: {text_size} байт")
-    print(f"   • Первые 100 символов:")
+    print(f"\nТестовый текст:")
+    print(f"- Размер: {text_size} байт")
+    print(f"- Первые 100 символов:")
     preview = TEST_TEXT[:100].replace('\n', ' ')
-    print(f"     {preview}...")
+    print(f"    {preview}...")
     
     # ======================================================================
     # ТЕСТИРОВАНИЕ PYTHON
     # ======================================================================
     
     print(f"\n{'─' * 60}")
-    print("🐍 ТЕСТИРОВАНИЕ PYTHON")
+    print("ТЕСТИРОВАНИЕ PYTHON")
     print(f"{'─' * 60}")
     
-    # ИСПРАВЛЕНО: правильные пути к модели 8000
+    # vocab_size=10000
     py_tokens, py_time = test_python_tokenizer(
         TEST_TEXT,
-        "models/bpe_8000/vocab.json",    # обновленный путь
-        "models/bpe_8000/merges.txt",     # обновленный путь
+        "models/bpe_10000/vocab.json",
+        "models/bpe_10000/merges.txt",
+        vocab_size=10000,
         iterations=50
     )
     
     if py_time > 0:
-        speed = text_size / py_time * 1000  # байт/сек
+        speed = text_size / py_time * 1000    # байт/сек
+        speed_kb = speed / 1024               # КБ/сек
         
-        print(f"\n📊 РЕЗУЛЬТАТЫ (PYTHON):")
-        print(f"   • ⏱️  Среднее время: {py_time:.3f} ms")
-        print(f"   • 🔢 Среднее токенов: {py_tokens}")
-        print(f"   • 📈 Скорость: {speed:.0f} байт/сек")
-        print(f"   • 💾 Пропускная способность: {speed / 1024:.2f} KB/сек")
+        print(f"\nРЕЗУЛЬТАТЫ (PYTHON):")
+        print(f"- Среднее время:          {py_time:.3f} мс")
+        print(f"- Среднее токенов:        {py_tokens}")
+        print(f"- Скорость:               {speed:.0f} байт/сек ({speed_kb:.2f} КБ/сек)")
+        print(f"- Пропускная способность: {speed_kb:.2f} КБ/сек")
     else:
-        print("\n❌ Не удалось выполнить тестирование Python")
+        print("\nНе удалось выполнить тестирование Python!")
         return 1
     
     # ======================================================================
@@ -268,38 +289,48 @@ def main() -> int:
     # ======================================================================
     
     print(f"\n{'─' * 60}")
-    print("⚡ ТЕСТИРОВАНИЕ C++")
+    print("ТЕСТИРОВАНИЕ C++")
     print(f"{'─' * 60}")
     
-    # ИСПРАВЛЕНО: путь к C++ бенчмарку
-    cpp_benchmark = PROJECT_ROOT / 'bpe_cpp' / 'build' / 'benchmarks' / 'bench_fast_tokenizer'
+    cpp_benchmark = find_cpp_benchmark()
     
     print("\nДля сравнения с C++ выполните следующие команды:")
     
-    if cpp_benchmark.exists():
-        print(f"\n✅ C++ бенчмарк найден: {cpp_benchmark}")
-        print("\n   Запуск C++ бенчмарка:")
-        print(f"   {cpp_benchmark}")
-        print("\n   Или запустите полное сравнение всех реализаций:")
-        print("   python scripts/benchmark_all.py")
+    if cpp_benchmark:
+        print(f"\nC++ бенчмарк найден: {cpp_benchmark}")
+        print("\nЗапуск C++ бенчмарка:")
+        print(f"    {cpp_benchmark}")
+        print("\nИли запустите с параметрами:")
+        print(f"    {cpp_benchmark} --iterations 1000")
+        
+        size_kb = cpp_benchmark.stat().st_size / 1024
+        print(f"\nРазмер исполняемого файла: {size_kb:.2f} КБ")
     else:
-        print(f"\n⚠️  C++ бенчмарк не найден по пути:")
-        print(f"   {cpp_benchmark}")
-        print("\n   Сначала соберите C++ проект:")
-        print("\n   # Переход в директорию C++ части")
-        print(f"   cd {PROJECT_ROOT / 'bpe_cpp'}")
-        print("\n   # Создание директории сборки")
-        print("   mkdir -p build && cd build")
-        print("\n   # Конфигурация и сборка")
-        print("   cmake .. -DBUILD_BENCHMARKS=ON")
-        print("   make -j$(nproc)")
-        print("\n   # После сборки бенчмарк будет доступен по пути:")
-        print("   build/benchmarks/bench_fast_tokenizer")
+        print(f"\nC++ бенчмарк не найден!")
+        print("\nСоберите C++ проект с бенчмарками:")
+        print(f"\n    cd {BPE_CPP_DIR}")
+        print("    mkdir -p build && cd build")
+        print("    cmake .. -DBUILD_BENCHMARKS=ON")
+        print("    make -j$(nproc) bench_fast_tokenizer")
+    
+    # ======================================================================
+    # ИНСТРУКЦИИ ДЛЯ ПОЛНОГО СРАВНЕНИЯ
+    # ======================================================================
     
     print(f"\n{'─' * 60}")
-    print("\n💡 Совет: Для детального сравнения всех трех реализаций")
-    print("   (HuggingFace, Python, C++) используйте:")
-    print("   python scripts/benchmark_all.py")
+    print("ПОЛНОЕ СРАВНЕНИЕ")
+    print(f"{'─' * 60}")
+    
+    benchmark_all = SCRIPTS_DIR / 'benchmark_all.py'
+    
+    if benchmark_all.exists():
+        print(f"\nСкрипт полного сравнения найден: {benchmark_all}")
+        print("\nЗапустите для сравнения всех трёх реализаций:")
+        print(f"    python {benchmark_all}")
+        print("\nЭто создаст файл benchmark_results.json с детальными")
+        print(" результатами сравнения HuggingFace, Python и C++ реализаций.")
+    else:
+        print(f"\nСкрипт полного сравнения не найден!")
     
     print(f"\n{'─' * 60}")
     

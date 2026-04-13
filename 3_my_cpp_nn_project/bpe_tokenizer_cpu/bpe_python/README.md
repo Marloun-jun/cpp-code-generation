@@ -37,7 +37,7 @@
 **Ключевые особенности:**
 - **Byte-level кодирование** — полная поддержка UTF-8 (русский, китайский, эмодзи)
 - **LRU-кэш** — ускорение повторяющихся вызовов encode
-- **Специальные токены** — `<PAD>`, `<UNK>`, `<BOS>`, `<EOS>`
+- **Специальные токены** — `<PAD>`, `<UNK>`, `<BOS>`, `<EOS>`, `<CPP>`, `<CODE>`
 - **Сериализация** — JSON и бинарный форматы
 
 **Пример использования:**
@@ -148,7 +148,11 @@ python tests/test_bpe_tokenizer.py --verbose
  - 📊 Статистика по длинам последовательностей
  - 🔄 Точность roundtrip
 ```bash
+# С кэшированием (реальное использование)
 python tests/test_compare_speed.py --model-size 8000 --iterations 50
+
+# Без кэширования (чистая производительность)
+python tests/test_compare_speed.py --model-size 8000 --iterations 50 --no-cache
 ```
 
 ### **`test_compare_models.py`** — сравнение моделей
@@ -159,27 +163,79 @@ python tests/test_compare_speed.py --model-size 8000 --iterations 50
  - 🗜️ Степень сжатия
  - ⚡ Скорость работы (без кэша)
  - 📚 Анализ словарей
- - 🔍 OOV анализ
+ - 🔍 OOV анализ (Out of Vocabulary)
  - 📏 Глубина сжатия
 ```bash
-python tests/test_compare_models.py                    # полный анализ
-python tests/test_compare_models.py --quick            # быстрый режим
-python tests/test_compare_models.py --full-analysis    # включая OOV
-python tests/test_compare_models.py --plot-only        # только графики
+# Полный анализ (рекомендуется)
+python tests/test_compare_models.py --full-analysis
+
+# Быстрый режим (только основные метрики)
+python tests/test_compare_models.py --quick
+
+# Только графики
+python tests/test_compare_models.py --plot-only
 ```
 
 ## 📊 Результаты сравнения моделей
 
-В директории reports/ находятся результаты сравнения трёх моделей:
+В директории `reports/` находятся результаты сравнения трёх моделей:
 
 | Файл | Описание |
 |------|----------|
-| `RESULT.md` | Краткие выводы и рекомендации |
 | `three_model_report.txt` | Полный текстовый отчет |
 | `three_model_comparison.json` | Сырые данные в JSON |
 | `three_model_comparison.png` | Графики (PNG) |
 | `three_model_comparison.pdf` | Графики (PDF) |
 | `test_categories.json` | Категории тестов |
+
+### Ключевые результаты
+
+| Модель | Точность | Сжатие | Скорость encode | Скорость decode | Размер |
+|--------|----------|--------|-----------------|-----------------|--------|
+| bpe_8000 | **95.73%** | 1.76x | 75.9 млн/с | 6.4 млн/с | 7 998 |
+| bpe_10000 | **95.73%** | 1.77x | **69.9 млн/с** | 5.5 млн/с | 9 998 |
+| bpe_12000 | **95.73%** | **1.77x** | 80.8 млн/с | 5.8 млн/с | 11 997 |
+
+### Анализ по категориям
+
+| Категория | Точность | Проблемные области |
+|-----------|----------|---------------------|
+| Базовые конструкции | **100%** | Препроцессор, функции, классы |
+| STL контейнеры | **80%** | `std::set`, `std::deque`, `std::shared_ptr` |
+| Многопоточность | **80%** | `std::atomic`, `std::promise` |
+| C++20 Concepts | **50%** | Сложные концепты |
+| Реальные файлы | **98%** | Только `#include <string>` |
+
+### Статистика словарей
+
+| Показатель | bpe_8000 | bpe_10000 | bpe_12000 |
+|------------|----------|-----------|-----------|
+| Размер словаря | 7 998 | 9 998 | 11 997 |
+| ASCII токенов | 6 506 | 8 197 | 9 889 |
+| Unicode токенов | 1 476 | 1 784 | 2 090 |
+| Средняя длина токена | 7.29 | 7.74 | 8.16 |
+| Макс. длина токена | 54 | 61 | 61 |
+
+### Глубина сжатия
+
+| Показатель | bpe_8000 | bpe_10000 | bpe_12000 |
+|------------|----------|-----------|-----------|
+| Средняя длина токена | 2.15 | 2.16 | 2.16 |
+| Токенов длины 1-2 | **74.4%** | **74.2%** | **74.1%** |
+| Самый частый токен | `" "` (893) | `" "` (893) | `" "` (893) |
+
+### OOV анализ
+
+| Показатель | Значение |
+|------------|----------|
+| Уникальных символов | 179 |
+| Покрытие словаря | **51.4%** |
+| Неизвестных символов | 87 |
+| Кириллица | 39 |
+| Китайский | 23 |
+| Эмодзи | 5 |
+
+🏆 **Рекомендуемая модель:** `bpe_10000` — лучший баланс точности, скорости и размера словаря.
 
 ## 🚀 Быстрый старт
 
@@ -200,16 +256,19 @@ pip install pytest
 # Обучить модель 8000 на корпусе по умолчанию
 python trainer.py --vocab-size 8000
 
+# Обучить модель 10000 (рекомендуется)
+python trainer.py --vocab-size 10000
+
 # Обучить модель 12000 на своем корпусе
 python trainer.py --corpus ../data/corpus.txt --vocab-size 12000 --output-dir ./models
 ```
 
-## Использование токенизатора
+### Использование токенизатора
 ```python
 from tokenizer import BPETokenizer
 
-# Загрузка обученной модели
-tokenizer = BPETokenizer.load('models/bpe_8000/vocab.json', 'models/bpe_8000/merges.txt')
+# Загрузка обученной модели (рекомендуется bpe_10000)
+tokenizer = BPETokenizer.load('models/bpe_10000/vocab.json', 'models/bpe_10000/merges.txt')
 
 # Токенизация
 code = "int main() { std::cout << \"Hello, мир!\" << std::endl; }"
@@ -246,8 +305,7 @@ print(f"Hit rate: {stats['hit_rate']:.2%}")
 ```
 
 ### Сериализация
-``` python
-
+```python
 # JSON формат (читаемый)
 tokenizer.save("vocab.json", "merges.txt")
 
@@ -265,7 +323,7 @@ from pytorch_integration import BPETokenizerWrapper, create_dataloader
 from tokenizer import BPETokenizer
 
 # Загрузка модели
-tokenizer = BPETokenizer.load('vocab.json', 'merges.txt')
+tokenizer = BPETokenizer.load('models/bpe_10000/vocab.json', 'models/bpe_10000/merges.txt')
 wrapper = BPETokenizerWrapper(tokenizer, max_length=128)
 
 # Подготовка данных
@@ -295,35 +353,28 @@ for epoch in range(10):
 ## 📁 Структура каталога
 ```text
 bpe_python/
-├── __pycache__/                       # Кэш Python (игнорировать)
-├── models/                            # Обученные модели
-│   ├── bpe_8000/                      # Модель на 8000 токенов
+├── models/                       # Обученные модели
+│   ├── bpe_8000/                 # Модель на 8000 токенов
 │   │   ├── vocab.json
 │   │   ├── model.bin
 │   │   └── merges.txt
-│   ├── bpe_10000/                     # Модель на 10000 токенов
+│   ├── bpe_10000/                # Модель на 10000 токенов
 │   │   ├── vocab.json
 │   │   ├── model.bin
 │   │   └── merges.txt
-│   └── bpe_12000/                     # Модель на 12000 токенов
+│   └── bpe_12000/                # Модель на 12000 токенов
 │       ├── vocab.json
 │       ├── model.bin
 │       └── merges.txt
-├── reports/                           # Результаты сравнения
-│   ├── RESULT.md                      # Выводы
-│   ├── test_categories.json           # Категории тестов
-│   ├── three_model_comparison.json    # JSON результаты
-│   ├── three_model_comparison.pdf     # Графики PDF
-│   ├── three_model_comparison.png     # Графики PNG
-│   └── three_model_report.txt         # Текстовый отчет
-├── tests/                             # Тесты
-│   ├── test_bpe_tokenizer.py          # Общие тесты
-│   ├── test_compare_speed.py          # Тесты производительности
-│   └── test_compare_models.py         # Сравнение моделей
-├── pytorch_integration.py             # Интеграция с PyTorch
-├── README.md                          # Этот файл
-├── tokenizer.py                       # Основной класс BPETokenizer
-└── trainer.py                         # Обучение моделей на корпусе
+├── reports/                      # Результаты сравнения
+├── tests/                        # Тесты
+│   ├── test_bpe_tokenizer.py     # Общие тесты
+│   ├── test_compare_speed.py     # Тесты производительности
+│   └── test_compare_models.py    # Сравнение моделей
+├── pytorch_integration.py        # Интеграция с PyTorch
+├── README.md                     # Этот файл
+├── tokenizer.py                  # Основной класс BPETokenizer
+└── trainer.py                    # Обучение моделей на корпусе
 ```
 ---
 

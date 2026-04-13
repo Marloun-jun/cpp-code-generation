@@ -92,10 +92,10 @@ def get_project_paths() -> Dict[str, Path]:
     Получить пути проекта.
     
     Returns:
-        Dict[str, Path]:    Cловарь с путями проекта со следующими ключами:
-                            - project_root:      корневая директория проекта
-                            - bpe_python_dir:    директория с Python кодом
-                            - models_dir:        директория для сохранения моделей
+        Dict[str, Path]: Cловарь с путями проекта со следующими ключами:
+                         - project_root   - Корневая директория проекта
+                         - bpe_python_dir - Директория с Python кодом
+                         - models_dir     - Директория для сохранения моделей
     
     Example:
         >>> paths = get_project_paths()
@@ -103,9 +103,9 @@ def get_project_paths() -> Dict[str, Path]:
         /home/user/project/bpe_tokenizer_cpu/bpe_python/models
     """
     return {
-        "project_root": PROJECT_ROOT,
+        "project_root":   PROJECT_ROOT,
         "bpe_python_dir": BPE_PYTHON_DIR,
-        "models_dir": BPE_PYTHON_DIR / 'models',
+        "models_dir":     BPE_PYTHON_DIR / 'models',
     }
 
 def print_header(title: str, width: int = 60) -> None:
@@ -113,8 +113,8 @@ def print_header(title: str, width: int = 60) -> None:
     Вывести заголовок раздела для красивого форматирования вывода.
     
     Args:
-        title:    Заголовок
-        width:    Ширина линии
+        title: Заголовок
+        width: Ширина линии
     
     Example:
         >>> print_header("ТЕСТИРОВАНИЕ")
@@ -148,9 +148,9 @@ class BPETokenizerWrapper:
     - Работает с любым объектом, имеющим методы encode() и decode()
     
     **Форматы тензоров:**
-    - input_ids: torch.long, форма (seq_len) или (batch_size, seq_len)
-    - attention_mask: torch.long, форма (seq_len) или (batch_size, seq_len)
-                 1 для реальных токенов, 0 для паддинга
+    - input_ids      - torch.long, форма (seq_len) или (batch_size, seq_len)
+    - attention_mask - torch.long, форма (seq_len) или (batch_size, seq_len)
+                      1 для реальных токенов, 0 для паддинга
     
     @see BPETokenizer
     @see CodeDataset
@@ -161,9 +161,9 @@ class BPETokenizerWrapper:
         Инициализация обертки.
         
         Args:
-            tokenizer:     Обученный экземпляр BPETokenizer
-            max_length:    Максимальная длина последовательности
-                           (после этой длины текст будет обрезан)
+            tokenizer:  Обученный экземпляр BPETokenizer
+            max_length: Максимальная длина последовательности
+                        (после этой длины текст будет обрезан)
             
         Example:
             >>> tokenizer = BPETokenizer.load('vocab.json', 'merges.txt')
@@ -180,8 +180,8 @@ class BPETokenizerWrapper:
         
         logger.info(f"Инициализирована обертка:")
         logger.info(f"- max_length: {max_length}")
-        logger.info(f"- PAD ID: {self.pad_id}, UNK ID: {self.unk_id}")
-        logger.info(f"- BOS ID: {self.bos_id}, EOS ID: {self.eos_id}")
+        logger.info(f"- PAD ID:     {self.pad_id}, UNK ID: {self.unk_id}")
+        logger.info(f"- BOS ID:     {self.bos_id}, EOS ID: {self.eos_id}")
     
     # ======================================================================
     # ОСНОВНЫЕ МЕТОДЫ
@@ -199,27 +199,28 @@ class BPETokenizerWrapper:
         Кодирование текста в тензоры PyTorch.
         
         Args:
-            text:                  Входной текст (C++ код)
-            add_special_tokens:    Добавлять ли BOS/EOS токены в начало/конец
-            padding:               Стратегия паддинга:
-                                   - False: без паддинга
-                                   - True: паддинг до max_length
-                                   - 'max_length': паддинг до max_length (то же что True)
-            truncation:            Обрезать ли до max_length (если True, обрезает)
-            return_tensors:        Тип возвращаемых тензоров ('pt' для PyTorch)
+            text:               Входной текст (C++ код)
+            add_special_tokens: Добавлять ли BOS/EOS токены в начало/конец
+            padding:            Стратегия паддинга:
+                                - False        - Без паддинга
+                                - True         - Паддинг до max_length
+                                - 'max_length' - Паддинг до max_length (то же что True)
+            truncation:         Обрезать ли до max_length (если True, обрезает)
+            return_tensors:     Тип возвращаемых тензоров ('pt' для PyTorch)
             
         Returns:
-            Dict[str, torch.Tensor]:    Словарь с полями:
-                - input_ids:            Тензор ID токенов (форма: [seq_len])
-                - attention_mask:       Маска внимания (1 для реальных токенов, 0 для паддинга)
+            Dict[str, torch.Tensor]:
+                Словарь с полями:
+                - input_ids      - Тензор ID токенов (форма: [seq_len])
+                - attention_mask - Маска внимания (1 для реальных токенов, 0 для паддинга)
             
         **Пример:**
         >>> encoded = wrapper.encode("int main()", padding=True)
         >>> encoded['input_ids'].shape
         torch.Size([128])
-        >>> encoded['attention_mask'][:10]  # первые 10 токенов реальные
+        >>> encoded['attention_mask'][:10]    # Первые 10 токенов реальные
         tensor([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
-        >>> encoded['attention_mask'][-10:]  # последние 10 токенов - паддинг
+        >>> encoded['attention_mask'][-10:]    # Последние 10 токенов - паддинг
         tensor([0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
         """
         # Кодируем текст
@@ -266,12 +267,12 @@ class BPETokenizerWrapper:
         Декодирование тензора обратно в текст.
         
         Args:
-            tokens:                 Список ID токенов или тензор PyTorch
-            skip_special_tokens:    Пропускать ли специальные токены
-                                    (PAD, BOS, EOS) при декодировании
+            tokens:              Список ID токенов или тензор PyTorch
+            skip_special_tokens: Пропускать ли специальные токены
+                                 (PAD, BOS, EOS) при декодировании
             
         Returns:
-            str:    Декодированный текст
+            str: Декодированный текст
             
         **Пример:**
         >>> encoded = wrapper.encode("int main()")
@@ -308,15 +309,15 @@ class BPETokenizerWrapper:
         Кодирование батча текстов.
         
         Args:
-            texts:                 Список текстов для кодирования
-            add_special_tokens:    Добавлять ли специальные токены
-            padding:               Добавлять ли паддинг (True - до максимальной длины в батче)
-            truncation:            Обрезать ли до max_length
+            texts:              Список текстов для кодирования
+            add_special_tokens: Добавлять ли специальные токены
+            padding:            Добавлять ли паддинг (True - до максимальной длины в батче)
+            truncation:         Обрезать ли до max_length
             
         Returns:
-            Dict[str, torch.Tensor]:    Словарь с батч-тензорами:
-                                        - input_ids: форма [batch_size, seq_len]
-                                        - attention_mask: форма [batch_size, seq_len]
+            Dict[str, torch.Tensor]: Словарь с батч-тензорами:
+                                     - input_ids      - Форма [batch_size, seq_len]
+                                     - attention_mask - Форма [batch_size, seq_len]
         
         **Пример:**
         >>> batch = ["int a;", "float b;", "char c;"]
@@ -410,10 +411,10 @@ class CodeDataset(Dataset):
         Инициализация датасета.
         
         Args:
-            texts:                Список текстов (C++ код) для датасета
-            tokenizer_wrapper:    Обертка токенизатора для кодирования
-            max_length:           Максимальная длина последовательности
-                                  (если None, используется из wrapper)
+            texts:             Список текстов (C++ код) для датасета
+            tokenizer_wrapper: Обертка токенизатора для кодирования
+            max_length:        Максимальная длина последовательности
+                               (если None, используется из wrapper)
         """
         self.texts = texts
         self.tokenizer = tokenizer_wrapper
@@ -430,11 +431,11 @@ class CodeDataset(Dataset):
         Возвращает элемент датасета.
         
         Args:
-            idx:    Индекс элемента (0 <= idx < len(dataset))
+            idx: Индекс элемента (0 <= idx < len(dataset))
             
         Returns:
-            Dict[str, torch.Tensor]:    Словарь с input_ids и attention_mask
-                                        для данного текста
+            Dict[str, torch.Tensor]: Словарь с input_ids и attention_mask
+                                     для данного текста
         """
         text = self.texts[idx]
         encoded = self.tokenizer.encode(
@@ -465,15 +466,15 @@ def create_dataloader(
     и настраивает функцию коллации для батчей.
     
     Args:
-        texts:                Список текстов для датасета
-        tokenizer_wrapper:    Обертка токенизатора
-        batch_size:           Размер батча
-        shuffle:              Перемешивать ли данные перед каждой эпохой
-        num_workers:          Количество рабочих процессов для параллельной загрузки
-                              (0 = главный процесс)
+        texts:             Список текстов для датасета
+        tokenizer_wrapper: Обертка токенизатора
+        batch_size:        Размер батча
+        shuffle:           Перемешивать ли данные перед каждой эпохой
+        num_workers:       Количество рабочих процессов для параллельной загрузки
+                           (0 = главный процесс)
         
     Returns:
-        DataLoader:    Настроенный DataLoader с правильной коллацией
+        DataLoader: Настроенный DataLoader с правильной коллацией
         
     **Пример:**
     >>> dataloader = create_dataloader(texts, wrapper, batch_size=32)
@@ -488,10 +489,10 @@ def create_dataloader(
         Функция коллации для батча.
         
         Args:
-            batch:    Список элементов датасета (каждый элемент - словарь с тензорами)
+            batch: Список элементов датасета (каждый элемент - словарь с тензорами)
             
         Returns:
-            Dict[str, torch.Tensor]:     Батч тензоров, сложенных по первому измерению
+            Dict[str, torch.Tensor]: Батч тензоров, сложенных по первому измерению
         """
         input_ids = torch.stack([item['input_ids'] for item in batch])
         attention_mask = torch.stack([item['attention_mask'] for item in batch])
@@ -585,17 +586,17 @@ def example_usage() -> None:
         # Кодируем один пример
         print(f"\nКодирование первого примера с паддингом:")
         encoded = wrapper.encode(texts[0], padding=True)
-        print(f"- input_ids shape: {encoded['input_ids'].shape}")
+        print(f"- input_ids shape:      {encoded['input_ids'].shape}")
         print(f"- attention_mask shape: {encoded['attention_mask'].shape}")
-        print(f"- input_ids[:20]: {encoded['input_ids'][:20].tolist()}...")
-        print(f"- attention_mask[:20]: {encoded['attention_mask'][:20].tolist()}...")
+        print(f"- input_ids[:20]:       {encoded['input_ids'][:20].tolist()}...")
+        print(f"- attention_mask[:20]:  {encoded['attention_mask'][:20].tolist()}...")
         
         # Декодируем обратно
         print(f"\nДекодирование:")
         decoded = wrapper.decode(encoded['input_ids'])
-        print(f"- оригинал: {texts[0]}")
-        print(f"- декод:    {decoded}")
-        print(f"- совпадение: {'v' if texts[0] == decoded else 'x'}")
+        print(f"- Оригинал:   {texts[0]}")
+        print(f"- Декод:      {decoded}")
+        print(f"- Совпадение: {'да' if texts[0] == decoded else 'нет'}")
         
         # Создаем DataLoader
         print(f"\nСоздание DataLoader с batch_size=2...")
@@ -605,7 +606,7 @@ def example_usage() -> None:
         print(f"\nБатчи:")
         for i, batch in enumerate(dataloader):
             print(f"\nБатч {i + 1}:")
-            print(f"- input_ids shape: {batch['input_ids'].shape}")
+            print(f"- input_ids shape:      {batch['input_ids'].shape}")
             print(f"- attention_mask shape: {batch['attention_mask'].shape}")
             
             # Декодируем первый элемент батча
@@ -616,10 +617,10 @@ def example_usage() -> None:
         print_header("ПРИМЕР УСПЕШНО ВЫПОЛНЕН!")
         
     except ImportError as e:
-        print(f"\nОшибка импорта: {e}")
+        print(f"\nОшибка импорта: {e}!")
         print("Убедитесь, что tokenizer.py находится в той же директории!")
     except Exception as e:
-        print(f"\nОшибка: {e}")
+        print(f"\nОшибка: {e}!")
         import traceback
         traceback.print_exc()
 

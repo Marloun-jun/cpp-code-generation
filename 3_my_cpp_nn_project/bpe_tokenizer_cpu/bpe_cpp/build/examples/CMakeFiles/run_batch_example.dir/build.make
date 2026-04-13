@@ -69,9 +69,9 @@ include examples/CMakeFiles/run_batch_example.dir/progress.make
 examples/CMakeFiles/run_batch_example: examples/batch_example
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Запуск batch_example"
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ""
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ═══════════════════════════════════════════
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ============================================================
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo "Запуск batch_example..."
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ═══════════════════════════════════════════
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ============================================================
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples/batch_example
 
 run_batch_example: examples/CMakeFiles/run_batch_example

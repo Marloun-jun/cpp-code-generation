@@ -1,0 +1,41 @@
+# ============================================================================
+# docker-compose.yml - C++ Code Generation Model
+# ============================================================================
+#
+# Запуск:
+#   docker-compose up -d
+#
+# Остановка:
+#   docker-compose down
+#
+# ============================================================================
+
+version: '3.8'
+
+services:
+  cpp-code-gen:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cpp-code-gen:latest
+    container_name: cpp-code-gen
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Монтирование моделей (для обновления без пересборки)
+      - ./cpp_code_model/checkpoints:/app/cpp_code_model/checkpoints:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G

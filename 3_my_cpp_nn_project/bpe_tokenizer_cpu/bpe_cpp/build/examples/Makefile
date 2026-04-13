@@ -285,6 +285,20 @@ run_train_example/fast:
 .PHONY : run_train_example/fast
 
 # Convenience name for target.
+examples/CMakeFiles/compare_with_python.dir/rule:
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/compare_with_python.dir/rule
+.PHONY : examples/CMakeFiles/compare_with_python.dir/rule
+
+# Convenience name for target.
+compare_with_python: examples/CMakeFiles/compare_with_python.dir/rule
+.PHONY : compare_with_python
+
+# fast build rule for target.
+compare_with_python/fast:
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/compare_with_python.dir/build.make examples/CMakeFiles/compare_with_python.dir/build
+.PHONY : compare_with_python/fast
+
+# Convenience name for target.
 examples/CMakeFiles/run_all_examples.dir/rule:
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/run_all_examples.dir/rule
 .PHONY : examples/CMakeFiles/run_all_examples.dir/rule
@@ -299,18 +313,18 @@ run_all_examples/fast:
 .PHONY : run_all_examples/fast
 
 # Convenience name for target.
-examples/CMakeFiles/compare_with_python.dir/rule:
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/compare_with_python.dir/rule
-.PHONY : examples/CMakeFiles/compare_with_python.dir/rule
+examples/CMakeFiles/compare_with_python_script.dir/rule:
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/compare_with_python_script.dir/rule
+.PHONY : examples/CMakeFiles/compare_with_python_script.dir/rule
 
 # Convenience name for target.
-compare_with_python: examples/CMakeFiles/compare_with_python.dir/rule
-.PHONY : compare_with_python
+compare_with_python_script: examples/CMakeFiles/compare_with_python_script.dir/rule
+.PHONY : compare_with_python_script
 
 # fast build rule for target.
-compare_with_python/fast:
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/compare_with_python.dir/build.make examples/CMakeFiles/compare_with_python.dir/build
-.PHONY : compare_with_python/fast
+compare_with_python_script/fast:
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/compare_with_python_script.dir/build.make examples/CMakeFiles/compare_with_python_script.dir/build
+.PHONY : compare_with_python_script/fast
 
 # Convenience name for target.
 examples/CMakeFiles/run_compare_with_python.dir/rule:
@@ -349,6 +363,30 @@ batch_example.s: batch_example.cpp.s
 batch_example.cpp.s:
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/batch_example.dir/build.make examples/CMakeFiles/batch_example.dir/batch_example.cpp.s
 .PHONY : batch_example.cpp.s
+
+compare_with_python.o: compare_with_python.cpp.o
+.PHONY : compare_with_python.o
+
+# target to build an object file
+compare_with_python.cpp.o:
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/compare_with_python.dir/build.make examples/CMakeFiles/compare_with_python.dir/compare_with_python.cpp.o
+.PHONY : compare_with_python.cpp.o
+
+compare_with_python.i: compare_with_python.cpp.i
+.PHONY : compare_with_python.i
+
+# target to preprocess a source file
+compare_with_python.cpp.i:
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/compare_with_python.dir/build.make examples/CMakeFiles/compare_with_python.dir/compare_with_python.cpp.i
+.PHONY : compare_with_python.cpp.i
+
+compare_with_python.s: compare_with_python.cpp.s
+.PHONY : compare_with_python.s
+
+# target to generate assembly for a file
+compare_with_python.cpp.s:
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f examples/CMakeFiles/compare_with_python.dir/build.make examples/CMakeFiles/compare_with_python.dir/compare_with_python.cpp.s
+.PHONY : compare_with_python.cpp.s
 
 fast_tokenizer_demo.o: fast_tokenizer_demo.cpp.o
 .PHONY : fast_tokenizer_demo.o
@@ -435,7 +473,7 @@ help:
 	@echo "... list_install_components"
 	@echo "... rebuild_cache"
 	@echo "... test"
-	@echo "... compare_with_python"
+	@echo "... compare_with_python_script"
 	@echo "... run_all_examples"
 	@echo "... run_batch_example"
 	@echo "... run_compare_with_python"
@@ -443,12 +481,16 @@ help:
 	@echo "... run_simple_example"
 	@echo "... run_train_example"
 	@echo "... batch_example"
+	@echo "... compare_with_python"
 	@echo "... fast_tokenizer_demo"
 	@echo "... simple_example"
 	@echo "... train_example"
 	@echo "... batch_example.o"
 	@echo "... batch_example.i"
 	@echo "... batch_example.s"
+	@echo "... compare_with_python.o"
+	@echo "... compare_with_python.i"
+	@echo "... compare_with_python.s"
 	@echo "... fast_tokenizer_demo.o"
 	@echo "... fast_tokenizer_demo.i"
 	@echo "... fast_tokenizer_demo.s"

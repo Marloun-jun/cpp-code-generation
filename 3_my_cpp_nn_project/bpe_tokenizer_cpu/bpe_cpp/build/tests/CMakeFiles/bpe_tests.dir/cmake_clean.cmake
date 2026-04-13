@@ -7,7 +7,6 @@ file(REMOVE_RECURSE
   "CMakeFiles/bpe_tests.dir/test_vocabulary.cpp.o.d"
   "bin/bpe_tests"
   "bin/bpe_tests.pdb"
-  "bpe_tests[1]_tests.cmake"
 )
 
 # Per-language clean rules from dependency scanning.

@@ -1,7 +1,7 @@
 #!/bin/bash
-# ======================================================================
+# ============================================================================
 # run_benchmarks.sh - Запуск бенчмарков BPE токенизатора
-# ======================================================================
+# ============================================================================
 #
 # @file run_benchmarks.sh
 # @brief Запуск всех бенчмарков и анализ производительности
@@ -14,57 +14,62 @@
 #          собирает результаты и генерирует отчеты в различных форматах.
 #
 #          **Поддерживаемые типы бенчмарков:**
-#           - all           - все доступные бенчмарки
-#           - fast          - только оптимизированная версия (FastTokenizer)
-#           - original      - только базовая версия (BPETokenizer)
-#           - comparison    - прямое сравнение версий
-#           - parallel      - тестирование многопоточности
-#           - cache         - тестирование эффективности кэша
-#           - memory        - тестирование использования памяти
+#          ┌────────────┬───────────────────────────────────────┐
+#          │ all        │ Все доступные бенчмарки               │
+#          │ fast       │ Только оптимизированная версия (Fast) │
+#          │ original   │ Только базовая версия (BPE)           │
+#          │ comparison │ Прямое сравнение версий               │
+#          │ parallel   │ Тестирование многопоточности          │
+#          │ cache      │ Тестирование эффективности кэша       │
+#          │ memory     │ Тестирование использования памяти     │
+#          └────────────┴───────────────────────────────────────┘
 #
 #          **Форматы вывода:**
-#          console    - вывод в консоль (по умолчанию)
-#          json       - сохранение в JSON
-#          csv        - сохранение в CSV
-#          plot       - генерация графиков (требуется matplotlib)
-#          html       - генерация HTML отчета
-#          markdown   - генерация Markdown отчета
+#          ┌────────────┬───────────────────────────────────────┐
+#          │ console    │ Вывод в консоль (по умолчанию)        │
+#          │ json       │ Сохранение в JSON                     │
+#          │ csv        │ сохранение в CSV                      │
+#          │ plot       │ генерация графиков (matplotlib)       │
+#          │ html       │ генерация HTML отчета                 │
+#          │ markdown   │ генерация Markdown отчета             │
+#          └────────────┴───────────────────────────────────────┘
 #
 # @usage ./run_benchmarks.sh [options]
-#   --type TYPE        Тип бенчмарка (all|fast|original|comparison|parallel|cache|memory)
-#   --iterations N     Количество итераций для каждого бенчмарка
-#   --format FORMAT    Формат вывода (console|json|csv|plot|html|markdown)
-#   --output FILE      Сохранить результаты в файл
-#   --compare          Сравнить с предыдущими результатами
-#   --html             Сгенерировать HTML отчет (то же что --format html)
-#   --open             Открыть HTML отчет в браузере
-#   --verbose          Подробный вывод
-#   --quick            Быстрый режим (меньше итераций)
-#   --help             Показать справку
+#   --type TYPE     - Тип бенчмарка (all|fast|original|comparison|parallel|cache|memory)
+#   --iterations N  - Количество итераций для каждого бенчмарка
+#   --format FORMAT - Формат вывода (console|json|csv|plot|html|markdown)
+#   --output FILE   - Сохранить результаты в файл
+#   --compare       - Сравнить с предыдущими результатами
+#   --html          - Сгенерировать HTML отчет (то же что --format html)
+#   --open          - Открыть HTML отчет в браузере
+#   --verbose       - Подробный вывод
+#   --quick         - Быстрый режим (меньше итераций)
+#   --help          - Показать справку
 #
 # @example
 #   ./run_benchmarks.sh --type all --format plot
 #   ./run_benchmarks.sh --type fast --iterations 10 --output results.json
 #   ./run_benchmarks.sh --type comparison --html --open
 #
-# ======================================================================
+# ============================================================================
 
-set -euo pipefail  # Прерывать при ошибке, неопределенных переменных и сбоях в пайпах
+set -euo pipefail    # Прерывать при ошибке, неопределенных переменных и сбоях в пайпах
 
-# ======================================================================
+# ============================================================================
 # Цвета для красивого вывода
-# ======================================================================
-RED='\033[0;31m'        # Красный      - ошибки
-GREEN='\033[0;32m'      # Зеленый      - успех
-YELLOW='\033[1;33m'     # Желтый       - предупреждения
-BLUE='\033[0;34m'       # Синий        - информация
-MAGENTA='\033[0;35m'    # Пурпурный    - заголовки
-CYAN='\033[0;36m'       # Голубой      - команды
-NC='\033[0m'            # No Color     - сброс цвета
+# ============================================================================
+RED='\033[0;31m'        # Красный   - Ошибки
+GREEN='\033[0;32m'      # Зеленый   - Успех
+YELLOW='\033[1;33m'     # Желтый    - Предупреждения
+BLUE='\033[0;34m'       # Синий     - Информация
+MAGENTA='\033[0;35m'    # Пурпурный - Заголовки
+CYAN='\033[0;36m'       # Голубой   - Команды
+NC='\033[0m'            # No Color  - Сброс цвета
 
-# ======================================================================
+# ============================================================================
 # Функции для форматированного вывода
-# ======================================================================
+# ============================================================================
+
 print_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -82,28 +87,28 @@ print_error() {
 }
 
 print_header() {
-    echo -e "\n${MAGENTA}════════════════════════════════════════════════════════════${NC}"
+    echo -e "\n${MAGENTA}============================================================${NC}"
     echo -e "${CYAN}  $1${NC}"
-    echo -e "${MAGENTA}════════════════════════════════════════════════════════════${NC}\n"
+    echo -e "${MAGENTA}============================================================${NC}\n"
 }
 
 print_command() {
     echo -e "${CYAN}  > $1${NC}"
 }
 
-# ======================================================================
+# ============================================================================
 # Парсинг аргументов
-# ======================================================================
+# ============================================================================
 
 # Определение путей (скрипт может быть запущен из любой директории)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$PROJECT_ROOT"
 
 # Значения по умолчанию
 BENCH_TYPE="all"
 ITERATIONS=""
-FORMAT="console"
+FORMAT="json"
 OUTPUT_FILE=""
 COMPARE=0
 GEN_HTML=0
@@ -157,23 +162,23 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "Опции:"
             echo "  --type TYPE      Тип бенчмарка:"
-            echo "                       all           - все бенчмарки (по умолчанию)"
-            echo "                       fast          - только быстрый токенизатор"
-            echo "                       original      - только оригинальный"
-            echo "                       comparison    - сравнение версий"
-            echo "                       parallel      - многопоточность"
-            echo "                       cache         - эффективность кэша"
-            echo "                       memory        - использование памяти"
+            echo "                       all        - Все бенчмарки (по умолчанию)"
+            echo "                       fast       - Только быстрый токенизатор"
+            echo "                       original   - Только оригинальный"
+            echo "                       comparison - Сравнение версий"
+            echo "                       parallel   - Многопоточность"
+            echo "                       cache      - Эффективность кэша"
+            echo "                       memory     - Использование памяти"
             echo ""
-            echo "  --iterations N     Количество итераций для каждого бенчмарка"
-            echo "  --format FORMAT    Формат вывода (console|json|csv|plot|html|markdown)"
-            echo "  --output FILE      Сохранить результаты в файл"
-            echo "  --compare          Сравнить с предыдущими результатами"
-            echo "  --html             Сгенерировать HTML отчет"
-            echo "  --open             Открыть HTML отчет в браузере"
-            echo "  --verbose          Подробный вывод команд"
-            echo "  --quick            Быстрый режим (5 итераций)"
-            echo "  --help             Показать справку"
+            echo "  --iterations N  - Количество итераций для каждого бенчмарка"
+            echo "  --format FORMAT - Формат вывода (console|json|csv|plot|html|markdown)"
+            echo "  --output FILE   - Сохранить результаты в файл"
+            echo "  --compare       - Сравнить с предыдущими результатами"
+            echo "  --html          - Сгенерировать HTML отчет"
+            echo "  --open          - Открыть HTML отчет в браузере"
+            echo "  --verbose       - Подробный вывод команд"
+            echo "  --quick         - Быстрый режим (5 итераций)"
+            echo "  --help          - Показать справку"
             echo ""
             echo "Примеры:"
             echo "  $0 --type all --format plot"
@@ -189,22 +194,35 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# ======================================================================
+# ============================================================================
 # Проверка окружения
-# ======================================================================
+# ============================================================================
 print_header "ЗАПУСК БЕНЧМАРКОВ BPE TOKENIZER"
 
-print_info "Тип бенчмарков:    $BENCH_TYPE"
-print_info "Формат вывода:     $FORMAT"
+print_info "Тип бенчмарков: $BENCH_TYPE"
+print_info "Формат вывода:  $FORMAT"
 
 # Пути к директориям
-BUILD_DIR="$PROJECT_ROOT/build"
-REPORTS_DIR="$PROJECT_ROOT/reports/benchmarks"
+BPE_CPP_DIR="$PROJECT_ROOT/bpe_cpp"
+BUILD_DIR="$BPE_CPP_DIR/build"
+REPORTS_DIR="$BPE_CPP_DIR/reports/benchmarks"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 REPORT_BASE="$REPORTS_DIR/${BENCH_TYPE}_${TIMESTAMP}"
 
 # Создаем директорию для отчетов
 mkdir -p "$REPORTS_DIR"
+
+# Проверка прав на запись
+if [ ! -w "$REPORTS_DIR" ]; then
+    print_error "Нет прав на запись в директорию: $REPORTS_DIR!"
+    exit 1
+fi
+
+echo -e "${CYAN}[DIAG] Директория отчетов:${NC} $REPORTS_DIR"
+echo -e "${CYAN}[DIAG] Права:${NC} $(ls -ld "$REPORTS_DIR")"
+
+# Переходим в директорию сборки
+cd "$BPE_CPP_DIR/build"
 
 # Проверка сборки
 if [ ! -d "$BUILD_DIR" ]; then
@@ -276,19 +294,23 @@ case $BENCH_TYPE in
 esac
 
 # Проверка наличия моделей
-if [ ! -d "$PROJECT_ROOT/models" ] || [ -z "$(ls -A "$PROJECT_ROOT/models" 2>/dev/null)" ]; then
+MODELS_DIR="$PROJECT_ROOT/bpe_cpp/models"
+if [ ! -d "$MODELS_DIR" ] || [ -z "$(ls -A "$MODELS_DIR" 2>/dev/null)" ]; then
     print_warning "Модели не найдены. Конвертация из Python..."
-    if [ -f "$PROJECT_ROOT/tools/convert_vocab.py" ]; then
-        python3 "$PROJECT_ROOT/tools/convert_vocab.py"
+    CONVERT_SCRIPT="$PROJECT_ROOT/bpe_cpp/tools/convert_vocab.py"
+    if [ -f "$CONVERT_SCRIPT" ]; then
+        python3 "$CONVERT_SCRIPT" --model-size 8000
+        python3 "$CONVERT_SCRIPT" --model-size 10000
+        python3 "$CONVERT_SCRIPT" --model-size 12000
     else
-        print_error "Скрипт конвертации не найден: $PROJECT_ROOT/tools/convert_vocab.py"
+        print_error "Скрипт конвертации не найден: $CONVERT_SCRIPT"
         exit 1
     fi
 fi
 
-# ======================================================================
+# ============================================================================
 # Функции для запуска бенчмарков
-# ======================================================================
+# ============================================================================
 
 run_benchmark() {
     local bench=$1
@@ -320,12 +342,30 @@ run_benchmark() {
             ;;
     esac
     
+    # ДИАГНОСТИКА: выводим команду и пути
+    echo -e "\n${CYAN}[DIAG] Команда:${NC} $CMD"
+    echo -e "${CYAN}[DIAG] Рабочая директория:${NC} $(pwd)"
+    echo -e "${CYAN}[DIAG] Выходной файл:${NC} ${output_base}.json"
+    
     if [ $VERBOSE -eq 1 ]; then
         echo "Команда: $CMD"
         eval $CMD
     else
-        # Подавляем вывод Google Benchmark в консоль если не verbose
-        eval $CMD > /dev/null 2>&1
+        # Сохраняем stdout/stderr во временный файл для диагностики
+        local temp_out=$(mktemp)
+        eval $CMD > "$temp_out" 2>&1
+        local exit_code=$?
+        
+        echo -e "${CYAN}[DIAG] Выход бенчмарка (первые 20 строк):${NC}"
+        head -20 "$temp_out" | sed 's/^/  /'
+        
+        if [ $exit_code -ne 0 ]; then
+            print_error "Ошибка при запуске бенчмарка $bench_name (код: $exit_code)!"
+            echo "Полный вывод сохранен в: $temp_out"
+            return 1
+        else
+            rm -f "$temp_out"
+        fi
     fi
     
     if [ $? -ne 0 ]; then
@@ -333,8 +373,19 @@ run_benchmark() {
         return 1
     fi
     
-    print_success "Бенчмарк $bench_name завершен!"
-    echo "  Результаты: ${output_base}.json"
+    # Проверяем, создался ли файл
+    if [ -f "${output_base}.json" ]; then
+        local file_size=$(stat -c%s "${output_base}.json" 2>/dev/null || stat -f%z "${output_base}.json" 2>/dev/null)
+        print_success "Бенчмарк $bench_name завершен!"
+        echo "Результаты: ${output_base}.json (${file_size} байт)"
+        
+        # Показываем первые несколько строк JSON
+        echo "Первые строки JSON:"
+        head -5 "${output_base}.json" | sed 's/^/    /'
+    else
+        print_error "Файл результатов не создан: ${output_base}.json"
+        return 1
+    fi
     
     # Если нужен plot, генерируем график
     if [ "$FORMAT" = "plot" ] || [ "$FORMAT" = "html" ] || [ "$FORMAT" = "markdown" ]; then
@@ -433,7 +484,7 @@ def generate_plot(json_file, plot_file, bench_name):
         plt.tight_layout()
         
         plt.savefig(plot_file, dpi=150, bbox_inches='tight')
-        print(f'  График сохранен: {plot_file}')
+        print(f'График сохранен: {plot_file}')
         
     except Exception as e:
         print(f'Ошибка генерации графика: {e}!')
@@ -487,8 +538,8 @@ generate_markdown() {
         echo "# BPE Tokenizer Benchmark Report"
         echo ""
         echo "**Generated:** $(date)"
-        echo "**Type:** $BENCH_TYPE"
-        echo "**Format:** $FORMAT"
+        echo "**Type:**      $BENCH_TYPE"
+        echo "**Format:**    $FORMAT"
         echo ""
         echo "## Summary"
         echo ""
@@ -499,7 +550,7 @@ generate_markdown() {
                 name=$(basename "$json" .json)
                 echo "### $name"
                 echo ""
-                echo "| Benchmark | Real Time (ms) | CPU Time (ms) | Iterations |"
+                echo "| Benchmark | Real Time (мс) | CPU Time (мс) | Iterations |"
                 echo "|-----------|----------------|---------------|------------|"
                 
                 python3 -c "
@@ -526,9 +577,9 @@ for b in data.get('benchmarks', []):
         
         echo "## System Information" >> "$md_file"
         echo "" >> "$md_file"
-        echo "- **OS:** $(uname -a)" >> "$md_file"
-        echo "- **CPU:** $(grep 'model name' /proc/cpuinfo | head -1 | cut -d':' -f2 | xargs)" >> "$md_file"
-        echo "- **Cores:** $(nproc)" >> "$md_file"
+        echo "- **OS:**     $(uname -a)" >> "$md_file"
+        echo "- **CPU:**    $(grep 'model name' /proc/cpuinfo | head -1 | cut -d':' -f2 | xargs)" >> "$md_file"
+        echo "- **Cores:**  $(nproc)" >> "$md_file"
         echo "- **Memory:** $(free -h | grep Mem | awk '{print $2}')" >> "$md_file"
         
     } > "$md_file"
@@ -704,22 +755,22 @@ generate_html_report() {
         
         <div class="summary-cards">
             <div class="card">
-                <h3>📊 Тип</h3>
+                <h3>Тип</h3>
                 <div class="value">$BENCH_TYPE</div>
                 <div class="label">benchmark type</div>
             </div>
             <div class="card">
-                <h3>📅 Дата</h3>
+                <h3>Дата</h3>
                 <div class="value">$(date +"%d.%m.%Y")</div>
                 <div class="label">$(date +"%H:%M:%S")</div>
             </div>
             <div class="card">
-                <h3>💻 CPU</h3>
+                <h3>CPU</h3>
                 <div class="value">$cores ядер</div>
                 <div class="label">$cpu_info</div>
             </div>
             <div class="card">
-                <h3>🧠 Память</h3>
+                <h3>Память</h3>
                 <div class="value">$memory</div>
                 <div class="label">total RAM</div>
             </div>
@@ -734,7 +785,7 @@ EOF
             cat >> "$report_file" << EOF
         
         <div class="benchmark-section">
-            <h2>📈 ${name}</h2>
+            <h2>${name}</h2>
 EOF
             
             # Добавляем таблицу
@@ -796,9 +847,9 @@ EOF
     fi
 }
 
-# ======================================================================
+# ============================================================================
 # Основной запуск
-# ======================================================================
+# ============================================================================
 
 # Запускаем каждый бенчмарк
 for bench in "${BENCHMARKS[@]}"; do
@@ -836,19 +887,19 @@ curr_avg = get_avg_time('$CURR_JSON')
 if prev_avg > 0:
     change = ((curr_avg - prev_avg) / prev_avg) * 100
     print(f'\nСравнение:')
-    print(f'  Предыдущий: {os.path.basename("$PREV_JSON")}')
-    print(f'  Текущий:    {os.path.basename("$CURR_JSON")}')
-    print(f'\n  Среднее время:')
-    print(f'    до:    {prev_avg/1_000_000:.3f} мс')
-    print(f'    после: {curr_avg/1_000_000:.3f} мс')
-    print(f'    изменение: {change:+.1f}%')
+    print(f'- Предыдущий: {os.path.basename("$PREV_JSON")}')
+    print(f'- Текущий:    {os.path.basename("$CURR_JSON")}')
+    print(f'\n- Среднее время:')
+    print(f'    До:        {prev_avg/1_000_000:.3f} мс')
+    print(f'    После:     {curr_avg/1_000_000:.3f} мс')
+    print(f'    Изменение: {change:+.1f}%')
     
     if change < -5:
-        print('\n  ✅ Производительность УЛУЧШИЛАСЬ!')
+        print('\nПроизводительность УЛУЧШИЛАСЬ!')
     elif change > 5:
-        print('\n  ❌ Производительность УХУДШИЛАСЬ!')
+        print('\nПроизводительность УХУДШИЛАСЬ!')
     else:
-        print('\n  ⚖️  Производительность СТАБИЛЬНА')
+        print('\nПроизводительность СТАБИЛЬНА')
 "
     else
         print_warning "Недостаточно данных для сравнения (нужно минимум 2 файла)!"
@@ -872,9 +923,9 @@ if [ -n "$OUTPUT_FILE" ]; then
     fi
 fi
 
-# ======================================================================
+# ============================================================================
 # Итог
-# ======================================================================
+# ============================================================================
 print_header "БЕНЧМАРКИ ЗАВЕРШЕНЫ!"
 
 print_success "Результаты сохранены в: $REPORTS_DIR"

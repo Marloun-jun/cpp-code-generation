@@ -113,7 +113,7 @@ sys.path.insert(0, str(BPE_PYTHON_DIR))
 try:
     from tokenizer import BPETokenizer
 except ImportError as e:
-    print(f"Ошибка импорта BPETokenizer: {e}")
+    print(f"Ошибка импорта BPETokenizer: {e}!")
     print(f"Убедитесь, что файл tokenizer.py существует в {BPE_PYTHON_DIR}!")
     sys.exit(1)
 
@@ -128,11 +128,11 @@ def get_project_paths() -> Dict[str, Path]:
     Returns:
         Dict[str, Path]:
             Словарь с путями проекта со следующими ключами:
-            - project_root:      корневая директория проекта
-            - bpe_python_dir:    директория с Python кодом
-            - tests_dir:         директория с тестами
-            - models_dir:        директория с моделями
-            - reports_dir:       директория для сохранения результатов
+            - project_root   - Корневая директория проекта
+            - bpe_python_dir - Директория с Python кодом
+            - tests_dir      - Директория с тестами
+            - models_dir     - Директория с моделями
+            - reports_dir    - Директория для сохранения результатов
     """
     return {
         "project_root": PROJECT_ROOT,
@@ -147,8 +147,8 @@ def print_header(title: str, width: int = 80) -> None:
     Вывести заголовок раздела для красивого форматирования вывода.
     
     Args:
-        title:    Заголовок
-        width:    Ширина линии
+        title: Заголовок
+        width: Ширина линии
     
     Example:
         >>> print_header("СРАВНЕНИЕ МОДЕЛЕЙ")
@@ -165,10 +165,10 @@ def ensure_reports_dir(path: Path) -> Path:
     Создать директорию для вывода, если её нет.
     
     Args:
-        path:    Путь к директории
+        path: Путь к директории
         
     Returns:
-        Path:    Путь к директории
+        Path: Путь к директории
     """
     path.mkdir(parents=True, exist_ok=True)
     return path
@@ -190,9 +190,9 @@ class ThreeModelComparison:
     - Анализ глубины сжатия
     
     **Цветовая схема для графиков:**
-    - 8000:     синий (#2E86AB)
-    - 10000:    фиолетовый (#A23B72)
-    - 12000:    оранжевый (#F18F01)
+    - 8000  - Синий (#2E86AB)
+    - 10000 - Фиолетовый (#A23B72)
+    - 12000 - Оранжевый (#F18F01)
     """
     
     def __init__(self, models_dir: Path, model_sizes: List[int] = None):
@@ -200,8 +200,8 @@ class ThreeModelComparison:
         Инициализация компаратора.
         
         Args:
-            models_dir:     Директория с моделями
-            model_sizes:    Список размеров моделей для сравнения
+            models_dir:  Директория с моделями
+            model_sizes: Список размеров моделей для сравнения
         """
         self.models_dir = Path(models_dir)
         self.model_sizes = model_sizes or [8000, 10000, 12000]
@@ -242,11 +242,11 @@ class ThreeModelComparison:
         Выполнить encode без использования кэша.
         
         Args:
-            tokenizer:    Токенизатор
-            text:         Текст для кодирования
+            tokenizer: Токенизатор
+            text:      Текст для кодирования
             
         Returns:
-            List[int]:    Список токенов
+            List[int]: Список токенов
         """
         # Принудительно вызываем метод encode без кэширования
         return tokenizer.encode(text)
@@ -256,13 +256,13 @@ class ThreeModelComparison:
         Выполнить decode без использования кэша.
         
         Args:
-            tokenizer:    Токенизатор
-            tokens:       Токены для декодирования
+            tokenizer: Токенизатор
+            tokens:    Токены для декодирования
             
         Returns:
-            str:    Декодированный текст
+            str: Декодированный текст
         """
-        # принудительно вызываем метод decode без кэширования
+        # Принудительно вызываем метод decode без кэширования
         return tokenizer.decode(tokens)
     
     # ======================================================================
@@ -274,7 +274,7 @@ class ThreeModelComparison:
         Загрузить все модели.
         
         Returns:
-            bool:    True если все модели загружены успешно
+            bool: True если все модели загружены успешно
         """
         print_header("ЗАГРУЗКА МОДЕЛЕЙ")
         
@@ -285,7 +285,7 @@ class ThreeModelComparison:
             merges_path = model_path / 'merges.txt'
             
             if not vocab_path.exists() or not merges_path.exists():
-                print(f"Модель {size} не найдена в {model_path}")
+                print(f"Модель {size} не найдена в {model_path}!")
                 success = False
                 continue
                 
@@ -295,7 +295,7 @@ class ThreeModelComparison:
                 self.models[size] = tokenizer
                 print(f"Загружено: {len(tokenizer.vocab)} токенов")
             except Exception as e:
-                print(f"Ошибка: {e}")
+                print(f"Ошибка: {e}!")
                 success = False
         
         return success
@@ -309,11 +309,11 @@ class ThreeModelComparison:
         Загрузить реальные фрагменты кода из файлов проекта.
         
         Args:
-            max_files:             Максимальное количество файлов для загрузки
-            max_lines_per_file:    Максимальное количество строк из файла
+            max_files:          Максимальное количество файлов для загрузки
+            max_lines_per_file: Максимальное количество строк из файла
             
         Returns:
-            List[str]:    Список строк кода
+            List[str]: Список строк кода
         """
         code_fragments = []
         
@@ -336,7 +336,7 @@ class ThreeModelComparison:
                     code_fragments.extend(lines[:max_lines_per_file])
                     print(f"Загружено {min(max_lines_per_file, len(lines))} строк из {file_path.name}")
             except Exception as e:
-                print(f"Не удалось загрузить {file_path}: {e}")
+                print(f"Не удалось загрузить {file_path}: {e}!")
         
         return code_fragments[:50]    # Ограничиваем количество
     
@@ -349,36 +349,36 @@ class ThreeModelComparison:
         Получить расширенный набор тестов по категориям.
         
         Args:
-            include_real_files:    Включить реальные файлы из проекта
+            include_real_files: Включить реальные файлы из проекта
             
         Returns:
-            Dict[str, List[str]]:    Категории с примерами кода
+            Dict[str, List[str]]: Категории с примерами кода
         
         **Категории:**
-        - Препроцессор:                      директивы #include, #define, #pragma
-        - Функции и main:                    объявления функций, main, лямбды
-        - Классы и структуры:                class, struct, enum, interface
-        - Стандартная библиотека:            контейнеры, указатели, optional
-        - Алгоритмы и итераторы:             sort, find, transform
-        - Потоки и файлы:                    ifstream, ofstream, stringstream
-        - Шаблоны и метапрограммирование:    template, concept, static_assert
-        - Умные указатели и память:          unique_ptr, shared_ptr, new/delete
-        - Многопоточность:                   thread, mutex, future, async
-        - Регулярные выражения:              regex, smatch, regex_replace
-        - Исключения и ошибки:               try/catch, throw, noexcept
-        - Комментарии:                       однострочные, многострочные, Doxygen
-        - Сложные конструкции C++17/20:      fold expressions, coroutines, modules
-        - Строковые литералы:                обычные, raw, wide, UTF-8
-        - Числовые литералы:                 десятичные, шестнадцатеричные, двоичные
-        - Операторы и выражения:             арифметика, логика, битовые операции
-        - Атрибуты C++11/14/17/20:           nodiscard, maybe_unused, noreturn
-        - Concepts C++20:                    integral, same_as, requires
-        - Coroutines C++20:                  co_await, co_yield, co_return
-        - Модули C++20:                      export, import, module
-        - Сложные объявления:                указатели на функции, using, typedef
-        - Unicode и эмодзи:                  кириллица, китайский, японский, эмодзи
-        - Смешанный код:                     русские комментарии в коде
-        - Реальные фрагменты:                паттерны Singleton, ThreadPool и др.
+        - Препроцессор                   - Директивы #include, #define, #pragma
+        - Функции и main                 - Объявления функций, main, лямбды
+        - Классы и структуры             - class, struct, enum, interface
+        - Стандартная библиотека         - Контейнеры, указатели, optional
+        - Алгоритмы и итераторы          - sort, find, transform
+        - Потоки и файлы                 - ifstream, ofstream, stringstream
+        - Шаблоны и метапрограммирование - template, concept, static_assert
+        - Умные указатели и память       - unique_ptr, shared_ptr, new/delete
+        - Многопоточность                - thread, mutex, future, async
+        - Регулярные выражения           - regex, smatch, regex_replace
+        - Исключения и ошибки            - try/catch, throw, noexcept
+        - Комментарии                    - Однострочные, многострочные, Doxygen
+        - Сложные конструкции C++17/20   - fold expressions, coroutines, modules
+        - Строковые литералы             - Обычные, raw, wide, UTF-8
+        - Числовые литералы              - Десятичные, шестнадцатеричные, двоичные
+        - Операторы и выражения          - Арифметика, логика, битовые операции
+        - Атрибуты C++11/14/17/20        - nodiscard, maybe_unused, noreturn
+        - Concepts C++20                 - integral, same_as, requires
+        - Coroutines C++20               - co_await, co_yield, co_return
+        - Модули C++20                   - export, import, module
+        - Сложные объявления             - Указатели на функции, using, typedef
+        - Unicode и эмодзи               - Кириллица, китайский, японский, эмодзи
+        - Смешанный код                  - Русские комментарии в коде
+        - Реальные фрагменты             - Паттерны Singleton, ThreadPool и др.
         """
         test_set = {
             "Препроцессор": [
@@ -712,10 +712,10 @@ class ThreeModelComparison:
         Тестирование точности roundtrip по категориям.
         
         Args:
-            test_categories:    Категории с тестовыми текстами
+            test_categories: Категории с тестовыми текстами
             
         Returns:
-            Dict[int, Dict]:    Результаты тестов точности
+            Dict[int, Dict]: Результаты тестов точности
         """
         print_header("ТЕСТ ТОЧНОСТИ ПО КАТЕГОРИЯМ")
         
@@ -793,11 +793,11 @@ class ThreeModelComparison:
         Тестирование скорости encode/decode без кэширования.
         
         Args:
-            test_categories:    Категории с тестовыми текстами
-            iterations:         Количество итераций для усреднения
+            test_categories: Категории с тестовыми текстами
+            iterations:      Количество итераций для усреднения
             
         Returns:
-            Dict[int, Dict]:    Результаты тестов скорости
+            Dict[int, Dict]: Результаты тестов скорости
         """
         print_header("ТЕСТ СКОРОСТИ (БЕЗ КЭШИРОВАНИЯ)")
         
@@ -846,8 +846,8 @@ class ThreeModelComparison:
                 
                 # Подсчет символов для скорости
                 total_chars_in_category = sum(len(t) for t in texts)
-                encode_speed_chars = (total_chars_in_category * iterations) / encode_time    # символов/с
-                decode_speed_chars = (total_chars_in_category * iterations) / decode_time    # символов/с
+                encode_speed_chars = (total_chars_in_category * iterations) / encode_time    # Символов/с
+                decode_speed_chars = (total_chars_in_category * iterations) / decode_time    # Символов/с
                 
                 category_results[category] = {
                     'encode_time': encode_time,
@@ -896,10 +896,10 @@ class ThreeModelComparison:
         Тестирование степени сжатия.
         
         Args:
-            test_categories:    Категории с тестовыми текстами
+            test_categories: Категории с тестовыми текстами
             
         Returns:
-            Dict[int, Dict]:    Результаты тестов сжатия
+            Dict[int, Dict]: Результаты тестов сжатия
         """
         print_header("ТЕСТ СЖАТИЯ")
         
@@ -965,7 +965,7 @@ class ThreeModelComparison:
                     'bytes_ratio': overall_bytes_ratio
                 }
             }
-            print(f"\nСреднее сжатие: {overall_ratio:.2f} символов/токен ({overall_compression:.1f}%)")
+            print(f"\nСреднее сжатие:  {overall_ratio:.2f} символов/токен ({overall_compression:.1f}%)")
             print(f"Сжатие в байтах: UTF-8: {total_bytes_utf8} -> токены: {total_bytes_tokens} байт (соотношение {overall_bytes_ratio:.2f})")
         
         self.results['compression'] = results
@@ -980,7 +980,7 @@ class ThreeModelComparison:
         Анализ состава словарей с корректным подсчетом специальных токенов.
         
         Returns:
-            Dict[int, Dict]:    Статистика по словарям
+            Dict[int, Dict]: Статистика по словарям
         """
         print_header("АНАЛИЗ СЛОВАРЕЙ")
         
@@ -1047,15 +1047,15 @@ class ThreeModelComparison:
             }
             
             print(f"\nМодель bpe_{size}:")
-            print(f"- размер: {results[size]['vocab_size']} токенов")
-            print(f"- ASCII: {results[size]['ascii_tokens']} ({results[size]['ascii_tokens']*100/len(tokenizer.vocab):.1f}%)")
-            print(f"- Unicode: {results[size]['unicode_tokens']} ({results[size]['unicode_tokens']*100/len(tokenizer.vocab):.1f}%)")
-            print(f"- спец. токены: {results[size]['special_tokens']} ({results[size]['special_tokens']*100/len(tokenizer.vocab):.1f}%)")
-            print(f"- односимвольных: {results[size]['single_char']}")
-            print(f"- многосимвольных: {results[size]['multi_char']}")
-            print(f"- средняя длина: {results[size]['token_lengths']['avg']:.2f}")
-            print(f"- макс. длина: {results[size]['token_lengths']['max']}")
-            print(f"- топ-5 символов: {dict(list(results[size]['char_frequency'].items())[:5])}")
+            print(f"- Размер:          {results[size]['vocab_size']} токенов")
+            print(f"- ASCII:           {results[size]['ascii_tokens']} ({results[size]['ascii_tokens']*100/len(tokenizer.vocab):.1f}%)")
+            print(f"- Unicode:         {results[size]['unicode_tokens']} ({results[size]['unicode_tokens']*100/len(tokenizer.vocab):.1f}%)")
+            print(f"- Спец. токены:    {results[size]['special_tokens']} ({results[size]['special_tokens']*100/len(tokenizer.vocab):.1f}%)")
+            print(f"- Односимвольных:  {results[size]['single_char']}")
+            print(f"- Многосимвольных: {results[size]['multi_char']}")
+            print(f"- Средняя длина:   {results[size]['token_lengths']['avg']:.2f}")
+            print(f"- Макс. длина:     {results[size]['token_lengths']['max']}")
+            print(f"- Топ-5 символов:  {dict(list(results[size]['char_frequency'].items())[:5])}")
         
         self.results['vocabulary'] = results
         return results
@@ -1069,10 +1069,10 @@ class ThreeModelComparison:
         Анализ токенов вне словаря (OOV) и неизвестных символов.
         
         Args:
-            test_categories:    Категории с тестовыми текстами
+            test_categories: Категории с тестовыми текстами
             
         Returns:
-            Dict[int, Dict]:    Результаты анализа OOV
+            Dict[int, Dict]: Результаты анализа OOV
         """
         print_header("АНАЛИЗ OOV (OUT OF VOCABULARY)")
         
@@ -1127,7 +1127,7 @@ class ThreeModelComparison:
             }
             
             print(f"\nМодель bpe_{size}:")
-            print(f"Покрытие символов: {coverage:.2f}% ({len(all_chars) - len(unknown_chars)}/{len(all_chars)})")
+            print(f"Покрытие символов:   {coverage:.2f}% ({len(all_chars) - len(unknown_chars)}/{len(all_chars)})")
             print(f"Неизвестные символы: {len(unknown_chars)}")
             
             if len(unknown_chars) > 0:
@@ -1151,10 +1151,10 @@ class ThreeModelComparison:
         Определить категорию Unicode символа.
         
         Args:
-            char:    Символ для анализа
+            char: Символ для анализа
             
         Returns:
-            str:    Категория символа
+            str: Категория символа
         """
         code = ord(char)
         if code < 128:
@@ -1183,10 +1183,10 @@ class ThreeModelComparison:
         Анализ глубины сжатия - распределение длин токенов в закодированном тексте.
         
         Args:
-            test_categories:    Категории с тестовыми текстами
+            test_categories: Категории с тестовыми текстами
             
         Returns:
-            Dict[int, Dict]:    Результаты анализа глубины сжатия
+            Dict[int, Dict]: Результаты анализа глубины сжатия
         """
         print_header("АНАЛИЗ ГЛУБИНЫ СЖАТИЯ")
         
@@ -1243,8 +1243,8 @@ class ThreeModelComparison:
             }
             
             print(f"Всего токенов проанализировано: {len(all_token_lengths)}")
-            print(f"Средняя длина токена: {avg_token_length:.2f}")
-            print(f"Медианная длина: {median_token_length}")
+            print(f"Средняя длина токена:           {avg_token_length:.2f}")
+            print(f"Медианная длина:                {median_token_length}")
             print(f"Распределение по длинам:")
             for range_name, count in length_ranges.items():
                 percent = count / len(all_token_lengths) * 100
@@ -1266,19 +1266,19 @@ class ThreeModelComparison:
         Сгенерировать текстовый отчет.
         
         Returns:
-            str:    Текстовый отчет с результатами
+            str: Текстовый отчет с результатами
         """
         lines = []
-        lines.append("=" * 100)
-        lines.append("СРАВНЕНИЕ ТРЕХ BPE МОДЕЛЕЙ (8000, 10000, 12000)".center(100))
-        lines.append("=" * 100)
+        lines.append("=" * 60)
+        lines.append("СРАВНЕНИЕ ТРЕХ BPE МОДЕЛЕЙ (8000, 10000, 12000)".center(60))
+        lines.append("=" * 60)
         lines.append("")
         
         # Информация о тестах
         lines.append("ИНФОРМАЦИЯ О ТЕСТАХ")
         lines.append("-" * 40)
-        lines.append(f"Всего тестов: {self.results['metadata']['total_tests']}")
-        lines.append(f"Категорий: {len(self.results['metadata']['test_categories'])}")
+        lines.append(f"Всего тестов:      {self.results['metadata']['total_tests']}")
+        lines.append(f"Категорий:         {len(self.results['metadata']['test_categories'])}")
         lines.append(f"Дата тестирования: {self.results['metadata']['timestamp']}")
         lines.append("")
         
@@ -1429,22 +1429,22 @@ class ThreeModelComparison:
         best_speed = min([(8000, speed_8000), (10000, speed_10000), (12000, speed_12000)], key=lambda x: x[1])
         
         lines.append(f"По точности: bpe_{best_accuracy[0]} ({best_accuracy[1]:.1f}%)")
-        lines.append(f"По сжатию: bpe_{best_compression[0]} ({best_compression[1]:.2f} симв/токен)")
+        lines.append(f"По сжатию:   bpe_{best_compression[0]} ({best_compression[1]:.2f} симв/токен)")
         lines.append(f"По скорости: bpe_{best_speed[0]} ({best_speed[1]:.6f} мс)")
         lines.append("")
         
         # Компромиссный анализ
         lines.append("Компромиссный анализ:")
         if acc_12000 - acc_8000 > 1:
-            lines.append("- модель 12000 дает заметно лучшую точность")
+            lines.append("- Модель 12000 дает заметно лучшую точность")
         elif acc_8000 - acc_12000 > 1:
-            lines.append("- модель 8000 неожиданно лучше по точности (проверьте данные)")
+            lines.append("- Модель 8000 неожиданно лучше по точности (проверьте данные)")
         
         if comp_12000 / comp_8000 > 1.1:
-            lines.append("- модель 12000 сжимает лучше")
+            lines.append("- Модель 12000 сжимает лучше")
         
         if speed_8000 / speed_12000 < 0.9:
-            lines.append("- модель 8000 работает быстрее")
+            lines.append("- Модель 8000 работает быстрее")
         
         lines.append("")
         lines.append("Итоговая рекомендация:")
@@ -1477,7 +1477,7 @@ class ThreeModelComparison:
         Создать графики сравнения с цифрами внутри границ.
         
         Args:
-            reports_dir:    Директория для сохранения графиков
+            reports_dir: Директория для сохранения графиков
         """
         print_header("СОЗДАНИЕ ГРАФИКОВ")
         
@@ -1492,7 +1492,7 @@ class ThreeModelComparison:
             # Проверяем установлен ли matplotlib
             try:
                 import matplotlib
-                print(f"Matplotlib версия: {matplotlib.__version__}")
+                print(f"Matplotlib версия:  {matplotlib.__version__}")
                 print(f"Matplotlib backend: {matplotlib.get_backend()}")
             except ImportError:
                 print("Matplotlib не установлен. Установите: pip install matplotlib")
@@ -1504,7 +1504,7 @@ class ThreeModelComparison:
                 fig.suptitle('Сравнение трех BPE моделей (8000, 10000, 12000)', 
                             fontsize=16, fontweight='bold')
             except Exception as e:
-                print(f"Ошибка создания фигуры: {e}")
+                print(f"Ошибка создания фигуры: {e}!")
                 return
             
             categories = list(self.results['accuracy'][self.model_sizes[0]]['by_category'].keys())
@@ -1538,7 +1538,7 @@ class ThreeModelComparison:
                 ax.legend()
                 ax.set_ylim([0, 105])
                 ax.grid(True, alpha=0.3, axis='y')
-                print("- график 1/9: Точность")
+                print("- График 1/9: Точность")
                 
                 # 2. Степень сжатия
                 ax = axes[0, 1]
@@ -1565,7 +1565,7 @@ class ThreeModelComparison:
                 ax.legend()
                 ax.set_ylim([0, max_ratio * 1.3])
                 ax.grid(True, alpha=0.3, axis='y')
-                print("- график 2/9: Сжатие")
+                print("- График 2/9: Сжатие")
                 
                 # 3. Скорость encode
                 ax = axes[0, 2]
@@ -1593,7 +1593,7 @@ class ThreeModelComparison:
                 ax.legend()
                 ax.set_ylim([0, max_speed * 1.4])
                 ax.grid(True, alpha=0.3, axis='y')
-                print("- график 3/9: Скорость encode")
+                print("- График 3/9: Скорость encode")
                 
                 # 4. Скорость decode
                 ax = axes[1, 0]
@@ -1621,7 +1621,7 @@ class ThreeModelComparison:
                 ax.legend()
                 ax.set_ylim([0, max_speed * 1.4])
                 ax.grid(True, alpha=0.3, axis='y')
-                print("- график 4/9: Скорость decode")
+                print("- График 4/9: Скорость decode")
                 
                 # 5. Распределение токенов по типам
                 ax = axes[1, 1]
@@ -1648,7 +1648,7 @@ class ThreeModelComparison:
                 ax.legend()
                 ax.set_ylim([0, max_value * 1.2])
                 ax.grid(True, alpha=0.3, axis='y')
-                print("- график 5/9: Состав словарей")
+                print("- График 5/9: Состав словарей")
                 
                 # 6. Распределение длин токенов
                 ax = axes[1, 2]
@@ -1674,7 +1674,7 @@ class ThreeModelComparison:
                     ax.set_ylabel('Количество токенов')
                     ax.legend()
                     ax.grid(True, alpha=0.3, axis='y')
-                    print("- график 6/9: Распределение длин")
+                    print("- График 6/9: Распределение длин")
                 else:
                     ax.text(0.5, 0.5, 'Нет данных\n(запустите с --full-analysis)', 
                         ha='center', va='center', fontsize=12)
@@ -1706,7 +1706,7 @@ class ThreeModelComparison:
                     ax.legend()
                     ax.set_ylim([0, 105])
                     ax.grid(True, alpha=0.3, axis='y')
-                    print("- график 7/9: OOV анализ")
+                    print("- График 7/9: OOV анализ")
                 else:
                     ax.text(0.5, 0.5, 'Нет данных\n(запустите с --full-analysis)', 
                         ha='center', va='center', fontsize=12)
@@ -1736,7 +1736,7 @@ class ThreeModelComparison:
                 ax.legend()
                 ax.set_ylim([0, max_speed_val * 1.2])
                 ax.grid(True, alpha=0.3, axis='y')
-                print("- график 8/9: Скорость")
+                print("- График 8/9: Скорость")
                 
                 # 9. Сводное сравнение
                 ax = axes[2, 2]
@@ -1792,7 +1792,7 @@ class ThreeModelComparison:
                 ax.legend()
                 ax.set_ylim([0, 110])
                 ax.grid(True, alpha=0.3, axis='y')
-                print("- график 9/9: Сводное сравнение")
+                print("- График 9/9: Сводное сравнение")
                 
                 # Добавляем отступы для всех графиков
                 plt.tight_layout(pad=4.0)
@@ -1805,28 +1805,28 @@ class ThreeModelComparison:
                     plot_path = reports_dir / 'three_model_comparison.png'
                     plt.savefig(plot_path, dpi=150, bbox_inches='tight', facecolor='white')
                     print(f"PNG график сохранен: {plot_path}")
-                    print(f"Размер файла: {plot_path.stat().st_size / 1024:.1f} КБ")
+                    print(f"Размер файла:        {plot_path.stat().st_size / 1024:.1f} КБ")
                 except Exception as e:
-                    print(f"Ошибка сохранения PNG: {e}")
+                    print(f"Ошибка сохранения PNG: {e}!")
                 
                 try:
                     pdf_path = reports_dir / 'three_model_comparison.pdf'
                     plt.savefig(pdf_path, bbox_inches='tight', facecolor='white')
                     print(f"PDF график сохранен: {pdf_path}")
                 except Exception as e:
-                    print(f"Ошибка сохранения PDF: {e}")
+                    print(f"Ошибка сохранения PDF: {e}!")
                 
                 plt.close()
                 print(f"Все графики успешно созданы!")
                 
             except Exception as e:
-                print(f"Ошибка при создании графиков: {e}")
+                print(f"Ошибка при создании графиков: {e}!")
                 import traceback
                 traceback.print_exc()
                 plt.close()
                 
         except Exception as e:
-            print(f"Критическая ошибка: {e}")
+            print(f"Критическая ошибка: {e}!")
             import traceback
             traceback.print_exc()
 
@@ -1839,7 +1839,7 @@ class ThreeModelComparison:
         Сохранить результаты в файлы.
         
         Args:
-            reports_dir:    Директория для сохранения
+            reports_dir: Директория для сохранения
         """
         reports_dir.mkdir(parents=True, exist_ok=True)
         
@@ -1892,7 +1892,7 @@ def main() -> int:
     Основная функция.
     
     Returns:
-        int:    0 при успехе, 1 при ошибке
+        int: 0 при успехе, 1 при ошибке
     """
     parser = argparse.ArgumentParser(
         description='Сравнение трех BPE моделей (8000, 10000, 12000)',
@@ -1936,14 +1936,14 @@ def main() -> int:
     paths = get_project_paths()
     
     print_header("СРАВНЕНИЕ ТРЕХ BPE МОДЕЛЕЙ (БЕЗ КЭШИРОВАНИЯ)")
-    print(f"Директория моделей: {paths['models_dir']}")
+    print(f"Директория моделей:     {paths['models_dir']}")
     print(f"Директория результатов: {paths['reports_dir']}")
     
     # Режим только графиков
     if args.plot_only:
         json_path = paths['reports_dir'] / 'three_model_comparison.json'
         if not json_path.exists():
-            print(f"Файл с результатами не найден: {json_path}")
+            print(f"Файл с результатами не найден: {json_path}!")
             return 1
         
         print(f"\nЗагрузка результатов из {json_path}")
@@ -1965,7 +1965,7 @@ def main() -> int:
     try:
         # Загружаем модели
         if not comparator.load_models():
-            print(f"\nНе удалось загрузить все модели")
+            print(f"\nНе удалось загрузить все модели!")
             print(f"Проверьте наличие моделей в: {paths['models_dir']}")
             return 1
         
@@ -2008,7 +2008,7 @@ def main() -> int:
         print("\n\nТестирование прервано пользователем!")
         return 1
     except Exception as e:
-        print(f"\nОшибка: {e}")
+        print(f"\nОшибка: {e}!")
         import traceback
         traceback.print_exc()
         return 1

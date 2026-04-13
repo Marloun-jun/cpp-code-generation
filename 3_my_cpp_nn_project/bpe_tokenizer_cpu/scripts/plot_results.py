@@ -14,14 +14,14 @@
 # @details Создает наглядные графики сравнения для трех реализаций BPE токенизатора:
 #
 #          1. **HuggingFace** - библиотека tokenizers (эталон)
-#          2. **Python BPE** - собственная реализация на Python
-#          3. **C++ BPE** - оптимизированная реализация на C++
+#          2. **Python BPE**  - собственная реализация на Python
+#          3. **C++ BPE**     - оптимизированная реализация на C++
 #
 #          **Визуализируемые метрики:**
 #          - Скорость encode (K токенов/сек) - чем выше, тем лучше
-#          - Время encode (мс) - чем меньше, тем лучше
-#          - Использование памяти (MB) - чем меньше, тем лучше
-#          - Частота OOV (%) - чем меньше, тем лучше
+#          - Время encode (мс)               - чем меньше, тем лучше
+#          - Использование памяти (МБ)       - чем меньше, тем лучше
+#          - Частота OOV (%)                 - чем меньше, тем лучше
 #
 #          **Графики создаются в форматах:**
 #          - PNG (для вставки в документацию)
@@ -41,6 +41,7 @@
 
 import json
 import sys
+
 import matplotlib.pyplot as plt
 
 from pathlib import Path
@@ -106,47 +107,56 @@ def load_results(file_path: Path) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: Загруженные результаты
     
-    **Примечание:** Если файл не найден, создаются демо-данные
-    для демонстрации возможностей визуализации.
+    **Примечание:** Если файл не найден, пробует загрузить из reports/,
+    а затем создает демо-данные для демонстрации возможностей визуализации.
     """
-    if not file_path.exists():
-        print(f" !!! Файл с результатами не найден: {file_path}")
-        print("Создание тестовых данных для демонстрации...")
-        
-        # Создаем тестовые данные на основе реальных измерений
-        return {
-            'huggingface': {
-                'encode_speed': 45000,
-                'encode_time_ms': 2.3,
-                'memory_mb': 120,
-                'oov_rate': 0.01
-            },
-            'python': {
-                'encode_speed': 15000,
-                'encode_time_ms': 6.8,
-                'memory_mb': 85,
-                'oov_rate': 0.02
-            },
-            'cpp': {
-                'encode_speed': 64200,
-                'encode_time_ms': 0.16,
-                'memory_mb': 45,
-                'oov_rate': 0.0
-            }
-        }
+    # Пробуем загрузить из указанного пути
+    if file_path.exists():
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
     
-    with open(file_path, 'r', encoding='utf-8') as f:
-        return json.load(f)
-
+    # Если файл не найден, пробуем в reports/ (альтернативный путь)
+    reports_path = file_path.parent.parent / 'reports' / 'benchmark_results.json'
+    if reports_path.exists():
+        print(f"Файл не найден: {file_path}!")
+        print(f"Использую результаты из: {reports_path}")
+        with open(reports_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    
+    # Если и там нет, создаем демо-данные
+    print(f"Файл с результатами не найден: {file_path}!")
+    print("Создание тестовых данных для демонстрации...")
+    
+    # Создаем тестовые данные на основе реальных измерений
+    return {
+        'huggingface': {
+            'encode_speed': 45000,
+            'encode_time_ms': 2.3,
+            'memory_mb': 120,
+            'oov_rate': 0.01
+        },
+        'python': {
+            'encode_speed': 15000,
+            'encode_time_ms': 6.8,
+            'memory_mb': 85,
+            'oov_rate': 0.02
+        },
+        'cpp': {
+            'encode_speed': 64200,
+            'encode_time_ms': 0.16,
+            'memory_mb': 45,
+            'oov_rate': 0.0
+        }
+    }
 
 def set_bar_labels(ax: plt.Axes, bars, fmt: str = '{:.1f}') -> None:
     """
     Добавить значения на столбцы графика.
     
     Args:
-        ax: Объект осей
+        ax:   Объект осей
         bars: Контейнер столбцов
-        fmt: Формат отображения значений
+        fmt:  Формат отображения значений
     
     Размещает значения непосредственно над каждым столбцом.
     """
@@ -178,10 +188,10 @@ def main() -> int:
     
     # Получаем пути
     paths = get_project_paths()
-    results_file = paths["scripts_dir"] / 'benchmark_results.json'
+    results_file = paths["reports_dir"] / 'benchmark_results.json'
     
-    print(f"Корень проекта: {paths['project_root']}")
-    print(f"Директория отчетов: {paths['reports_dir']}")
+    print(f"Корень проекта:      {paths['project_root']}")
+    print(f"Директория отчетов:  {paths['reports_dir']}")
     print(f"Директория графиков: {paths['figures_dir']}")
     print(f"Файл с результатами: {results_file}")
     
@@ -192,7 +202,7 @@ def main() -> int:
     required_keys = ['huggingface', 'python', 'cpp']
     for key in required_keys:
         if key not in results:
-            print(f"Отсутствуют данные для {key}")
+            print(f"Отсутствуют данные для {key}!")
             return 1
     
     # ======================================================================
@@ -208,14 +218,14 @@ def main() -> int:
         results['cpp']['encode_speed'] / 1000
     ]
     
-    # Время encode (ms)
+    # Время encode (мс)
     encode_time = [
         results['huggingface']['encode_time_ms'],
         results['python']['encode_time_ms'],
         results['cpp']['encode_time_ms']
     ]
     
-    # Память (MB)
+    # Память (МБ)
     memory = [
         results['huggingface']['memory_mb'],
         results['python']['memory_mb'],
@@ -262,10 +272,10 @@ def main() -> int:
     ax3 = axes[1, 0]
     bars3 = ax3.bar(names, memory, color=colors, alpha=0.8, 
                     edgecolor='black', linewidth=1)
-    ax3.set_ylabel('Память (MB)', fontsize=12)
+    ax3.set_ylabel('Память (МБ)', fontsize=12)
     ax3.set_title('Использование памяти', fontsize=14, fontweight='bold')
     ax3.grid(True, alpha=0.3, axis='y')
-    set_bar_labels(ax3, bars3, '{:.1f}MB')
+    set_bar_labels(ax3, bars3, '{:.1f}МБ')
     
     # График 4: OOV частота
     ax4 = axes[1, 1]
@@ -279,14 +289,14 @@ def main() -> int:
     # Добавляем подписи с ускорением
     if encode_time[1] > 0 and encode_time[2] > 0:
         speedup_py = encode_time[1] / encode_time[2]
-        ax2.text(2, encode_time[2] + 0.1, f'⚡ {speedup_py:.1f}x',
+        ax2.text(2, encode_time[2] + 0.1, f'vs Python: {speedup_py:.1f}x',
                 ha='center', fontweight='bold', color='#45B7D1')
-    
+
     if encode_time[0] > 0 and encode_time[2] > 0:
         speedup_hf = encode_time[0] / encode_time[2]
-        ax2.text(2, encode_time[2] + 0.5, f'⚡ {speedup_hf:.1f}x',
+        ax2.text(2, encode_time[2] + 0.15, f'vs HF: {speedup_hf:.1f}x',
                 ha='center', fontweight='bold', color='#45B7D1')
-    
+        
     plt.tight_layout()
     
     # ======================================================================
@@ -297,13 +307,13 @@ def main() -> int:
     png_path = paths['figures_dir'] / 'comparison.png'
     plt.savefig(png_path, dpi=150, bbox_inches='tight', facecolor='white')
     print(f"\nPNG графики сохранены в {png_path}")
-    print(f"Размер файла: {png_path.stat().st_size / 1024:.1f} KB")
+    print(f"Размер файла: {png_path.stat().st_size / 1024:.1f} КБ")
     
     # Сохраняем PDF для высокого качества
     pdf_path = paths['figures_dir'] / 'comparison.pdf'
     plt.savefig(pdf_path, bbox_inches='tight', facecolor='white')
     print(f"PDF версия сохранена в {pdf_path}")
-    print(f"Размер файла: {pdf_path.stat().st_size / 1024:.1f} KB")
+    print(f"Размер файла: {pdf_path.stat().st_size / 1024:.1f} КБ")
     
     # Показываем графики (если не в headless режиме)
     try:
@@ -321,7 +331,7 @@ def main() -> int:
     print(f"{'-' * 70}")
     print(f"{'Скорость (K ток/сек)':<25} {encode_speed[0]:<15.0f} {encode_speed[1]:<15.0f} {encode_speed[2]:<15.0f}")
     print(f"{'Время encode (мс)':<25} {encode_time[0]:<15.2f} {encode_time[1]:<15.2f} {encode_time[2]:<15.2f}")
-    print(f"{'Память (MB)':<25} {memory[0]:<15.1f} {memory[1]:<15.1f} {memory[2]:<15.1f}")
+    print(f"{'Память (МБ)':<25} {memory[0]:<15.1f} {memory[1]:<15.1f} {memory[2]:<15.1f}")
     print(f"{'OOV частота (%)':<25} {oov[0]:<15.2f} {oov[1]:<15.2f} {oov[2]:<15.2f}")
     print(f"{'=' * 70}")
     
@@ -334,7 +344,7 @@ def main() -> int:
         speedup_hf = encode_time[0] / encode_time[2]
         print(f"Ускорение C++ относительно HuggingFace: {speedup_hf:.1f}x")
     
-    print_header("ВИЗУАЛИЗАЦИЯ ЗАВЕРШЕНА")
+    print_header("ВИЗУАЛИЗАЦИЯ ЗАВЕРШЕНА!")
     return 0
 
 

@@ -3,7 +3,6 @@ file(REMOVE_RECURSE
   "CMakeFiles/test_fast_tokenizer.dir/test_fast_tokenizer.cpp.o.d"
   "bin/test_fast_tokenizer"
   "bin/test_fast_tokenizer.pdb"
-  "test_fast_tokenizer[1]_tests.cmake"
 )
 
 # Per-language clean rules from dependency scanning.

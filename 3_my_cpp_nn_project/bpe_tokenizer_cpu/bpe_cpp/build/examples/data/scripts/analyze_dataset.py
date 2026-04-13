@@ -27,18 +27,19 @@
 # @example
 #   python analyze_dataset.py
 #   # После выполнения в data/reports/ появятся:
-#   #   - figures/*.png (графики)
-#   #   - dataset_report.md (отчет)
+#   # - figures/*.png (графики)
+#   # - dataset_report.md (отчет)
 #
 # ======================================================================
 
 import json
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 import subprocess
 import re
 import sys
+
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 from pathlib import Path
 from collections import Counter
@@ -65,8 +66,8 @@ def print_header(title: str, width: int = 60) -> None:
     Вывести заголовок раздела.
     
     Args:
-        title:    Заголовок
-        width:    Ширина линии
+        title: Заголовок
+        width: Ширина линии
     """
     print(f"\n{'=' * width}")
     print(f"{title:^{width}}")
@@ -78,7 +79,7 @@ def get_project_root() -> Path:
     Получить корневую директорию проекта.
     
     Returns:
-        Path:    Путь к корню проекта (bpe_tokenizer_cpu/)
+        Path: Путь к корню проекта (bpe_tokenizer_cpu/)
     """
     current_file = Path(__file__).resolve()    # .../bpe_tokenizer_cpu/data/scripts/analyze_dataset.py
     scripts_dir = current_file.parent          # .../bpe_tokenizer_cpu/data/scripts/
@@ -104,8 +105,8 @@ class CppDatasetAnalyzer:
         Инициализация анализатора датасета.
         
         Args:
-            project_root:       Корневая директория проекта (bpe_tokenizer_cpu/)
-            plot_max_length:    Максимальная длина для отображения на графиках
+            project_root:    Корневая директория проекта (bpe_tokenizer_cpu/)
+            plot_max_length: Максимальная длина для отображения на графиках
         """
         self.root = Path(project_root)
         self.plot_max_length = plot_max_length
@@ -114,19 +115,19 @@ class CppDatasetAnalyzer:
         # Пути
         # ======================================================================
         
-        # директории
+        # Директории
         self.data_dir = self.root / 'data'                 # data/
         self.corpus_dir = self.data_dir / 'corpus'         # data/corpus/
         self.metadata_dir = self.data_dir / 'metadata'     # data/metadata/
         self.reports_dir = self.data_dir / 'reports'       # data/reports/
         self.figures_dir = self.reports_dir / 'figures'    # data/reports/figures/
         
-        # создаем директории
+        # Создаем директории
         self.figures_dir.mkdir(parents=True, exist_ok=True)
         self.metadata_dir.mkdir(parents=True, exist_ok=True)
         self.reports_dir.mkdir(parents=True, exist_ok=True)
         
-        # файлы
+        # Файлы
         self.corpus_file = self.corpus_dir / 'corpus.txt'             # data/corpus/corpus.txt
         self.train_file = self.corpus_dir / 'train_code.txt'          # data/corpus/train_code.txt
         self.val_file = self.corpus_dir / 'val_code.txt'              # data/corpus/val_code.txt
@@ -134,14 +135,14 @@ class CppDatasetAnalyzer:
         self.stats_file = self.metadata_dir / 'dataset_stats.json'    # data/metadata/dataset_stats.json
         self.report_file = self.reports_dir / 'dataset_report.md'     # data/reports/dataset_report.md
         
-        # данные
+        # Данные
         self.codes: List[str] = []
         self.stats: Dict[str, Any] = {}
         
         print(f"Корневая директория: {self.root}")
-        print(f"Директория данных: {self.data_dir}")
-        print(f"Директория корпуса: {self.corpus_dir}")
-        print(f"Директория отчетов: {self.reports_dir}")
+        print(f"Директория данных:   {self.data_dir}")
+        print(f"Директория корпуса:  {self.corpus_dir}")
+        print(f"Директория отчетов:  {self.reports_dir}")
     
     # ======================================================================
     # ЗАГРУЗКА ДАННЫХ
@@ -152,12 +153,12 @@ class CppDatasetAnalyzer:
         Загрузка данных из корпуса.
         
         Returns:
-            List[str]:    Список программ
+            List[str]: Список программ
         """
         print_header("ЗАГРУЗКА ДАННЫХ")
         
         if not self.corpus_file.exists():
-            print(f"Х Файл корпуса не найден: {self.corpus_file}")
+            print(f"Файл корпуса не найден: {self.corpus_file}!")
             print(f"Убедитесь, что файл существует в {self.corpus_dir}")
             return []
         
@@ -167,7 +168,7 @@ class CppDatasetAnalyzer:
         
         print(f"Загружено {len(self.codes):,} программ")
         
-        # загружаем статистику если есть
+        # Загружаем статистику если есть
         if self.stats_file.exists():
             with open(self.stats_file, 'r', encoding='utf-8') as f:
                 self.stats = json.load(f)
@@ -184,14 +185,14 @@ class CppDatasetAnalyzer:
         Расчет базовой статистики по длине кода.
         
         Returns:
-            Dict[str, Any]:    Статистика датасета
+            Dict[str, Any]: Статистика датасета
         """
         print_header("РАСЧЕТ СТАТИСТИКИ")
         
         lengths = [len(code) for code in self.codes]
         
         if not lengths:
-            print("Х Нет данных для расчета статистики")
+            print("Нет данных для расчета статистики!")
             return {}
         
         stats = {
@@ -204,7 +205,7 @@ class CppDatasetAnalyzer:
                 'std': float(np.std(lengths)),
                 'q1': float(np.percentile(lengths, 25)),
                 'q3': float(np.percentile(lengths, 75)),
-                # добавляем percentile для более точного анализа
+                # Добавляем percentile для более точного анализа
                 'p80': float(np.percentile(lengths, 80)),
                 'p90': float(np.percentile(lengths, 90)),
                 'p95': float(np.percentile(lengths, 95)),
@@ -216,16 +217,16 @@ class CppDatasetAnalyzer:
         
         self.stats.update(stats)
         
-        # сохраняем статистику
+        # Сохраняем статистику
         with open(self.stats_file, 'w', encoding='utf-8') as f:
             json.dump(self.stats, f, indent=2, ensure_ascii=False)
         
-        print(f"- Всего примеров: {stats['total_examples']:,}")
-        print(f"- Всего символов: {stats['total_chars']:,}")
+        print(f"- Всего примеров:      {stats['total_examples']:,}")
+        print(f"- Всего символов:      {stats['total_chars']:,}")
         print(f"- Уникальных символов: {stats['unique_chars']:,}")
-        print(f"- Средняя длина: {stats['code_length']['mean']:.1f}")
-        print(f"- Медианная длина: {stats['code_length']['median']:.1f}")
-        print(f"- Мин/Макс: {stats['code_length']['min']} / {stats['code_length']['max']}")
+        print(f"- Средняя длина:       {stats['code_length']['mean']:.1f}")
+        print(f"- Медианная длина:     {stats['code_length']['median']:.1f}")
+        print(f"- Мин/Макс:            {stats['code_length']['min']} / {stats['code_length']['max']}")
         print(f"- 90% примеров ≤ {stats['code_length']['p90']:.0f} символов")
         print(f"- 95% примеров ≤ {stats['code_length']['p95']:.0f} символов")
         
@@ -240,9 +241,9 @@ class CppDatasetAnalyzer:
         График 1: Распределение длины кода.
         
         Создает три подграфика:
-        - гистограмма с средней и медианой
+        - Гистограмма с средней и медианой
         - box plot (ВЕРТИКАЛЬНЫЙ)
-        - кумулятивное распределение
+        - Кумулятивное распределение
         """
         print("\nГенерация: распределение длины кода...")
         
@@ -256,10 +257,10 @@ class CppDatasetAnalyzer:
         x_limit = 6000
         n_bins = 50
 
-        print(f"- максимальная длина: {self.stats['code_length']['max']:.0f}")
-        print(f"- предел на графике: {x_limit:.0f}")
+        print(f"- Максимальная длина: {self.stats['code_length']['max']:.0f}")
+        print(f"- Предел на графике:  {x_limit:.0f}")
 
-        # предел для оси Y (количество программ) - до общего числа примеров
+        # Предел для оси Y (количество программ) - до общего числа примеров
         y_limit = len(self.codes)
         
         fig, axes = plt.subplots(1, 3, figsize=(18, 5))
@@ -268,7 +269,7 @@ class CppDatasetAnalyzer:
         # 1. ГИСТОГРАММА
         # ======================================================================
 
-        # строим вертикальную гистограмму
+        # Строим вертикальную гистограмму
         counts, bins, patches = axes[0].hist(
             lengths, 
             bins=n_bins, 
@@ -278,7 +279,7 @@ class CppDatasetAnalyzer:
             orientation='vertical'
         )
 
-        # добавляем вертикальные линии для средней и медианы
+        # Добавляем вертикальные линии для средней и медианы
         axes[0].axvline(
             self.stats['code_length']['mean'], 
             color='red', 
@@ -294,14 +295,14 @@ class CppDatasetAnalyzer:
             label=f"Медиана: {self.stats['code_length']['median']:.0f}"
         )
 
-        # подписи осей
+        # Подписи осей
         axes[0].set_xlabel('Длина кода (символы)', fontsize=12)
         axes[0].set_ylabel('Количество программ', fontsize=12)
         axes[0].set_title('Распределение длины C++ программ', fontsize=14, fontweight='bold')
         axes[0].legend(loc='upper right')
         axes[0].grid(True, alpha=0.3, axis='y')
 
-        # пределы
+        # Пределы
         axes[0].set_xlim(0, x_limit)
         axes[0].set_ylim(0, y_limit)
 
@@ -309,10 +310,10 @@ class CppDatasetAnalyzer:
         # 2. BOX PLOT
         # ======================================================================
 
-        # устанавливаем предел по вертикали
+        # Устанавливаем предел по вертикали
         box_y_limit = 2800
 
-        # строим вертикальный box plot
+        # Строим вертикальный box plot
         bp = axes[1].boxplot(
             lengths, 
             vert=True,
@@ -326,36 +327,36 @@ class CppDatasetAnalyzer:
             meanprops=dict(marker='D', markerfacecolor='green', markersize=8)
         )
 
-        # настройка осей
+        # Настройка осей
         axes[1].set_ylabel('Длина кода (символы)', fontsize=12)
         axes[1].set_xlabel('Распределение', fontsize=12)
         axes[1].set_title('Box-plot распределения длины', fontsize=14, fontweight='bold')
         axes[1].grid(True, alpha=0.3, axis='y')
 
-        # устанавливаем предел
+        # Устанавливаем предел
         axes[1].set_ylim(0, box_y_limit)
 
-        # добавляем статистику прямо на график
+        # Добавляем статистику прямо на график
         stats_text = (f'Медиана: {self.stats["code_length"]["median"]:.0f}\n'
                     f'Q1 (25%): {self.stats["code_length"]["q1"]:.0f}\n'
                     f'Q3 (75%): {self.stats["code_length"]["q3"]:.0f}\n'
                     f'IQR: {self.stats["code_length"]["q3"] - self.stats["code_length"]["q1"]:.0f}\n'
                     f'Выбросы: от {self.stats["code_length"]["q3"] + 1.5 * (self.stats["code_length"]["q3"] - self.stats["code_length"]["q1"]):.0f}')
 
-        # размещаем статистику справа от графика
+        # Размещаем статистику справа от графика
         axes[1].text(1.1, 1900, stats_text,
                     bbox=dict(boxstyle="round,pad=0.2", facecolor="wheat", alpha=0.9),
                     verticalalignment='top',
                     fontsize=10)
 
-        # добавляем горизонтальную линию на уровне 2500 (начало выбросов)
+        # Добавляем горизонтальную линию на уровне 2500 (начало выбросов)
         axes[1].axhline(y=2500, color='orange', linestyle=':', linewidth=1.5, alpha=0.7)
 
-        # подсчитываем количество выбросов выше 2500
+        # Подсчитываем количество выбросов выше 2500
         outliers_above_2500 = sum(1 for l in lengths if l > 2500)
         outliers_percent = (outliers_above_2500 / len(lengths)) * 100
 
-        # добавляем информацию о выбросах
+        # Добавляем информацию о выбросах
         axes[1].text(1.1, 2300,
                     f'Выбросов >2500: {outliers_above_2500}\n({outliers_percent:.1f}% всех программ)',
                     bbox=dict(boxstyle="round,pad=0.2", facecolor="yellow", alpha=0.7),
@@ -366,7 +367,7 @@ class CppDatasetAnalyzer:
         # 3. КУМУЛЯТИВНОЕ РАСПРЕДЕЛЕНИЕ
         # ======================================================================
 
-        # строим кумулятивное распределение
+        # Строим кумулятивное распределение
         n, bins, patches = axes[2].hist(
             lengths, 
             bins=100, 
@@ -377,24 +378,24 @@ class CppDatasetAnalyzer:
             linewidth=2.5
         )
 
-        # добавляем горизонтальные линии для перцентилей
+        # Добавляем горизонтальные линии для перцентилей
         axes[2].axhline(0.5, color='red', linestyle='--', linewidth=2, label='50% (медиана)')
         axes[2].axhline(0.8, color='orange', linestyle='--', linewidth=2, label='80%')
         axes[2].axhline(0.9, color='purple', linestyle='--', linewidth=2, label='90%')
         axes[2].axhline(0.95, color='brown', linestyle='--', linewidth=2, label='95%')
 
-        # настройка осей
+        # Настройка осей
         axes[2].set_xlabel('Длина кода (символы)', fontsize=12)
         axes[2].set_ylabel('Кумулятивная вероятность', fontsize=12)
         axes[2].set_title('Кумулятивное распределение длины кода', fontsize=14, fontweight='bold')
         axes[2].legend(loc='lower right')
         axes[2].grid(True, alpha=0.3)
 
-        # устанавливаем пределы
+        # Устанавливаем пределы
         axes[2].set_xlim(0, 6000)
         axes[2].set_ylim(0, 1)
 
-        # добавляем вертикальные линии для перцентилей
+        # Добавляем вертикальные линии для перцентилей
         axes[2].axvline(
             self.stats['code_length']['p80'],
             color='orange', 
@@ -417,7 +418,7 @@ class CppDatasetAnalyzer:
             alpha=0.7
         )
 
-        # добавляем подписи значений перцентилей
+        # Добавляем подписи значений перцентилей
         axes[2].text(
             self.stats['code_length']['p80'] + 50, 0.75,
             f'P80: {self.stats["code_length"]["p80"]:.0f}',
@@ -437,12 +438,12 @@ class CppDatasetAnalyzer:
             bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.8)
         )
 
-        # добавляем заливку областей для наглядности
+        # Добавляем заливку областей для наглядности
         axes[2].axvspan(0, self.stats['code_length']['p80'], alpha=0.1, color='green', label='80% данных')
         axes[2].axvspan(self.stats['code_length']['p80'], self.stats['code_length']['p95'], alpha=0.1, color='yellow', label='15% данных')
         axes[2].axvspan(self.stats['code_length']['p95'], 6000, alpha=0.1, color='red', label='5% данных (выбросы)')
 
-        # добавляем легенду с областями
+        # Добавляем легенду с областями
         axes[2].legend(loc='lower right', fontsize=9)
 
         # ======================================================================
@@ -451,7 +452,7 @@ class CppDatasetAnalyzer:
         
         plt.tight_layout()
         
-        # сохраняем график
+        # Сохраняем график
         output_path = self.figures_dir / 'code_length_distribution.png'
         plt.savefig(output_path, dpi=150, bbox_inches='tight', facecolor='white')
         plt.close()
@@ -467,15 +468,15 @@ class CppDatasetAnalyzer:
         """
         print("\nГенерация: частотность символов...")
         
-        # собираем все символы
+        # Собираем все символы
         all_chars = ''.join(self.codes)
         char_counts = Counter(all_chars)
         
-        # топ-50 символов
+        # Топ-50 символов
         top_chars = char_counts.most_common(50)
         chars, counts = zip(*top_chars)
         
-        # спецсимволы
+        # Спецсимволы
         char_labels = []
         for c in chars:
             if c == '\n':
@@ -489,13 +490,13 @@ class CppDatasetAnalyzer:
             else:
                 char_labels.append(c)
         
-        # увеличиваем размер фигуры
+        # Увеличиваем размер фигуры
         fig, ax = plt.subplots(figsize=(18, 10))
         
         colors = plt.cm.viridis(np.linspace(0, 1, len(chars)))
         bars = ax.bar(range(len(chars)), counts, color=colors, alpha=0.8, edgecolor='black', linewidth=0.5)
         
-        # настройка осей
+        # Настройка осей
         ax.set_xticks(range(len(chars)))
         ax.set_xticklabels(char_labels, rotation=45, ha='right', fontsize=11)
         ax.set_xlabel('Символ', fontsize=14, fontweight='bold')
@@ -503,23 +504,23 @@ class CppDatasetAnalyzer:
         ax.set_title('Топ-50 наиболее частотных символов в C++ коде', 
                     fontsize=18, fontweight='bold', pad=20)
         
-        # добавляем значения на столбцы
+        # Добавляем значения на столбцы
         for i, (bar, count) in enumerate(zip(bars, counts)):
             height = bar.get_height()
             
-            # определяем позицию для текста
-            if height > max(counts) * 0.7:    # очень высокие столбцы
+            # Определяем позицию для текста
+            if height > max(counts) * 0.7:    # Очень высокие столбцы
                 y_pos = height - max(counts) * 0.05
                 color = 'black'
                 fontweight = 'bold'
                 bbox = None
-            else:    # средние и низкие столбцы
+            else:    # Средние и низкие столбцы
                 y_pos = height + max(counts) * 0.01
                 color = 'black'
                 fontweight = 'normal'
                 bbox = dict(boxstyle="round,pad=0.2", facecolor='white', alpha=0.7, edgecolor='none')
             
-            # текст (rotation=90)
+            # Текст (rotation=90)
             ax.text(bar.get_x() + bar.get_width()/2., y_pos,
                 f'{count:,}', 
                 ha='center', 
@@ -530,36 +531,36 @@ class CppDatasetAnalyzer:
                 fontweight=fontweight,
                 bbox=bbox)
         
-        # добавляем сетку
+        # Добавляем сетку
         ax.grid(True, alpha=0.3, axis='y', linestyle='--', linewidth=0.5)
         
-        # добавляем горизонтальную линию среднего значения
+        # Добавляем горизонтальную линию среднего значения
         mean_count = np.mean(counts)
         ax.axhline(y=mean_count, color='red', linestyle='--', linewidth=1.5, 
                 alpha=0.7, label=f'Среднее: {mean_count:.0f}')
         
-        # легенда по ЦЕНТРУ сверху
+        # Легенда по центру сверху
         ax.legend(loc='upper center', fontsize=11, framealpha=0.9)
 
-        # форматируем ось Y с разделителями тысяч
+        # Форматируем ось Y с разделителями тысяч
         from matplotlib.ticker import FuncFormatter
         def format_y(value, _):
             return f'{int(value):,}'
         ax.yaxis.set_major_formatter(FuncFormatter(format_y))
         
-        # статистика в правом верхнем углу
+        # Статистика в правом верхнем углу
         total_chars = sum(counts)
         unique_chars = len(chars)
         stats_text = f'Всего символов в топ-50: {total_chars:,}\nУникальных символов: {unique_chars}'
         
-        # добавляем статистику с отступом от края
+        # Добавляем статистику с отступом от края
         ax.text(0.98, 0.98, stats_text, transform=ax.transAxes, fontsize=11,
             verticalalignment='top', horizontalalignment='right',
             bbox=dict(boxstyle="round,pad=0.5", facecolor="wheat", alpha=0.9))
         
         plt.tight_layout()
         
-        # сохраняем
+        # Сохраняем
         output_path = self.figures_dir / 'char_frequency.png'
         plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white')
         plt.close()
@@ -572,17 +573,17 @@ class CppDatasetAnalyzer:
         
         Показывает плотность распределения длины кода.
         """
-        print("\nГенерация: violin plot...")
+        print("\nГенерация:    violin plot...")
         
         lengths = [len(code) for code in self.codes]
         
-        # используем предел 6000 для согласованности с гистограммой
+        # Используем предел 6000 для согласованности с гистограммой
         x_limit = 6000
         
-        # создаем фигуру с красивыми пропорциями
+        # Создаем фигуру с красивыми пропорциями
         fig, ax = plt.subplots(figsize=(14, 8))
         
-        # строим горизонтальный violin plot с улучшенными настройками
+        # Строим горизонтальный violin plot с улучшенными настройками
         parts = ax.violinplot(
             lengths, 
             vert=False,
@@ -593,14 +594,14 @@ class CppDatasetAnalyzer:
             bw_method=0.3
         )
         
-        # настройка цветов - градиент от фиолетового к синему
+        # Настройка цветов - градиент от фиолетового к синему
         for i, pc in enumerate(parts['bodies']):
             pc.set_facecolor('#9b59b6')
             pc.set_alpha(0.8)
             pc.set_edgecolor('black')
             pc.set_linewidth(1.5)
         
-        # настройка линий
+        # Настройка линий
         parts['cmedians'].set_color('#e74c3c')
         parts['cmedians'].set_linewidth(3)
         parts['cmaxes'].set_color('#3498db')
@@ -610,7 +611,7 @@ class CppDatasetAnalyzer:
         parts['cbars'].set_color('#3498db')
         parts['cbars'].set_linewidth(2)
         
-        # добавляем box plot внутри violin для большей информативности
+        # Добавляем box plot внутри violin для большей информативности
         bp = ax.boxplot(
             lengths,
             positions=[1],
@@ -624,30 +625,30 @@ class CppDatasetAnalyzer:
             flierprops=dict(marker='o', markerfacecolor='red', markersize=3, alpha=0.3)
         )
         
-        # настройка осей
+        # Настройка осей
         ax.set_xlabel('Длина кода (символы)', fontsize=14, fontweight='bold')
         ax.set_ylabel('Плотность распределения', fontsize=14, fontweight='bold')
         ax.set_title('Распределение длины C++ программ (Violin + Box plot)', 
                     fontsize=18, fontweight='bold', pad=20)
         
-        # устанавливаем пределы (0 - 6000)
+        # Устанавливаем пределы (0 - 6000)
         ax.set_xlim(0, x_limit)
         ax.set_ylim(0.5, 1.5)
         
-        # убираем метки с оси Y
+        # Убираем метки с оси Y
         ax.set_yticklabels([])
         ax.set_yticks([])
         
-        # добавляем сетку
+        # Добавляем сетку
         ax.grid(True, alpha=0.3, axis='x', linestyle='--', linewidth=0.5)
         
-        # добавляем вертикальные линии для перцентилей
+        # Добавляем вертикальные линии для перцентилей
         ax.axvline(self.stats['code_length']['p90'], color='purple', 
                 linestyle=':', linewidth=2, alpha=0.7)
         ax.axvline(self.stats['code_length']['p95'], color='brown', 
                 linestyle=':', linewidth=2, alpha=0.7)
         
-        # добавляем маркеры для средней и медианы (крупные)
+        # Добавляем маркеры для средней и медианы (крупные)
         ax.scatter(self.stats['code_length']['mean'], 1, 
                 color='darkblue', s=200, zorder=10, marker='D', 
                 edgecolor='white', linewidth=2)
@@ -655,7 +656,7 @@ class CppDatasetAnalyzer:
                 color='darkred', s=200, zorder=10, marker='s',
                 edgecolor='white', linewidth=2)
         
-        # добавляем заливку областей для наглядности
+        # Добавляем заливку областей для наглядности
         ax.axvspan(0, self.stats['code_length']['q1'], alpha=0.1, color='blue')
         ax.axvspan(self.stats['code_length']['q1'], self.stats['code_length']['median'], 
                 alpha=0.1, color='green')
@@ -688,7 +689,7 @@ class CppDatasetAnalyzer:
             Patch(facecolor='red', alpha=0.1, label='90-100%'),
         ]
         
-        # размещаем легенду в центре снизу
+        # Размещаем легенду в центре снизу
         ax.legend(handles=legend_elements, 
                 loc='lower center',
                 bbox_to_anchor=(0.5, -0.25),
@@ -697,7 +698,7 @@ class CppDatasetAnalyzer:
                 framealpha=0.95,
                 edgecolor='black')
         
-        # добавляем статистику в правом верхнем углу
+        # Добавляем статистику в правом верхнем углу
         textstr = (f'Статистика распределения:\n'
                 f'{"─"*25}\n'
                 f'Средняя: {self.stats["code_length"]["mean"]:>8.0f}\n'
@@ -715,7 +716,7 @@ class CppDatasetAnalyzer:
             verticalalignment='top', horizontalalignment='right',
             bbox=props, fontfamily='monospace')
         
-        # добавляем аннотацию о выбросах
+        # Добавляем аннотацию о выбросах
         outliers_count = sum(1 for l in lengths if l > self.stats['code_length']['p95'])
         outliers_percent = (outliers_count / len(lengths)) * 100
         ax.text(0.98, 0.02, f'Выбросы (>P95): {outliers_count} ({outliers_percent:.1f}%)',
@@ -723,19 +724,20 @@ class CppDatasetAnalyzer:
             verticalalignment='bottom', horizontalalignment='right',
             bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.7))
         
-        # добавляем отступ снизу для легенды
+        # Добавляем отступ снизу для легенды
         plt.tight_layout()
         plt.subplots_adjust(bottom=0.25)
         
-        # сохраняем с высоким разрешением
+        # Сохраняем с высоким разрешением
         output_path = self.figures_dir / 'code_length_violin.png'
         plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white')
         plt.close()
         
-        print(f"Сохранено: {output_path.name}")
+        print(f"Сохранено:    {output_path.name}")
         print(f"Предел оси X: {x_limit}")
-        print(f"Медиана: {self.stats['code_length']['median']:.0f}")
-        print(f"P90: {self.stats['code_length']['p90']:.0f}, P95: {self.stats['code_length']['p95']:.0f}")
+        print(f"Медиана:      {self.stats['code_length']['median']:.0f}")
+        print(f"P90:          {self.stats['code_length']['p90']:.0f}")
+        print(f"P95:          {self.stats['code_length']['p95']:.0f}")
 
     def plot_wordcloud(self) -> None:
         """
@@ -748,7 +750,7 @@ class CppDatasetAnalyzer:
         try:
             from wordcloud import WordCloud
             
-            # ключевые слова C++
+            # Ключевые слова C++
             cpp_keywords = [
                 'int', 'void', 'char', 'double', 'float', 'bool',
                 'if', 'else', 'for', 'while', 'do', 'switch', 'case',
@@ -762,7 +764,7 @@ class CppDatasetAnalyzer:
                 'ifndef', 'pragma', 'friend', 'explicit', 'mutable'
             ]
             
-            # считаем частоту
+            # Считаем частоту
             text = ' '.join(self.codes)
             word_counts = {}
             for keyword in cpp_keywords:
@@ -770,7 +772,7 @@ class CppDatasetAnalyzer:
                 if count > 0:
                     word_counts[keyword] = count
             
-            # генерируем облако
+            # Генерируем облако
             wordcloud = WordCloud(
                 width=1200,
                 height=600,
@@ -808,7 +810,7 @@ class CppDatasetAnalyzer:
         """
         print("\nГенерация: распределение train/val/test...")
         
-        # считаем размеры выборок из файлов
+        # Считаем размеры выборок из файлов
         train_size = 0
         val_size = 0
         test_size = 0
@@ -825,7 +827,7 @@ class CppDatasetAnalyzer:
             with open(self.test_file, 'r', encoding='utf-8') as f:
                 test_size = sum(1 for line in f if line.strip())
         
-        # если файлы не найдены, используем значения из stats
+        # Если файлы не найдены, используем значения из stats
         if train_size == 0:
             train_size = self.stats.get('train_examples', 8000)
         if val_size == 0:
@@ -839,7 +841,7 @@ class CppDatasetAnalyzer:
         
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
         
-        # круговая диаграмма
+        # Круговая диаграмма
         wedges, texts, autotexts = ax1.pie(
             sizes, 
             labels=labels,
@@ -857,26 +859,26 @@ class CppDatasetAnalyzer:
         ax1.set_title('Распределение выборок', fontsize=14, fontweight='bold')
         ax1.axis('equal')
         
-        # столбчатая диаграмма
+        # Столбчатая диаграмма
         bars = ax2.bar(labels, sizes, color=colors, alpha=0.8, 
                     edgecolor='black', linewidth=2)
         ax2.set_ylabel('Количество примеров', fontsize=12)
         ax2.set_title('Размеры выборок', fontsize=14, fontweight='bold')
         ax2.grid(True, alpha=0.3, axis='y')
         
-        # добавляем значения на столбцы
+        # Добавляем значения на столбцы
         total = sum(sizes)
         for bar, size, label in zip(bars, sizes, labels):
             height = bar.get_height()
             percentage = (size/total)*100
             
-            # процент внутри столбца (белым цветом)
+            # Процент внутри столбца (белым цветом)
             ax2.text(bar.get_x() + bar.get_width()/2., height/2,
                     f'{percentage:.1f}%', 
                     ha='center', va='center',
                     color='white', fontweight='bold', fontsize=11)
         
-            # количество сверху столбца (черным цветом)
+            # Количество сверху столбца (черным цветом)
             ax2.text(bar.get_x() + bar.get_width()/2., height,
                     f'{size:,}', 
                     ha='center', va='bottom', 
@@ -890,7 +892,7 @@ class CppDatasetAnalyzer:
         
         print(f"Сохранено: {output_path.name}")
         
-        # обновляем stats
+        # Обновляем stats
         self.stats['train_examples'] = train_size
         self.stats['val_examples'] = val_size
         self.stats['test_examples'] = test_size
@@ -904,22 +906,22 @@ class CppDatasetAnalyzer:
         Определение характеристик оборудования для оптимизации параметров.
         
         Returns:
-            Dict[str, Any]:    Информация о GPU и RAM
+            Dict[str, Any]: Информация о GPU и RAM
         """
         hardware = {
-            'gpu_available':    False,
-            'gpu_name':         'Not detected',
-            'gpu_vram_gb':      0,
-            'ram_gb':           0,
-            'cpu_cores':        0
+            'gpu_available': False,
+            'gpu_name':      'Not detected',
+            'gpu_vram_gb':   0,
+            'ram_gb':        0,
+            'cpu_cores':     0
         }
         
-        # определяем RAM
+        # Определяем RAM
         try:
             import psutil
             hardware['ram_gb'] = round(psutil.virtual_memory().total / (1024**3), 1)
         except ImportError:
-            # если psutil не установлен, пробуем через /proc/meminfo на Linux
+            # Если psutil не установлен, пробуем через /proc/meminfo на Linux
             try:
                 with open('/proc/meminfo', 'r') as f:
                     for line in f:
@@ -930,14 +932,14 @@ class CppDatasetAnalyzer:
             except:
                 hardware['ram_gb'] = 16
         
-        # определяем CPU cores
+        # Определяем CPU cores
         try:
             import multiprocessing
             hardware['cpu_cores'] = multiprocessing.cpu_count()
         except:
             hardware['cpu_cores'] = 8
         
-        # определяем GPU через nvidia-smi
+        # Определяем GPU через nvidia-smi
         try:
             result = subprocess.run(
                 ['nvidia-smi', '--query-gpu=name,memory.total', '--format=csv,noheader'],
@@ -950,7 +952,7 @@ class CppDatasetAnalyzer:
                     hardware['gpu_available'] = True
                     hardware['gpu_name'] = parts[0].strip()
                     
-                    # парсим VRAM
+                    # Парсим VRAM
                     vram_str = parts[1].strip()
                     vram_match = re.search(r'(\d+)', vram_str)
                     if vram_match:
@@ -959,7 +961,7 @@ class CppDatasetAnalyzer:
         except:
             pass
         
-        # если nvidia-smi не сработал, пробуем через torch
+        # Если nvidia-smi не сработал, пробуем через torch
         if not hardware['gpu_available']:
             try:
                 import torch
@@ -984,7 +986,7 @@ class CppDatasetAnalyzer:
         """
         print("\nГенерация отчета...")
         
-        # безопасное извлечение статистики
+        # Безопасное извлечение статистики
         total = self.stats.get('total_examples', 0)
         train = self.stats.get('train_examples', 0)
         val = self.stats.get('val_examples', 0)
@@ -1003,10 +1005,10 @@ class CppDatasetAnalyzer:
         p90 = code_length.get('p90', 0)
         p95 = code_length.get('p95', 0)
         
-        # определяем оборудование для отчета
+        # Определяем оборудование для отчета
         hardware = self._detect_hardware()
         
-        # пути к графикам относительно отчета
+        # Пути к графикам относительно отчета
         report_dir = self.report_file.parent
         figures_rel_path = 'figures'
         
@@ -1071,7 +1073,7 @@ class CppDatasetAnalyzer:
 #include <iostream>\\nusing namespace std;\\n\\nint main() {{\\n cout << "Hello";\\n return 0;\\n}}
 ```
 
-Выводы для обучения
+## Выводы для обучения:
 
 1. Размер словаря BPE: рекомендуется 8000-12000 токенов (оптимально для C++ кода)
 
@@ -1099,30 +1101,30 @@ class CppDatasetAnalyzer:
         Выполняет все этапы анализа в правильном порядке.
         """
         print_header("C++ DATASET ANALYZER")
-        print(f"Путь к данным: {self.data_dir}")
+        print(f"Путь к данным:  {self.data_dir}")
         print(f"Путь к корпусу: {self.corpus_file}")
         
-        # загружаем данные
+        # Загружаем данные
         if not self.load_data():
-            print("Х Нет данных для анализа")
+            print("Нет данных для анализа!")
             return
         
-        # считаем статистику
+        # Считаем статистику
         self.calculate_basic_stats()
         
-        # генерируем графики
+        # Генерируем графики
         self.plot_length_distribution()
         self.plot_char_frequency()
         self.plot_length_violin()
         self.plot_wordcloud()
         self.plot_train_val_test()
         
-        # генерируем отчет
+        # Генерируем отчет
         self.generate_report()
         
         print_header("АНАЛИЗ ЗАВЕРШЕН")
         print(f"Графики: {self.figures_dir}")
-        print(f"Отчет: {self.report_file}")
+        print(f"Отчет:   {self.report_file}")
         print("=" * 60)
 
 # ======================================================================
@@ -1133,25 +1135,25 @@ def main():
     """
     Основная функция.
     Returns:
-        int:    0 при успехе, 1 при ошибке
+        int: 0 при успехе, 1 при ошибке
     """
     try:
-        # определяем корень проекта
+        # Определяем корень проекта
         project_root = get_project_root()
         
-        # создаем анализатор
+        # Создаем анализатор
         analyzer = CppDatasetAnalyzer(project_root=str(project_root))
         
-        # запускаем анализ
+        # Запускаем анализ
         analyzer.run()
         
         return 0
         
     except KeyboardInterrupt:
-        print("\n\n!!! Анализ прерван пользователем")
+        print("\n\nАнализ прерван пользователем!")
         return 1
     except Exception as e:
-        print(f"\nХ Ошибка: {e}")
+        print(f"\nОшибка: {e}!")
         import traceback
         traceback.print_exc()
         return 1

@@ -1,0 +1,19 @@
+{
+  "name": "CppCodeModel-Medium",
+  "description": "18.3M параметров",
+  "vocab_size": 10001,
+  "d_model": 384,
+  "nhead": 6,
+  "num_layers": 6,
+  "max_len": 512,
+  "batch_size": 4,
+  "dropout": 0.15,
+  "weight_decay": 0.01,
+  "gradient_clip": 1.0,
+  "epochs": 20,
+  "learning_rate": 0.0003,
+  "warmup_steps": 4000,
+  "pad_token_id": 0,
+  "bos_token_id": 2,
+  "eos_token_id": 3
+}

@@ -12,6 +12,7 @@
     - [2. `batch_example.cpp` — Пакетная обработка](#2-batch_examplecpp--пакетная-обработка)
     - [3. `fast_tokenizer_demo.cpp` — Демо оптимизированной версии](#3-fast_tokenizer_democpp--демо-оптимизированной-версии)
     - [4. `train_example.cpp` — Обучение токенизатора](#4-train_examplecpp--обучение-токенизатора)
+    - [5. `compare_with_python.cpp` — Валидация C++ токенизатора](#5-compare_with_pythoncpp--валидация-c-токенизатора)
   - [🛠️ Сборка примеров](#️-сборка-примеров)
     - [Сборка всех примеров](#сборка-всех-примеров)
     - [Сборка отдельного примера](#сборка-отдельного-примера)
@@ -120,7 +121,7 @@ make simple_example batch_example fast_tokenizer_demo train_example
 #### Запуск:
 ```bash
 # Обучение на реальном корпусе
-./train_example --corpus ../data/corpus/train_code.txt --vocab-size 8000 --validate
+./train_example --corpus ../data/corpus/train_code.txt --vocab-size 10000 --validate
 
 # Быстрый режим для тестирования
 ./train_example --quick
@@ -129,7 +130,33 @@ make simple_example batch_example fast_tokenizer_demo train_example
 ./train_example --save-binary
 ```
 **Когда использовать:** Для создания собственных моделей под конкретную задачу.
+
+### 5. `compare_with_python.cpp` — Валидация C++ токенизатора
+
+**Цель:** Проверка корректности C++ реализации путём сравнения с Python эталоном.
+
+#### Демонстрирует:
+- Двустороннюю совместимость C++ и Python версий
+- Режим encode (текст → JSON с токенами)
+- Режим decode (JSON с токенами → текст)
+- Тихий режим для интеграции со скриптами
+
+#### Запуск:
+```bash
+# Encode режим
+./compare_with_python input.txt vocab.json merges.txt
+
+# Decode режим
+./compare_with_python tokens.json vocab.json merges.txt --decode
+
+# Тихий режим (только результат)
+./compare_with_python input.txt vocab.json merges.txt --quiet
+```
+
+**Когда использовать:** Для автоматизированного тестирования и валидации через Python скрипты.
+
 ## 🛠️ Сборка примеров
+
 #### Сборка всех примеров
 ```bash
 cd bpe_cpp/build
@@ -166,14 +193,15 @@ cd ../examples
 |--------|-----------|-------------------|-------------------|
 | `simple_example.cpp` | ⭐ Начальная | Базовые encode/decode | Первое знакомство |
 | `batch_example.cpp` | ⭐⭐ Средняя | Пакетная обработка, кэш | Работа с батчами |
+| `compare_with_python.cpp` | ⭐⭐ Средняя | Валидация с Python эталоном | Проверка корректности |
 | `fast_tokenizer_demo.cpp` | ⭐⭐⭐ Продвинутая | SIMD, производительность | Изучение оптимизаций |
 | `train_example.cpp` | ⭐⭐⭐ Продвинутая | Обучение, сохранение | Создание своих моделей |
 ## 🔧 Модели для обучения
 Для работы примеров требуются файлы обученной модели:
 #### Основные пути поиска:
- - models/bpe_8000/cpp_vocab.json и models/bpe_8000/cpp_merges.txt
- - bpe_cpp/models/bpe_8000/cpp_vocab.json
- - ../../bpe_python/models/bpe_8000/vocab.json
+ - models/bpe_10000/cpp_vocab.json и models/bpe_10000/cpp_merges.txt
+ - bpe_cpp/models/bpe_10000/cpp_vocab.json
+ - ../../bpe_python/models/bpe_10000/vocab.json
 #### Если модели нет:
 1. Обучите модель с помощью train_example.cpp
 2. Или сконвертируйте Python-модель:
@@ -185,6 +213,7 @@ python tools/convert_vocab.py
 examples/
 ├── batch_example.cpp          # Пакетная обработка
 ├── CMakeLists.txt             # Конфигурация сборки
+├── compare_with_python.cpp    # Валидация C++ токенизатора сравнением с Python эталоном
 ├── fast_tokenizer_demo.cpp    # Демо оптимизированной версии
 ├── README.md                  # Этот файл
 ├── simple_example.cpp         # Простой пример

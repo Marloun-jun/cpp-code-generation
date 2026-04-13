@@ -25,9 +25,9 @@
  *          - Стандартное отклонение и коэффициент вариации
  * 
  * @note Для запуска требуются обученные модели:
- *       - Базовая модель:            bpe_8000/cpp_vocab.json, bpe_8000/cpp_merges.txt
- *       - Модели разных размеров:    bpe_8000/cpp_vocab.json, bpe_10000/cpp_vocab.json,
- *                                    bpe_12000/cpp_vocab.json и соответствующие файлы слияний
+ *       - Базовая модель:         bpe_8000/cpp_vocab.json, bpe_8000/cpp_merges.txt
+ *       - Модели разных размеров: bpe_8000/cpp_vocab.json, bpe_10000/cpp_vocab.json,
+ *                                 bpe_12000/cpp_vocab.json и соответствующие файлы слияний
  * 
  * @see BPETokenizer
  * @see bench_fast_tokenizer.cpp
@@ -50,13 +50,16 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+#include <array>
+#include <map>
+#include <memory>
 
 #ifdef _WIN32
 #include <windows.h>
 #include <psapi.h>
-#elif __linux__
+#elif defined(__linux__)
 #include <unistd.h>
-#elif __APPLE__
+#elif defined(__APPLE__)
 #include <mach/mach.h>
 #endif
 
@@ -67,28 +70,42 @@ using namespace bpe;
 // ======================================================================
 
 namespace {
-    // Размеры для бенчмарков
+    /** Размеры для бенчмарков */
     constexpr size_t MIN_TEXT_SIZE = 1 << 6;     // 64 байт
-    constexpr size_t MAX_TEXT_SIZE = 1 << 16;    // 64 KB
-    constexpr size_t DEFAULT_VOCAB_SIZE = 8000;
+    constexpr size_t MAX_TEXT_SIZE = 1 << 16;    // 64 КБ
+    constexpr size_t DEFAULT_VOCAB_SIZE = 10000;
     
-    // Размеры словарей из проекта
+    /** Размеры словарей из проекта */
     constexpr std::array<size_t, 3> VOCAB_SIZES = {8000, 10000, 12000};
     
-    // Количество текстов для пакетной обработки
+    /** Количество текстов для пакетной обработки */
     constexpr int BATCH_SIZE = 10;
     
-    // Диапазоны для генерации текстов
+    /** Диапазоны для генерации текстов */
     constexpr size_t MIN_VAR_LEN = 100;
     constexpr size_t MAX_VAR_LEN = 10000;
     constexpr size_t VAR_TEXTS_COUNT = 100;
     
-    // Параметры по умолчанию
+    /** Параметры по умолчанию */
     constexpr bool DEFAULT_BYTE_LEVEL = true;
     constexpr std::string_view UNKNOWN_TOKEN = "<UNK>";
     
-    // Задержка для стабилизации (мс)
+    /** Задержка для стабилизации (мс) */
     constexpr auto STABILIZATION_DELAY = std::chrono::milliseconds(10);
+    
+    /** Количество итераций для тестов повторяемости */
+    constexpr int REPEATABILITY_ITERATIONS = 10;
+    
+    /** Количество итераций для тестов памяти */
+    constexpr int MEMORY_ITERATIONS = 10;
+    
+    /** Пути для поиска тестового корпуса */
+    constexpr std::array<const char*, 4> CORPUS_SEARCH_PATHS = {
+        "../benchmarks/bench_data/sample_code.txt",
+        "benchmarks/bench_data/sample_code.txt",
+        "./bench_data/sample_code.txt",
+        "../../benchmarks/bench_data/sample_code.txt"
+    };
 }
 
 // ======================================================================
@@ -119,29 +136,18 @@ public:
         }
         
         // Пробуем разные пути к файлу
-        std::vector<std::string> paths = {
-            "../benchmarks/bench_data/sample_code.txt",
-            "benchmarks/bench_data/sample_code.txt",
-            "./bench_data/sample_code.txt",
-            "../../benchmarks/bench_data/sample_code.txt"
-        };
-        
-        for (const auto& path : paths) {
+        for (const auto& path : CORPUS_SEARCH_PATHS) {
             std::ifstream file(path);
             if (file.is_open()) {
                 std::stringstream buffer;
                 buffer << file.rdbuf();
                 cached_corpus_ = buffer.str();
                 loaded_ = true;
-                std::cout << "Загружен тестовый корпус из: " << path 
-                          << " (" << cached_corpus_.size() << " байт)" << std::endl;
                 return cached_corpus_;
             }
         }
         
         // Если файл не найден, используем встроенный пример
-        std::cout << "Файл sample_code.txt не найден, использую встроенный пример!" << std::endl;
-        
         cached_corpus_ = R"(
 #include <iostream>
 #include <vector>
@@ -166,6 +172,13 @@ public:
     
     explicit CustomVector(const Alloc& alloc) 
         : data_(nullptr), size_(0), capacity_(0), alloc_(alloc) {}
+    
+    ~CustomVector() {
+        for (size_t i = 0; i < size_; ++i) {
+            alloc_.destroy(data_ + i);
+        }
+        alloc_.deallocate(data_, capacity_);
+    }
     
     void push_back(const T& value) {
         if (size_ >= capacity_) {
@@ -197,13 +210,6 @@ public:
     
     size_t size() const { return size_; }
     bool empty() const { return size_ == 0; }
-    
-    ~CustomVector() {
-        for (size_t i = 0; i < size_; ++i) {
-            alloc_.destroy(data_ + i);
-        }
-        alloc_.deallocate(data_, capacity_);
-    }
 };
 
 int calculate_fibonacci(int n) {
@@ -236,7 +242,7 @@ public:
     double perimeter() const override { return 2 * (width_ + height_); }
 };
 
-} // namespace benchmark
+}    // namespace benchmark
 
 int main() {
     using namespace benchmark;
@@ -285,7 +291,7 @@ int main() {
 // Глобальные объекты
 // ======================================================================
 
-// Глобальный экземпляр тестового корпуса
+/** Глобальный экземпляр тестового корпуса */
 TestCorpus g_testCorpus;
 
 // ======================================================================
@@ -299,7 +305,7 @@ TestCorpus g_testCorpus;
  * и использовать закэшированные пути во всех бенчмарках.
  */
 class ModelPathFinder {
-private:
+public:
     /**
      * @brief Структура для хранения путей к файлам модели
      */
@@ -318,7 +324,20 @@ private:
         }
     };
     
+private:
     std::unordered_map<size_t, Paths> cache_;    ///< Кэш найденных путей
+    
+    /** Базовые пути для поиска моделей */
+    static constexpr std::array<const char*, 2> MODEL_BASES = {
+        "../models/bpe_",
+        "../../bpe_python/models/bpe_"
+    };
+    
+    /** Имена файлов для разных версий */
+    static constexpr std::array<const char*, 2> VOCAB_FILENAMES = {
+        "/cpp_vocab.json",
+        "/vocab.json"
+    };
     
 public:
     /**
@@ -335,29 +354,33 @@ public:
         
         Paths result;
         
-        // Приоритет 1: C++ модели в bpe_cpp/models/
-        std::string cpp_base = "../models/bpe_" + std::to_string(size);
-        result.vocab = cpp_base + "/cpp_vocab.json";
-        result.merges = cpp_base + "/cpp_merges.txt";
-        
-        if (result.exists()) {
-            cache_[size] = result;
-            std::cout << "Найдена C++ модель " << size << ": " << result.vocab << std::endl;
-            return result;
+        // Проверяем все комбинации путей и имен файлов
+        for (const auto& base : MODEL_BASES) {
+            std::string full_base = std::string(base) + std::to_string(size);
+            
+            for (const auto& vocab_name : VOCAB_FILENAMES) {
+                result.vocab = full_base + vocab_name;
+                
+                // Формируем имя для merges.txt
+                size_t pos = result.vocab.find("vocab.json");
+                if (pos != std::string::npos) {
+                    result.merges = result.vocab;
+                    result.merges.replace(pos, 10, "merges.txt");
+                } else {
+                    pos = result.vocab.find("cpp_vocab.json");
+                    if (pos != std::string::npos) {
+                        result.merges = result.vocab;
+                        result.merges.replace(pos, 14, "cpp_merges.txt");
+                    }
+                }
+                
+                if (result.exists()) {
+                    cache_[size] = result;
+                    return result;
+                }
+            }
         }
         
-        // Приоритет 2: Python модели в bpe_python/models/
-        std::string py_base = "../../bpe_python/models/bpe_" + std::to_string(size);
-        result.vocab = py_base + "/vocab.json";
-        result.merges = py_base + "/merges.txt";
-        
-        if (result.exists()) {
-            cache_[size] = result;
-            std::cout << "Найдена Python модель " << size << ": " << result.vocab << std::endl;
-            return result;
-        }
-        
-        std::cerr << "Не удалось найти модель размером " << size << std::endl;
         return Paths{};
     }
     
@@ -369,7 +392,7 @@ public:
     }
 };
 
-// Глобальный экземпляр для поиска путей
+/** Глобальный экземпляр для поиска путей */
 ModelPathFinder g_pathFinder;
 
 // ======================================================================
@@ -406,7 +429,7 @@ bool load_model_by_size(Tokenizer& tokenizer, size_t size, benchmark::State& sta
 }
 
 /**
- * @brief Загружает модель размером 8000 (по умолчанию)
+ * @brief Загружает модель размером 10000 (по умолчанию)
  * 
  * @tparam Tokenizer Тип токенизатора
  * @param tokenizer Ссылка на токенизатор для загрузки
@@ -456,13 +479,13 @@ std::vector<std::string> create_variable_texts(size_t count, size_t min_len, siz
     
     const std::string& base = g_testCorpus.get();
     
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> len_dis(min_len, max_len);
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::uniform_int_distribution<> len_dis(static_cast<int>(min_len), static_cast<int>(max_len));
     std::uniform_int_distribution<> pattern_dis(0, 9);
     
     for (size_t i = 0; i < count; ++i) {
-        size_t target_len = len_dis(gen);
+        size_t target_len = static_cast<size_t>(len_dis(gen));
         std::string text = base;
         
         while (text.size() < target_len) {
@@ -470,7 +493,7 @@ std::vector<std::string> create_variable_texts(size_t count, size_t min_len, siz
                    " = " + std::to_string(i);
         }
         text.resize(target_len);
-        texts.push_back(text);
+        texts.push_back(std::move(text));
     }
     
     return texts;
@@ -488,7 +511,7 @@ size_t getCurrentRSS() {
         return info.WorkingSetSize;
     }
     return 0;
-#elif __APPLE__
+#elif defined(__APPLE__)
     struct mach_task_basic_info info;
     mach_msg_type_number_t infoCount = MACH_TASK_BASIC_INFO_COUNT;
     if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO,
@@ -496,12 +519,12 @@ size_t getCurrentRSS() {
         return info.resident_size;
     }
     return 0;
-#elif __linux__
+#elif defined(__linux__)
     long rss_pages = 0;
     std::ifstream statm_file("/proc/self/statm");
     
     if (statm_file.is_open()) {
-        long total_pages;  // Первое значение (размер программы в страницах)
+        long total_pages;    // Первое значение (размер программы в страницах)
         if (statm_file >> total_pages >> rss_pages) {
             long page_size = 0;
             
@@ -513,7 +536,7 @@ size_t getCurrentRSS() {
                 page_size = 4096;    // Значение по умолчанию
             #endif
             
-            return static_cast<size_t>(rss_pages * page_size);
+            return static_cast<size_t>(rss_pages) * static_cast<size_t>(page_size);
         }
     }
     return 0;
@@ -539,10 +562,10 @@ static void BM_EncodeShort(benchmark::State& state) {
         return;
     }
     
-    auto vocab_size = tokenizer.vocab_size();
-    state.counters["VocabSize"] = vocab_size;
+    const auto vocab_size = tokenizer.vocab_size();
+    state.counters["VocabSize"] = static_cast<double>(vocab_size);
     
-    std::string text = "int main() { return 0; }";
+    const std::string text = "int main() { return 0; }";
     
     size_t total_chars = 0;
     for (auto _ : state) {
@@ -569,8 +592,8 @@ static void BM_EncodeLong(benchmark::State& state) {
         return;
     }
     
-    auto vocab_size = tokenizer.vocab_size();
-    state.counters["VocabSize"] = vocab_size;
+    const auto vocab_size = tokenizer.vocab_size();
+    state.counters["VocabSize"] = static_cast<double>(vocab_size);
     
     const std::string& text = g_testCorpus.get();
     
@@ -599,11 +622,12 @@ static void BM_Decode(benchmark::State& state) {
         return;
     }
     
-    auto vocab_size = tokenizer.vocab_size();
-    state.counters["VocabSize"] = vocab_size;
+    const auto vocab_size = tokenizer.vocab_size();
+    state.counters["VocabSize"] = static_cast<double>(vocab_size);
     
     const std::string& text = g_testCorpus.get();
-    auto tokens = tokenizer.encode(text);
+    const auto tokens = tokenizer.encode(text);
+    state.counters["Tokens"] = static_cast<double>(tokens.size());
     
     size_t total_chars = 0;
     for (auto _ : state) {
@@ -631,8 +655,8 @@ static void BM_BatchEncode(benchmark::State& state) {
         return;
     }
     
-    auto vocab_size = tokenizer.vocab_size();
-    state.counters["VocabSize"] = vocab_size;
+    const auto vocab_size = tokenizer.vocab_size();
+    state.counters["VocabSize"] = static_cast<double>(vocab_size);
     
     std::vector<std::string> texts;
     texts.reserve(BATCH_SIZE);
@@ -674,11 +698,11 @@ static void BM_EncodeVariableLength(benchmark::State& state) {
         return;
     }
     
-    auto vocab_size = tokenizer.vocab_size();
-    state.counters["VocabSize"] = vocab_size;
+    const auto vocab_size = tokenizer.vocab_size();
+    state.counters["VocabSize"] = static_cast<double>(vocab_size);
     
-    size_t text_size = static_cast<size_t>(state.range(0));
-    std::string text = create_text_of_size(text_size);
+    const size_t text_size = static_cast<size_t>(state.range(0));
+    const std::string text = create_text_of_size(text_size);
     
     size_t total_chars = 0;
     for (auto _ : state) {
@@ -689,7 +713,7 @@ static void BM_EncodeVariableLength(benchmark::State& state) {
     }
     
     state.SetBytesProcessed(total_chars);
-    state.counters["TextSize"] = text_size;
+    state.counters["TextSize"] = static_cast<double>(text_size);
     state.SetLabel("Переменная длина");
 }
 
@@ -708,7 +732,7 @@ BENCHMARK(BM_EncodeVariableLength)
  * времени на поиск в словаре.
  */
 static void BM_EncodeDifferentVocab(benchmark::State& state) {
-    size_t vocab_size = static_cast<size_t>(state.range(0));
+    const size_t vocab_size = static_cast<size_t>(state.range(0));
     
     BPETokenizer tokenizer(vocab_size, DEFAULT_BYTE_LEVEL);
     
@@ -716,14 +740,16 @@ static void BM_EncodeDifferentVocab(benchmark::State& state) {
         return;
     }
     
-    auto actual_size = tokenizer.vocab_size();
-    state.counters["VocabSize"] = actual_size;
+    const auto actual_size = tokenizer.vocab_size();
+    state.counters["VocabSize"] = static_cast<double>(actual_size);
     
     const std::string& text = g_testCorpus.get();
+    const auto tokens = tokenizer.encode(text);
+    state.counters["Tokens"] = static_cast<double>(tokens.size());
     
     for (auto _ : state) {
-        auto tokens = tokenizer.encode(text);
-        benchmark::DoNotOptimize(tokens);
+        auto result = tokenizer.encode(text);
+        benchmark::DoNotOptimize(result);
         benchmark::ClobberMemory();
     }
     
@@ -746,7 +772,7 @@ BENCHMARK(BM_EncodeDifferentVocab)
  * необходимости обрабатывать многобайтовые последовательности.
  */
 static void BM_CompareModes(benchmark::State& state) {
-    bool byte_level = state.range(0) == 1;
+    const bool byte_level = state.range(0) == 1;
     
     BPETokenizer tokenizer(DEFAULT_VOCAB_SIZE, byte_level);
     
@@ -754,9 +780,9 @@ static void BM_CompareModes(benchmark::State& state) {
         return;
     }
     
-    auto actual_size = tokenizer.vocab_size();
-    state.counters["VocabSize"] = actual_size;
-    state.counters["ByteLevel"] = byte_level ? 1 : 0;
+    const auto actual_size = tokenizer.vocab_size();
+    state.counters["VocabSize"] = static_cast<double>(actual_size);
+    state.counters["ByteLevel"] = byte_level ? 1.0 : 0.0;
     
     const std::string& text = g_testCorpus.get();
     
@@ -793,6 +819,7 @@ static void BM_Repeatability(benchmark::State& state) {
     const std::string& text = g_testCorpus.get();
     std::vector<token_id_t> first_result;
     std::vector<double> times;
+    times.reserve(REPEATABILITY_ITERATIONS);
     
     for (auto _ : state) {
         auto start = std::chrono::high_resolution_clock::now();
@@ -814,16 +841,19 @@ static void BM_Repeatability(benchmark::State& state) {
             }
         }
         
-        auto duration = std::chrono::duration<double, std::micro>(end - start).count();
+        const auto duration = std::chrono::duration<double, std::micro>(end - start).count();
         times.push_back(duration);
         
         benchmark::DoNotOptimize(tokens);
     }
     
     if (!times.empty()) {
-        double mean = std::accumulate(times.begin(), times.end(), 0.0) / times.size();
-        double sq_sum = std::inner_product(times.begin(), times.end(), times.begin(), 0.0);
-        double stdev = std::sqrt(sq_sum / times.size() - mean * mean);
+        const double mean = std::accumulate(times.begin(), times.end(), 0.0) / times.size();
+        double sq_sum = 0.0;
+        for (double val : times) {
+            sq_sum += (val - mean) * (val - mean);
+        }
+        const double stdev = std::sqrt(sq_sum / times.size());
         
         state.counters["Mean_us"] = mean;
         state.counters["Stdev_us"] = stdev;
@@ -832,7 +862,7 @@ static void BM_Repeatability(benchmark::State& state) {
     
     state.SetLabel("Повторяемость");
 }
-BENCHMARK(BM_Repeatability)->Iterations(10)->Unit(benchmark::kMicrosecond);
+BENCHMARK(BM_Repeatability)->Iterations(REPEATABILITY_ITERATIONS)->Unit(benchmark::kMicrosecond);
 
 /**
  * @brief Тест на использование памяти
@@ -850,7 +880,7 @@ static void BM_MemoryUsage(benchmark::State& state) {
     // Прогрев
     tokenizer.encode(text);
     
-    size_t memory_before = getCurrentRSS();
+    const size_t memory_before = getCurrentRSS();
     std::this_thread::sleep_for(STABILIZATION_DELAY);
     
     for (auto _ : state) {
@@ -859,44 +889,44 @@ static void BM_MemoryUsage(benchmark::State& state) {
     }
     
     std::this_thread::sleep_for(STABILIZATION_DELAY);
-    size_t memory_after = getCurrentRSS();
+    const size_t memory_after = getCurrentRSS();
     
     state.counters["MemoryDelta_KB"] = static_cast<double>(memory_after - memory_before) / 1024.0;
     state.SetLabel("Использование памяти");
 }
-BENCHMARK(BM_MemoryUsage)->Iterations(10)->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_MemoryUsage)->Iterations(MEMORY_ITERATIONS)->Unit(benchmark::kMillisecond);
 
 // ======================================================================
 // Кастомный репортер
 // ======================================================================
 
 /**
- * @brief Кастомный репортер для вывода детальной статистики
+ * @brief Расширенный репортер для Google Benchmark
+ * 
+ * Добавляет сводную статистику по всем тестам:
+ * - Общее время выполнения
+ * - Статистика по размерам словарей
+ * - Сравнение режимов работы
+ * - Анализ стабильности результатов
  */
 class BPETokenizerReporter : public benchmark::ConsoleReporter {
 public:
     bool ReportContext(const Context& context) override {
         std::cout << "\n============================================================\n";
         std::cout << "ТЕСТИРОВАНИЕ ПРОИЗВОДИТЕЛЬНОСТИ БАЗОВОГО BPE TOKENIZER";
-        std::cout << "\n============================================================\n";
+        std::cout << "\n============================================================\n\n";
         return ConsoleReporter::ReportContext(context);
     }
     
     void ReportRuns(const std::vector<Run>& reports) override {
         ConsoleReporter::ReportRuns(reports);
         
-        std::cout << "\n------------------------------------------------------------\n";
-        std::cout << "СВОДНАЯ СТАТИСТИКА:";
-        std::cout << "\n------------------------------------------------------------\n";
+        std::cout << "\nСВОДНАЯ СТАТИСТИКА:\n";
         
         double total_time = 0;
         int bench_count = 0;
         int memory_tests = 0;
         double total_memory_delta = 0;
-        
-        // Для статистики по байтам используем кастомные счетчики
-        double total_bytes_from_counters = 0;
-        int byte_counters = 0;
         
         for (const auto& run : reports) {
             total_time += run.real_accumulated_time;
@@ -910,30 +940,16 @@ public:
                     memory_tests++;
                 }
             }
-            
-            // Собираем информацию о байтах из кастомных счетчиков
-            // (мы устанавливаем их через state.SetBytesProcessed() в бенчмарках)
-            auto it = run.counters.find("bytes_per_second");
-            if (it != run.counters.end()) {
-                // Примерная оценка обработанных байт
-                total_bytes_from_counters += it->second * run.real_accumulated_time / 1000000.0;
-                byte_counters++;
-            }
         }
         
         std::cout << "Общее время тестов: " << std::fixed << std::setprecision(2) 
                   << total_time << " ms\n";
-        std::cout << "Количество тестов: " << bench_count << "\n";
-        
-        if (byte_counters > 0) {
-            std::cout << "Примерный объем обработанных данных: " 
-                      << static_cast<size_t>(total_bytes_from_counters) << " байт\n";
-        }
+        std::cout << "Количество тестов:  " << bench_count << "\n";
         
         if (memory_tests > 0) {
             std::cout << "Среднее использование памяти: " 
                       << std::fixed << std::setprecision(2)
-                      << total_memory_delta / memory_tests << " KB\n";
+                      << (total_memory_delta / memory_tests) << " КБ\n";
         }
         
         // Статистика по размерам словарей
@@ -943,7 +959,7 @@ public:
         for (const auto& run : reports) {
             auto it = run.counters.find("VocabSize");
             if (it != run.counters.end()) {
-                size_t vocab_size = static_cast<size_t>(it->second);
+                const size_t vocab_size = static_cast<size_t>(it->second);
                 auto& stats = vocab_stats[vocab_size];
                 stats.first += run.real_accumulated_time;
                 stats.second++;
@@ -951,7 +967,7 @@ public:
             
             auto tokens_it = run.counters.find("Tokens");
             if (tokens_it != run.counters.end()) {
-                size_t vocab_size = static_cast<size_t>(run.counters.at("VocabSize"));
+                const size_t vocab_size = static_cast<size_t>(run.counters.at("VocabSize"));
                 auto& stats = token_counts[vocab_size];
                 stats.first += tokens_it->second;
                 stats.second++;
@@ -961,9 +977,9 @@ public:
         if (!vocab_stats.empty()) {
             std::cout << "\nСреднее время по размерам словаря:\n";
             for (const auto& [size, stats] : vocab_stats) {
-                double avg_time = stats.first / stats.second;
+                const double avg_time = stats.first / stats.second;
                 std::cout << "Словарь " << size << ": " 
-                          << std::fixed << std::setprecision(2) << avg_time << " ms";
+                          << std::fixed << std::setprecision(2) << avg_time << " мс";
                 if (size == DEFAULT_VOCAB_SIZE) {
                     std::cout << " (базовый)";
                 }
@@ -974,7 +990,7 @@ public:
         if (!token_counts.empty()) {
             std::cout << "\nСреднее количество токенов:\n";
             for (const auto& [size, stats] : token_counts) {
-                double avg_tokens = stats.first / stats.second;
+                const double avg_tokens = stats.first / stats.second;
                 std::cout << "Словарь " << size << ": " 
                           << std::fixed << std::setprecision(0) << avg_tokens << " токенов\n";
             }
@@ -1002,14 +1018,14 @@ public:
         }
         
         if (normal_count > 0 && bytelevel_count > 0) {
-            double normal_avg = normal_mode_time / normal_count;
-            double bytelevel_avg = bytelevel_mode_time / bytelevel_count;
-            double slowdown = bytelevel_avg / normal_avg;
+            const double normal_avg = normal_mode_time / normal_count;
+            const double bytelevel_avg = bytelevel_mode_time / bytelevel_count;
+            const double slowdown = bytelevel_avg / normal_avg;
             
             std::cout << "\nСравнение режимов:\n";
             std::cout << "- Обычный режим:    " << std::fixed << std::setprecision(2) 
-                      << normal_avg << " ms\n";
-            std::cout << "- Byte-level режим: " << bytelevel_avg << " ms\n";
+                      << normal_avg << " мс\n";
+            std::cout << "- Byte-level режим: " << bytelevel_avg << " мс\n";
             std::cout << "- Замедление:       " << std::fixed << std::setprecision(2)
                       << slowdown << "x\n";
         }
@@ -1032,15 +1048,13 @@ public:
             std::cout << "\nСтабильность результатов:\n";
             std::cout << "- Средний коэффициент вариации: " 
                       << std::fixed << std::setprecision(2)
-                      << total_cv / cv_count << "%\n";
+                      << (total_cv / cv_count) << "%\n";
         }
         
         std::cout << "\nРЕКОМЕНДАЦИИ:\n";
         std::cout << "- Для ускорения рассмотрите использование FastBPETokenizer\n";
         std::cout << "- Для больших текстов используйте пакетную обработку\n";
         std::cout << "- Результаты можно сравнить с bench_fast_tokenizer\n";
-        
-        std::cout << "==============================================================\n";
     }
 };
 
@@ -1054,33 +1068,23 @@ public:
  * Запускает все зарегистрированные тесты и выводит результаты.
  * 
  * Поддерживаемые аргументы командной строки:
- *   --benchmark_filter=<regex>                - запустить только тесты, соответствующие regex
- *   --benchmark_list_tests={true|false}       - вывести список тестов
- *   --benchmark_min_time=<N>                  - минимальное время выполнения теста (секунды)
- *   --benchmark_out=<filename>                - сохранить результаты в файл
- *   --benchmark_out_format={json|console|csv} - формат вывода
- *   --benchmark_repetitions=<N>               - количество повторений каждого теста
+ *   --benchmark_filter=<regex>                - Запустить только тесты, соответствующие regex
+ *   --benchmark_list_tests={true|false}       - Вывести список тестов
+ *   --benchmark_min_time=<N>                  - Минимальное время выполнения теста (секунды)
+ *   --benchmark_out=<filename>                - Сохранить результаты в файл
+ *   --benchmark_out_format={json|console|csv} - Формат вывода
+ *   --benchmark_repetitions=<N>               - Количество повторений каждого теста
  */
 int main(int argc, char** argv) {
-    std::cout << "\n"
-              << "╔════════════════════════════════════════════════════════════╗\n"
-              << "║     БЕНЧМАРК БАЗОВОЙ ВЕРСИИ BPE ТОКЕНИЗАТОРА               ║\n"
-              << "╚════════════════════════════════════════════════════════════╝\n\n";
-    
     // Прогреваем кэш тестового корпуса
     g_testCorpus.get();
     
     // Инициализация Google Benchmark
     ::benchmark::Initialize(&argc, argv);
     
-    // Установка кастомного репортера
+    // Используем кастомный репортер
     BPETokenizerReporter reporter;
     ::benchmark::RunSpecifiedBenchmarks(&reporter);
-    
-    std::cout << "\n"
-              << "╔════════════════════════════════════════════════════════════╗\n"
-              << "║     БЕНЧМАРК ЗАВЕРШЕН!                                     ║\n"
-              << "╚════════════════════════════════════════════════════════════╝\n\n";
     
     return 0;
 }

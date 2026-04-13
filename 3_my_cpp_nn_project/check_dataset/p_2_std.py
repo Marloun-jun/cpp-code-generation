@@ -17,17 +17,17 @@
 #          стандартной библиотеке должны быть без префикса `std::`.
 #
 #          **Правила:**
-#          - `using_namespace_std` → без префикса `std::` (например, `cout`, `vector`)
-#          - `explicit_std` → с префиксом `std::` (например, `std::cout`, `std::vector`)
+#          - `using_namespace_std` -> без префикса `std::` (например, `cout`, `vector`)
+#          - `explicit_std` -> с префиксом `std::` (например, `std::cout`, `std::vector`)
 #
 #          **Исключения:** Есть ряд примеров (строки 9031, 9474, 10307, 10313, 10349,
 #          10370, 10632, 11076, 11264, 11933, 12610, 13025), которые содержат
-#          смешанный код и не должны корректироваться автоматически. Проверенно вручную
+#          смешанный код и не должны корректироваться автоматически. Проверенно вручную!
 #
 # @usage python p_2_std.py
 #
 # @example
-#   python p_2_std.py          # только проверка нарушений
+#   python p_2_std.py    # Только проверка нарушений
 #   # Для исправления раскомментировать вызов fix_std_violations()
 #
 # ======================================================================
@@ -40,22 +40,22 @@ from typing import List
 # КОНСТАНТЫ
 # ======================================================================
 
-# список строк, которые НЕ должны корректироваться (смешанный код). Проверенно вручную
+# Список строк, которые НЕ должны корректироваться (смешанный код). Проверенно вручную!
 EXCLUDED_LINES = [
     9031, 9474, 10307, 10313, 10349, 10370,
     10632, 11076, 11264, 11933, 12610, 13025
 ]
 
-# словарь замен для std::префиксов
+# Словарь замен для std::префиксов
 STD_REPLACEMENTS = {
-    # ввод/вывод
+    # Ввод/вывод
     'std::cout': 'cout',
     'std::endl': 'endl',
     'std::cin': 'cin',
     'std::clog': 'clog',
     'std::cerr': 'cerr',
     
-    # строки
+    # Строки
     'std::string': 'string',
     'std::to_string': 'to_string',
     'std::stoi': 'stoi',
@@ -64,7 +64,7 @@ STD_REPLACEMENTS = {
     'std::stof': 'stof',
     'std::stod': 'stod',
     
-    # контейнеры
+    # Контейнеры
     'std::vector': 'vector',
     'std::array': 'array',
     'std::list': 'list',
@@ -82,7 +82,7 @@ STD_REPLACEMENTS = {
     'std::queue': 'queue',
     'std::priority_queue': 'priority_queue',
     
-    # алгоритмы
+    # Алгоритмы
     'std::sort': 'sort',
     'std::find': 'find',
     'std::count': 'count',
@@ -111,14 +111,14 @@ STD_REPLACEMENTS = {
     'std::cos': 'cos',
     'std::tan': 'tan',
     
-    # умные указатели
+    # Умные указатели
     'std::unique_ptr': 'unique_ptr',
     'std::shared_ptr': 'shared_ptr',
     'std::weak_ptr': 'weak_ptr',
     'std::make_unique': 'make_unique',
     'std::make_shared': 'make_shared',
     
-    # многопоточность
+    # Многопоточность
     'std::thread': 'thread',
     'std::mutex': 'mutex',
     'std::lock_guard': 'lock_guard',
@@ -129,7 +129,7 @@ STD_REPLACEMENTS = {
     'std::async': 'async',
     'std::atomic': 'atomic',
     
-    # файлы
+    # Файлы
     'std::ifstream': 'ifstream',
     'std::ofstream': 'ofstream',
     'std::fstream': 'fstream',
@@ -137,7 +137,7 @@ STD_REPLACEMENTS = {
     'std::istringstream': 'istringstream',
     'std::ostringstream': 'ostringstream',
     
-    # исключения
+    # Исключения
     'std::exception': 'exception',
     'std::runtime_error': 'runtime_error',
     'std::logic_error': 'logic_error',
@@ -147,7 +147,7 @@ STD_REPLACEMENTS = {
     'std::bad_cast': 'bad_cast',
     'std::bad_typeid': 'bad_typeid',
     
-    # типы и traits
+    # Типы и traits
     'std::true_type': 'true_type',
     'std::false_type': 'false_type',
     'std::is_arithmetic': 'is_arithmetic',
@@ -162,14 +162,14 @@ STD_REPLACEMENTS = {
     'std::type_info': 'type_info',
     'std::numeric_limits': 'numeric_limits',
     
-    # sequence generators
+    # Sequence generators
     'std::integer_sequence': 'integer_sequence',
     'std::make_integer_sequence': 'make_integer_sequence',
     'std::index_sequence': 'index_sequence',
     'std::make_index_sequence': 'make_index_sequence',
     'std::index_sequence_for': 'index_sequence_for',
     
-    # прочие
+    # Прочие
     'std::any': 'any',
     'std::variant': 'variant',
     'std::visit': 'visit',
@@ -187,7 +187,7 @@ STD_REPLACEMENTS = {
     'std::dec': 'dec',
     'std::oct': 'oct',
     
-    # character classification
+    # Character classification
     'std::isupper': 'isupper',
     'std::islower': 'islower',
     'std::isdigit': 'isdigit',
@@ -199,7 +199,7 @@ STD_REPLACEMENTS = {
     'std::isgraph': 'isgraph',
     'std::iscntrl': 'iscntrl',
     
-    # math
+    # Math
     'std::isnan': 'isnan',
     'std::isinf': 'isinf',
     'std::isfinite': 'isfinite',
@@ -216,8 +216,8 @@ def print_header(title: str, width: int = 60) -> None:
     Вывести заголовок раздела.
     
     Args:
-        title:    Заголовок
-        width:    Ширина линии
+        title: Заголовок
+        width: Ширина линии
     """
     print(f"\n{'=' * width}")
     print(f"{title:^{width}}")
@@ -225,13 +225,13 @@ def print_header(title: str, width: int = 60) -> None:
 
 def is_excluded_line(line_num: int) -> bool:
     """
-    Проверяет, является ли строка исключением (не должна исправляться).
+    Проверяет, является ли строка исключением.
     
     Args:
-        line_num:    Номер строки
+        line_num: Номер строки
         
     Returns:
-        bool:    True если строка в списке исключений
+        bool: True если строка в списке исключений
     """
     return line_num in EXCLUDED_LINES
 
@@ -244,13 +244,13 @@ def find_std_in_using_namespace_std(filename: str) -> List[int]:
     Находит строки, где используется `using_namespace_std` вместе с `std::`.
     
     Args:
-        filename:    Путь к файлу датасета
+        filename: Путь к файлу датасета
         
     Returns:
-        List[int]:    Список номеров строк с нарушениями
+        List[int]: Список номеров строк с нарушениями
     
-    **Нарушение:** В строках с `using_namespace_std` не должно быть префикса `std::`,
-    так как пространство имен уже подключено.
+    **Нарушение:** В строках с `using_namespace_std` не должно быть префикса
+                   `std::`, так как пространство имен уже подключено.
     """
     violations = []
     
@@ -259,19 +259,19 @@ def find_std_in_using_namespace_std(filename: str) -> List[int]:
             for line_num, raw_line in enumerate(f, 1):
                 raw_line = raw_line.rstrip('\n')
                 
-                # пропускаем пустые строки и комментарии
+                # Пропускаем пустые строки и комментарии
                 if not raw_line.strip() or raw_line.strip().startswith('#'):
                     continue
                 
-                # проверяем наличие обоих признаков
+                # Проверяем наличие обоих признаков
                 if 'using_namespace_std' in raw_line and 'std::' in raw_line:
                     violations.append(line_num)
                     
     except FileNotFoundError:
-        print(f"X Ошибка: Файл '{filename}' не найден!")
+        print(f"Ошибка: Файл '{filename}' не найден!")
         return []
     except Exception as e:
-        print(f"X Ошибка при чтении файла: {e}")
+        print(f"Ошибка при чтении файла: {e}!")
         return []
     
     return violations
@@ -281,11 +281,11 @@ def fix_std_violations(input_filename: str, output_filename: str) -> int:
     Исправляет нарушения стиля, удаляя префикс `std::` в строках с `using_namespace_std`.
     
     Args:
-        input_filename:     Исходный файл
-        output_filename:    Файл для сохранения исправленной версии
+        input_filename:  Исходный файл
+        output_filename: Файл для сохранения исправленной версии
         
     Returns:
-        int:    Количество исправленных строк
+        int: Количество исправленных строк
     
     **Важно:** Строки из списка EXCLUDED_LINES не исправляются!
     
@@ -305,33 +305,33 @@ def fix_std_violations(input_filename: str, output_filename: str) -> int:
             open(output_filename, 'w', encoding='utf-8') as fout:
             
             for line_num, line in enumerate(fin, 1):
-                # проверяем, нужно ли исправлять эту строку
+                # Проверяем, нужно ли исправлять эту строку
                 if 'using_namespace_std' in line and 'std::' in line:
-                    # пропускаем исключения
+                    # Пропускаем исключения
                     if is_excluded_line(line_num):
-                        print(f"Строка {line_num} пропущена (исключение)")
+                        print(f"Строка {line_num} пропущена (исключение)!")
                         skipped_excluded += 1
                     else:
-                        # применяем все замены из словаря
+                        # Применяем все замены из словаря
                         for std_pattern, replacement in STD_REPLACEMENTS.items():
                             line = line.replace(std_pattern, replacement)
                         fixes_applied += 1
-                        print(f"Строка {line_num} исправлена")
+                        print(f"Строка {line_num} исправлена!")
                 
                 fout.write(line)
 
         print(f"\nСтатистика:")
-        print(f" - исправлено строк: {fixes_applied}")
-        print(f" - пропущено (исключения): {skipped_excluded}")
-        print(f" - сохранено в: {output_filename}")
+        print(f"- Исправлено строк:       {fixes_applied}")
+        print(f"- Пропущено (исключения): {skipped_excluded}")
+        print(f"- Сохранено в:            {output_filename}")
 
         return fixes_applied
 
     except FileNotFoundError:
-        print(f"X Ошибка: Файл '{input_filename}' не найден!")
+        print(f"Ошибка: Файл '{input_filename}' не найден!")
         return 0
     except Exception as e:
-        print(f"X Ошибка при обработке файла: {e}")
+        print(f"Ошибка при обработке файла: {e}!")
         return 0
 
 def analyze_style_distribution(filename: str) -> None:
@@ -339,7 +339,7 @@ def analyze_style_distribution(filename: str) -> None:
     Анализирует распределение стилей в датасете.
     
     Args:
-        filename:    Путь к файлу датасета
+        filename: Путь к файлу датасета
     
     **Выводит:**
     - Количество строк с using_namespace_std
@@ -353,7 +353,7 @@ def analyze_style_distribution(filename: str) -> None:
     try:
         with open(filename, 'r', encoding='utf-8') as f:
             for line_num, line in enumerate(f, 1):
-                # пропускаем заголовок
+                # Пропускаем заголовок
                 if line_num == 1 and 'description' in line:
                     continue
                 
@@ -365,13 +365,13 @@ def analyze_style_distribution(filename: str) -> None:
                     total_valid += 1
 
         if total_valid > 0:
-            print_header("РАСПРЕДЕЛЕНИЕ СТИЛЕЙ")
-            print(f" - using_namespace_std: {using_std_count} ({using_std_count/total_valid*100:.1f}%)")
-            print(f" - explicit_std: {explicit_std_count} ({explicit_std_count/total_valid*100:.1f}%)")
-            print(f" - всего примеров: {total_valid}")
+            print_header("РАСПРЕДЕЛЕНИЕ СТИЛЕЙ:")
+            print(f"- using_namespace_std: {using_std_count} ({using_std_count/total_valid*100:.1f}%)")
+            print(f"- explicit_std:        {explicit_std_count} ({explicit_std_count/total_valid*100:.1f}%)")
+            print(f"- Всего примеров:      {total_valid}")
 
     except Exception as e:
-        print(f"X Ошибка при анализе: {e}")
+        print(f"Ошибка при анализе: {e}!")
 
 
 # ======================================================================
@@ -383,25 +383,25 @@ def main() -> int:
     Основная функция.
     
     Returns:
-        int:    0 при успехе, 1 при ошибке
+        int: 0 при успехе, 1 при ошибке
     """
     filename = '3_my_cpp_nn_project/check_dataset/2_cpp_code_generation_dataset.csv'
     
     print_header("ПРОВЕРКА СТИЛЕЙ STD")
     print(f"Анализируемый файл: {filename}")
     
-    # анализируем распределение стилей
+    # Анализируем распределение стилей
     analyze_style_distribution(filename)
     
-    # ищем нарушения
+    # Ищем нарушения
     violations = find_std_in_using_namespace_std(filename)
     
     if violations:
-        print_header("!!! НАЙДЕНЫ НАРУШЕНИЯ")
+        print_header("НАЙДЕНЫ НАРУШЕНИЯ!")
         print(f"Всего нарушений: {len(violations)}")
         print(f"\nНомера строк с using_namespace_std где есть std:::")
         
-        # выводим номера строк группами для удобства
+        # Выводим номера строк группами для удобства
         violations_str = ", ".join(map(str, violations))
         print(f"  {violations_str}")
         
@@ -409,7 +409,7 @@ def main() -> int:
         excluded_str = ", ".join(map(str, EXCLUDED_LINES))
         print(f"  {excluded_str}")
         
-        # предлагаем исправление
+        # Предлагаем исправление
         print(f"\nДля исправления нарушений выполните:")
         print(f"fix_std_violations('{filename}', 'fixed_dataset.csv')")
         

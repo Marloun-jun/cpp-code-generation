@@ -57,8 +57,8 @@
 # @usage python test_bpe_tokenizer.py [--verbose]
 #
 # @example
-#   python test_bpe_tokenizer.py              # обычный запуск
-#   python test_bpe_tokenizer.py --verbose    # подробный вывод с диагностикой
+#   python test_bpe_tokenizer.py              # Обычный запуск
+#   python test_bpe_tokenizer.py --verbose    # Подробный вывод с диагностикой
 #
 # @see BPETokenizer
 # @see train_tokenizer.py
@@ -95,7 +95,7 @@ sys.path.insert(0, str(BPE_PYTHON_DIR))
 try:
     from tokenizer import BPETokenizer
 except ImportError as e:
-    print(f"Ошибка импорта BPETokenizer: {e}")
+    print(f"Ошибка импорта BPETokenizer: {e}!")
     sys.exit(1)
 
 # ======================================================================
@@ -118,13 +118,13 @@ def get_project_paths() -> Dict[str, Path]:
     Получить пути проекта.
     
     Returns:
-        Dict[str, Path]:    Словарь с путями проекта
+        Dict[str, Path]: Словарь с путями проекта
     """
     paths = {
-        "project_root":      PROJECT_ROOT,
-        "bpe_python_dir":    BPE_PYTHON_DIR,
-        "tests_dir":         TESTS_DIR,
-        "reports_dir":       BPE_PYTHON_DIR / 'reports',
+        "project_root":   PROJECT_ROOT,
+        "bpe_python_dir": BPE_PYTHON_DIR,
+        "tests_dir":      TESTS_DIR,
+        "reports_dir":    BPE_PYTHON_DIR / 'reports',
     }
     paths["reports_dir"].mkdir(exist_ok=True)
     return paths
@@ -134,8 +134,8 @@ def print_test_header(title: str, width: int = 60) -> None:
     Вывести заголовок теста.
     
     Args:
-        title:    Заголовок
-        width:    Ширина линии
+        title: Заголовок
+        width: Ширина линии
     """
     print(f"\n{'=' * width}")
     print(f"{title:^{width}}")
@@ -146,8 +146,8 @@ def print_test_result(name: str, passed: bool) -> None:
     Вывести результат теста.
     
     Args:
-        name:      Имя теста
-        passed:    Успех теста
+        name:   Имя теста
+        passed: Успех теста
     """
     status = "ПРОЙДЕН" if passed else "ПРОВАЛЕН"
     print(f"  {name}: {status}")
@@ -165,12 +165,12 @@ class BPETokenizerTest:
     кода перед релизом.
     
     **Структура тестов:**
-    - test_byte_level:        проверка UTF-8 кодирования
-    - test_training_small:    обучение на корпусе
-    - test_save_load:         сериализация
-    - benchmark:              измерение производительности
-    - test_edge_cases:        граничные случаи
-    - run_all_tests:          запуск всех тестов
+    - test_byte_level     - Проверка UTF-8 кодирования
+    - test_training_small - Обучение на корпусе
+    - test_save_load      - Сериализация
+    - benchmark           - Измерение производительности
+    - test_edge_cases     - Граничные случаи
+    - run_all_tests       - Запуск всех тестов
     """
     
     def __init__(self, verbose: bool = False):
@@ -178,7 +178,7 @@ class BPETokenizerTest:
         Инициализация тестера.
         
         Args:
-            verbose:    Подробный вывод (с диагностикой)
+            verbose: Подробный вывод (с диагностикой)
         """
         self.verbose = verbose
         self.paths = get_project_paths()
@@ -204,7 +204,7 @@ class BPETokenizerTest:
         - Длинные строки
         
         Returns:
-            bool:    True если все тесты пройдены
+            bool: True если все тесты пройдены
         """
         print_test_header("ТЕСТ 1: BYTE-LEVEL КОДИРОВАНИЕ")
         
@@ -242,7 +242,7 @@ class BPETokenizerTest:
                     print(f"Результат: {'v' if is_match else 'x'}")
                     
             except Exception as e:
-                print(f"\n  {i}. Ошибка: {e}")
+                print(f"\n  {i}. Ошибка: {e}!")
                 all_passed = False
         
         success_rate = 100.0 * passed_count / len(test_strings)
@@ -260,7 +260,7 @@ class BPETokenizerTest:
         Создать тестовый корпус C++ кода.
         
         Returns:
-            List[str]:    Список строк C++ кода
+            List[str]: Список строк C++ кода
         """
         return [
             "#include <iostream>",
@@ -298,14 +298,14 @@ class BPETokenizerTest:
         возвращает токенизатор с корректным размером словаря.
         
         Returns:
-            Optional[BPETokenizer]:    Обученный токенизатор или None при ошибке
+            Optional[BPETokenizer]: Обученный токенизатор или None при ошибке
         """
         print_test_header("ТЕСТ 2: ОБУЧЕНИЕ НА МАЛЕНЬКОМ КОРПУСЕ")
         
         corpus = self._create_test_corpus()
         vocab_size = 50
         
-        print(f"Размер корпуса: {len(corpus)} строк")
+        print(f"Размер корпуса:         {len(corpus)} строк")
         print(f"Целевой размер словаря: {vocab_size}")
         
         try:
@@ -322,7 +322,7 @@ class BPETokenizerTest:
             return tokenizer
             
         except Exception as e:
-            print(f"\nОшибка при обучении: {e}")
+            print(f"\nОшибка при обучении: {e}!")
             if self.verbose:
                 traceback.print_exc()
             return None
@@ -341,10 +341,10 @@ class BPETokenizerTest:
         - Бинарный (компактный, быстрый)
         
         Args:
-            tokenizer:    Обученный токенизатор
+            tokenizer: Обученный токенизатор
             
         Returns:
-            bool:    True если все проверки пройдены
+            bool: True если все проверки пройдены
         """
         print_test_header("ТЕСТ 3: СОХРАНЕНИЕ И ЗАГРУЗКА")
         
@@ -372,10 +372,10 @@ class BPETokenizerTest:
                 loaded_encoded = loaded_tokenizer.encode(test_text)
                 
                 text_match = (original_encoded == loaded_encoded)
-                print(f"Совпадение: {'v' if text_match else 'x'}")
+                print(f"Совпадение: {'да' if text_match else 'нет'}")
                 
             except Exception as e:
-                print(f"Ошибка: {e}")
+                print(f"Ошибка: {e}!")
                 text_match = False
             
             # Бинарный формат
@@ -390,10 +390,10 @@ class BPETokenizerTest:
                 binary_encoded = loaded_binary.encode(test_text)
                 
                 binary_match = (original_encoded == binary_encoded)
-                print(f"Совпадение: {'v' if binary_match else 'x'}")
+                print(f"Совпадение: {'да' if binary_match else 'нет'}")
                 
             except Exception as e:
-                print(f"Ошибка: {e}")
+                print(f"Ошибка: {e}!")
                 binary_match = False
             
             all_match = text_match and binary_match
@@ -414,10 +414,10 @@ class BPETokenizerTest:
         - Скорость decode (операций/с)
         
         Args:
-            sizes:    Список размеров словаря для тестирования
+            sizes: Список размеров словаря для тестирования
             
         Returns:
-            Dict[int, Dict]:    Результаты бенчмарка
+            Dict[int, Dict]: Результаты бенчмарка
         """
         if sizes is None:
             sizes = [50, 100, 200]
@@ -473,11 +473,11 @@ class BPETokenizerTest:
                 }
                 
                 print(f"Обучение: {train_time:.3f} сек")
-                print(f"Encode: {encode_speed:.0f} оп/с ({encode_ms:.3f} мс/оп)")
-                print(f"Decode: {decode_speed:.0f} оп/с ({decode_ms:.3f} мс/оп)")
+                print(f"Encode:   {encode_speed:.0f} оп/с ({encode_ms:.3f} мс/оп)")
+                print(f"Decode:   {decode_speed:.0f} оп/с ({decode_ms:.3f} мс/оп)")
                 
             except Exception as e:
-                print(f"Ошибка: {e}")
+                print(f"Ошибка: {e}!")
                 results[vocab_size] = {'error': str(e)}
         
         return results
@@ -498,11 +498,11 @@ class BPETokenizerTest:
         - UTF-8 4-байтовые символы (эмодзи, древние письменности)
         
         Returns:
-            bool:    True если все тесты пройдены
+            bool: True если все тесты пройдены
         """
         print_test_header("ТЕСТ 5: ГРАНИЧНЫЕ СЛУЧАИ")
         
-        # добавляем ВСЕ спецсимволы в обучающую выборку
+        # Добавляем спецсимволы в обучающую выборку
         train_corpus = [
             "a", "b", "c", "ab", "bc", "abc",
             "\n", "\t", "\r", "\b", "\f", "\v"
@@ -549,12 +549,12 @@ class BPETokenizerTest:
                 encoded = tiny_tokenizer.encode(ch)
                 decoded = tiny_tokenizer.decode(encoded)
                 
-                # Убираем ТОЛЬКО маркер конца слова, если он есть
+                # Убираем маркер конца слова, если он есть
                 clean_decoded = decoded.replace(chr(0), '')    # Убираем null-символы
                 
                 ch_pass = (ch == clean_decoded)
                 special_passed = special_passed and ch_pass
-                print(f"     {repr(ch)}: {encoded} -> {repr(decoded)} -> {repr(clean_decoded)} - {'v' if ch_pass else 'x'}")
+                print(f"    {repr(ch)}: {encoded} -> {repr(decoded)} -> {repr(clean_decoded)} - {'да' if ch_pass else 'нет'}")
                 
                 if not ch_pass and self.verbose:
                     print(f"Оригинал (hex): {ch.encode('utf-8').hex()}")
@@ -625,7 +625,7 @@ class BPETokenizerTest:
         5. Граничные случаи
         
         Returns:
-            int:    0 если все тесты пройдены, 1 если есть ошибки
+            int: 0 если все тесты пройдены, 1 если есть ошибки
         """
         print("\n" + "=" * 60)
         print("ТЕСТИРОВАНИЕ BPE ТОКЕНИЗАТОРА".center(60))
@@ -674,15 +674,15 @@ def main() -> int:
     Основная функция для запуска тестирования.
     
     Returns:
-        int:    0 при успехе, 1 при ошибке
+        int: 0 при успехе, 1 при ошибке
     """
     parser = argparse.ArgumentParser(
         description='Тестирование BPE токенизатора',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
     Примеры использования:
-    python test_bpe_tokenizer.py              # обычный запуск
-    python test_bpe_tokenizer.py --verbose    # подробный вывод с диагностикой
+    python test_bpe_tokenizer.py              # Обычный запуск
+    python test_bpe_tokenizer.py --verbose    # Подробный вывод с диагностикой
     """
     )
     parser.add_argument('--verbose', '-v', action='store_true', help='Подробный вывод')

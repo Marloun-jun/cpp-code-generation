@@ -67,7 +67,7 @@ include tests/CMakeFiles/run_memory_tests.dir/compiler_depend.make
 include tests/CMakeFiles/run_memory_tests.dir/progress.make
 
 tests/CMakeFiles/run_memory_tests:
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "🗄️ Запуск тестов MemoryPool"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "- Запуск тестов MemoryPool"
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/tests && ctest -L memory -V
 
 run_memory_tests: tests/CMakeFiles/run_memory_tests

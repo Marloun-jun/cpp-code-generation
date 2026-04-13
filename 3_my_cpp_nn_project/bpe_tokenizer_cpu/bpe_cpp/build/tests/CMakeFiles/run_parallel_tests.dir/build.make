@@ -67,7 +67,7 @@ include tests/CMakeFiles/run_parallel_tests.dir/compiler_depend.make
 include tests/CMakeFiles/run_parallel_tests.dir/progress.make
 
 tests/CMakeFiles/run_parallel_tests:
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "⚙️ Запуск тестов ParallelTrainer"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "- Запуск тестов ParallelTrainer"
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/tests && ctest -L parallel -V
 
 run_parallel_tests: tests/CMakeFiles/run_parallel_tests

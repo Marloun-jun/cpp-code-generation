@@ -1,5 +1,0 @@
-if(EXISTS "/home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/tests/test_trained_model[1]_tests.cmake")
-  include("/home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/tests/test_trained_model[1]_tests.cmake")
-else()
-  add_test(test_trained_model_NOT_BUILT test_trained_model_NOT_BUILT)
-endif()

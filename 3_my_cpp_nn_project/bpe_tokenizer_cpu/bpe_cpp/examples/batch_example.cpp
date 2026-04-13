@@ -6,16 +6,20 @@
  * @date 2026
  * @version 3.4.0
  * 
- * @details Этот пример показывает преимущества пакетной обработки (batch processing)
- *          при работе с BPE токенизатором. Основные демонстрируемые концепции:
+ * @details Комплексный пример, демонстрирующий преимущества пакетной обработки
+ *          и сравнивающий производительность разных реализаций токенизатора.
  * 
- *          - Пакетная vs одиночная обработка - сравнение производительности
- *          - Статистика токенизации для разных примеров C++ кода
- *          - Эффективность кэширования при повторяющихся паттернах
- *          - Масштабирование с ростом размера батча
- *          - Сравнение с оптимизированной версией FastTokenizer
+ *          **Демонстрируемые концепции:**
+ *          ┌───────────────────────────────────────────────────────────────────┐
+ *          │ 1. Пакетная vs одиночная обработка        │ До 5x ускорение       │
+ *          │ 2. Эффективность кэширования              │ До 10x при повторах   │
+ *          │ 3. Масштабирование с размером батча       │ Почти линейное        │
+ *          │ 4. Сравнение BPETokenizer и FastTokenizer │ FastTokenizer быстрее │
+ *          │ 5. Статистика токенизации                 │ Сжатие, уникальность  │
+ *          │ 6. Unicode/эмодзи поддержка               │ Через byte-level      │
+ *          └───────────────────────────────────────────────────────────────────┘
  * 
- *          Тестовые примеры включают различные конструкции C++:
+ *          **Тестовые примеры включают:**
  *          - Базовые выражения и операторы
  *          - STL контейнеры и алгоритмы
  *          - Управляющие конструкции (if, for, while, switch)
@@ -24,66 +28,76 @@
  *          - Строковые литералы и комментарии (включая русские и эмодзи)
  *          - Preprocessor директивы
  * 
- * @compile g++ -std=c++17 -O2 batch_example.cpp -o batch_example -lbpe_tokenizer
+ * @compile g++ -std=c++17 -O2 -march=native batch_example.cpp -o batch_example -lbpe_tokenizer -pthread
  * @run   ./batch_example
  * 
- * @see BPETokenizer
- * @see FastBPETokenizer
+ * @see BPETokenizer, FastBPETokenizer
  */
 
 #include "bpe_tokenizer.hpp"
 #include "fast_tokenizer.hpp"
 #include "utils.hpp"
 
-#include <filesystem>
-#include <iostream>
-#include <vector>
-#include <iomanip>
-#include <map>
 #include <algorithm>
-#include <set>
-#include <numeric>
 #include <chrono>
-#include <thread>
+#include <filesystem>
+#include <iomanip>
+#include <iostream>
+#include <map>
+#include <numeric>
+#include <set>
 #include <string>
+#include <thread>
+#include <vector>
 
 namespace fs = std::filesystem;
 using namespace bpe;
 
-// ======================================================================
-// Константы
-// ======================================================================
+// ============================================================================
+// Константы и глобальные настройки
+// ============================================================================
 
 namespace {
-    constexpr size_t DEFAULT_VOCAB_SIZE = 8000;
-    constexpr size_t FAST_CACHE_SIZE = 10000;
-    constexpr int REPETITIVE_BATCH_SIZE = 100;
-    constexpr int WIDTH = 80;
+    constexpr size_t DEFAULT_VOCAB_SIZE = 10000;    ///< Размер словаря по умолчанию
+    constexpr size_t FAST_CACHE_SIZE = 10000;       ///< Размер кэша для FastTokenizer
+    constexpr int REPETITIVE_BATCH_SIZE = 100;      ///< Размер батча для теста кэша
+    constexpr int WIDTH = 80;                       ///< Ширина таблиц для вывода
     
-    // Цвета для вывода (опционально)
+    // ANSI цвета для красивого вывода (опционально)
     const std::string RESET = "\033[0m";
     const std::string GREEN = "\033[32m";
     const std::string YELLOW = "\033[33m";
     const std::string CYAN = "\033[36m";
+    const std::string RED = "\033[31m";
     const std::string BOLD = "\033[1m";
 }
 
-// ======================================================================
-// Вспомогательные функции
-// ======================================================================
+// ============================================================================
+// Вспомогательные функции для форматированного вывода
+// ============================================================================
 
 /**
- * @brief Выводит заголовок раздела
+ * @brief Выводит заголовок раздела с красивым оформлением
+ * 
+ * @param title Заголовок для вывода
+ * 
+ * @code
+ * print_header("ТЕСТ 1: Производительность");
+ * // Вывод:
+ * // ┌────────────────────────────────────────────────────────────────┐
+ * // │                   ТЕСТ 1: Производительность                   │
+ * // └────────────────────────────────────────────────────────────────┘
+ * @endcode
  */
-
 void print_header(const std::string& title) {
     // Верхняя граница
     std::cout << "\n" << BOLD << "┌";
     for (int i = 0; i < WIDTH; ++i) std::cout << '-';
     std::cout << "┐\n";
     
-    // Центрируем заголовок
-    int total_padding = WIDTH - static_cast<int>(title.size());
+    // Центрируем заголовок (учитываем только длину строки, ANSI коды не считаем)
+    size_t title_len = title.size();
+    int total_padding = WIDTH - static_cast<int>(title_len);
     int left_padding = total_padding / 2;
     int right_padding = total_padding - left_padding;
     
@@ -103,17 +117,20 @@ void print_header(const std::string& title) {
  * @brief Создает тестовый батч из разнообразных примеров C++ кода
  * 
  * @return std::vector<std::string> Вектор с тестовыми примерами
+ * 
+ * Содержит более 50 примеров, покрывающих все основные конструкции C++,
+ * включая Unicode и эмодзи для тестирования byte-level режима.
  */
 std::vector<std::string> create_test_batch() {
     return {
-        // ===== Простые выражения =====
+        // Простые выражения
         "int x = 42;",
         "float y = 3.14f;",
         "char c = 'A';",
         "bool flag = true;",
         "auto result = x + y;",
         
-        // ===== STL контейнеры =====
+        // STL контейнеры
         "std::vector<int> numbers = {1, 2, 3, 4, 5};",
         "std::map<std::string, int> ages;",
         "std::set<double> values;",
@@ -122,7 +139,7 @@ std::vector<std::string> create_test_batch() {
         "std::pair<int, std::string> p = {1, \"one\"};",
         "std::optional<int> opt;",
         
-        // ===== Управляющие конструкции =====
+        // Управляющие конструкции
         "if (condition) { do_something(); }",
         "for (int i = 0; i < 10; ++i) { sum += i; }",
         "while (running) { process(); }",
@@ -130,7 +147,7 @@ std::vector<std::string> create_test_batch() {
         "switch (value) { case 1: break; default: break; }",
         "try { throw std::runtime_error(\"error\"); } catch (const std::exception& e) {}",
         
-        // ===== Шаблоны и классы =====
+        // Шаблоны и классы
         "template<typename T> T max(T a, T b) { return (a > b) ? a : b; }",
         "class MyClass { public: void method(); private: int data_; };",
         "struct Point { int x, y; };",
@@ -138,7 +155,7 @@ std::vector<std::string> create_test_batch() {
         "namespace my_namespace { class MyClass {}; }",
         "template<typename T, typename U> struct Pair { T first; U second; };",
         
-        // ===== Функции и лямбды =====
+        // Функции и лямбды
         "int add(int a, int b) { return a + b; }",
         "auto lambda = [](int x) { return x * x; };",
         "int* ptr = nullptr;",
@@ -146,7 +163,7 @@ std::vector<std::string> create_test_batch() {
         "static_assert(sizeof(int) == 4, \"int must be 4 bytes\");",
         "void (*func_ptr)(int) = &function;",
         
-        // ===== Строки и комментарии =====
+        // Строки и комментарии
         "\"string literal with \\\"escapes\\\"\"",
         "'c'",
         "R\"(raw string)\"",
@@ -154,7 +171,7 @@ std::vector<std::string> create_test_batch() {
         "/* multi-line\n comment */",
         "std::string s = \"Hello\";",
         
-        // ===== Include директивы =====
+        // Include директивы
         "#include <iostream>",
         "#include \"myheader.hpp\"",
         "#include <vector>",
@@ -162,19 +179,19 @@ std::vector<std::string> create_test_batch() {
         "#include <memory>",
         "#include <thread>",
         
-        // ===== Сложные выражения =====
+        // Сложные выражения
         "std::cout << \"Hello, \" << name << \"!\" << std::endl;",
         "auto result = std::accumulate(v.begin(), v.end(), 0);",
         "std::unique_ptr<MyClass> ptr = std::make_unique<MyClass>();",
         "std::sort(vec.begin(), vec.end(), std::greater<int>());",
         
-        // ===== Русские комментарии (тест Unicode) =====
+        // Русские комментарии (тест Unicode)
         "// русский комментарий",
         "/* ещё комментарий на русском */",
         "std::cout << \"Привет, мир!\" << std::endl;",
         "// Тестирование кириллицы в коде",
         
-        // ===== Эмодзи (для byte-level режима) =====
+        // Эмодзи (для byte-level режима)
         "// 🔥 C++ code with emoji 😊",
         "// 🚀 performance test",
         "// 📊 statistics",
@@ -187,6 +204,9 @@ std::vector<std::string> create_test_batch() {
  * 
  * @param size Желаемое количество примеров в батче
  * @return std::vector<std::string> Вектор с повторяющимися примерами
+ * 
+ * Создает батч, где каждый пример - один из 4 базовых паттернов
+ * с добавлением уникального ID. Идеально для тестирования кэша.
  */
 std::vector<std::string> create_repetitive_batch(size_t size) {
     std::vector<std::string> batch;
@@ -212,25 +232,32 @@ std::vector<std::string> create_repetitive_batch(size_t size) {
  * 
  * @param results Вектор результатов токенизации
  * @param batch Исходные текстовые примеры
+ * 
+ * Выводит таблицу с колонками:
+ * - ID примера
+ * - Пример (обрезанный до 30 символов)
+ * - Количество токенов
+ * - Уникальных токенов
+ * - Процент сжатия
  */
 void print_token_stats(const std::vector<std::vector<token_id_t>>& results,
                        const std::vector<std::string>& batch) {
     
-std::cout << "\n" << CYAN << BOLD << "📊 Статистика по токенам:" << RESET << std::endl;
-
-// Линия-разделитель через цикл
-for (int i = 0; i < WIDTH; ++i) std::cout << '-';
-std::cout << "\n";
-
-std::cout << std::setw(4) << "ID" << " │ " 
-          << std::setw(32) << "Пример" << " │ "
-          << std::setw(8) << "Токены" << " │ "
-          << std::setw(10) << "Уникальных" << " │ "
-          << "Сжатие" << std::endl;
-
-// Линия-разделитель
-for (int i = 0; i < WIDTH; ++i) std::cout << '-';
-std::cout << std::endl;
+    std::cout << "\n" << CYAN << BOLD << "Статистика по токенам:" << RESET << std::endl;
+    
+    // Верхняя граница таблицы
+    for (int i = 0; i < WIDTH; ++i) std::cout << '-';
+    std::cout << "\n";
+    
+    // Заголовок таблицы
+    std::cout << std::setw(4) << "ID" << " │ "
+              << std::setw(32) << "Пример" << " │ "
+              << std::setw(8) << "Токены" << " │ "
+              << std::setw(10) << "Уникальных" << " │ "
+              << "Сжатие" << std::endl;
+    
+    for (int i = 0; i < WIDTH; ++i) std::cout << '-';
+    std::cout << std::endl;
 
     size_t total_tokens = 0;
     size_t total_chars = 0;
@@ -249,7 +276,7 @@ std::cout << std::endl;
         size_t num_chars = batch[i].size();
         double compression = 100.0 * (1.0 - static_cast<double>(num_tokens) / num_chars);
         
-        std::cout << std::setw(4) << i << " │ " 
+        std::cout << std::setw(4) << i << " │ "
                   << std::setw(32) << display << " │ "
                   << std::setw(8) << num_tokens << " │ "
                   << std::setw(10) << unique_tokens.size() << " │ "
@@ -260,137 +287,166 @@ std::cout << std::endl;
         total_chars += num_chars;
     }
     
-    // Верхняя линия
+    // Разделитель
     for (int i = 0; i < WIDTH; ++i) std::cout << '-';
     std::cout << "\n";
 
     double avg_compression = 100.0 * (1.0 - static_cast<double>(total_tokens) / total_chars);
 
+    // Итоговая строка
     char buffer[64];
     snprintf(buffer, sizeof(buffer), "ВСЕГО: %zu примеров", batch.size());
 
-    std::cout << std::setw(4) << "Σ" << " │ " 
-            << std::setw(32) << buffer << " │ "
-            << std::setw(8) << total_tokens << " │ "
-            << std::setw(10) << "-" << " │ "
-            << std::fixed << std::setprecision(1) << std::setw(6)
-            << avg_compression << "%" << std::endl;
+    std::cout << std::setw(4) << "Σ" << " │ "
+              << std::setw(32) << buffer << " │ "
+              << std::setw(8) << total_tokens << " │ "
+              << std::setw(10) << "-" << " │ "
+              << std::fixed << std::setprecision(1) << std::setw(6)
+              << avg_compression << "%" << std::endl;
 
-    // Нижняя линия
+    // Нижняя граница
     for (int i = 0; i < WIDTH; ++i) std::cout << '-';
     std::cout << std::endl;
 }
 
+// ============================================================================
+// Класс для поиска и загрузки моделей
+// ============================================================================
+
 /**
- * @brief Класс для поиска и загрузки моделей
+ * @brief Утилита для поиска файлов моделей в разных директориях
+ * 
+ * Пытается загрузить модель из нескольких возможных расположений:
+ * - ../models/bpe_10000/
+ * - models/bpe_10000/ (текущая директория)
+ * - bpe_python/models/bpe_10000/
  */
 class ModelLoader {
 private:
-    std::vector<std::pair<std::string, std::string>> paths_;
-    
+    std::vector<std::pair<std::string, std::string>> paths_;    ///< Пары (vocab_path, merges_path)
+
 public:
     ModelLoader() {
-        // C++ модели (в папке models/)
-        paths_.emplace_back("../models/bpe_8000/cpp_vocab.json", 
+        // Пути для C++ моделей
+        paths_.emplace_back("../models/bpe_8000/cpp_vocab.json",
                             "../models/bpe_8000/cpp_merges.txt");
-        paths_.emplace_back("../models/bpe_10000/cpp_vocab.json", 
+        paths_.emplace_back("../models/bpe_10000/cpp_vocab.json",
                             "../models/bpe_10000/cpp_merges.txt");
-        paths_.emplace_back("../models/bpe_12000/cpp_vocab.json", 
+        paths_.emplace_back("../models/bpe_12000/cpp_vocab.json",
                             "../models/bpe_12000/cpp_merges.txt");
         
-        // Python модели (из корня проекта)
-        paths_.emplace_back("../../bpe_python/models/bpe_8000/vocab.json", 
-                            "../../bpe_python/models/bpe_8000/merges.txt");
-        paths_.emplace_back("../../bpe_python/models/bpe_10000/vocab.json", 
-                            "../../bpe_python/models/bpe_10000/merges.txt");
-        paths_.emplace_back("../../bpe_python/models/bpe_12000/vocab.json", 
-                            "../../bpe_python/models/bpe_12000/merges.txt");
-        
         // Модели в текущей директории
-        paths_.emplace_back("models/bpe_8000/cpp_vocab.json", 
+        paths_.emplace_back("models/bpe_8000/cpp_vocab.json",
                             "models/bpe_8000/cpp_merges.txt");
-        paths_.emplace_back("models/bpe_10000/cpp_vocab.json", 
+        paths_.emplace_back("models/bpe_10000/cpp_vocab.json",
                             "models/bpe_10000/cpp_merges.txt");
-        paths_.emplace_back("models/bpe_12000/cpp_vocab.json", 
+        paths_.emplace_back("models/bpe_12000/cpp_vocab.json",
                             "models/bpe_12000/cpp_merges.txt");
         
         // Модели в родительской директории
-        paths_.emplace_back("bpe_python/models/bpe_8000/vocab.json", 
-                            "bpe_python/models/bpe_8000/merges.txt");
+        paths_.emplace_back("bpe_python/models/bpe_10000/vocab.json",
+                            "bpe_python/models/bpe_10000/merges.txt");
     }
     
+    /**
+     * @brief Загрузить базовый BPETokenizer
+     * @param tokenizer Ссылка на токенизатор для загрузки
+     * @return true если удалось загрузить
+     */
     bool load_basic_tokenizer(BPETokenizer& tokenizer) {
         for (const auto& [vocab, merges] : paths_) {
-            std::cout << "  Пробуем: " << vocab << std::endl;
+            std::cout << "Пробуем: " << vocab << std::endl;
             
-            if (fs::exists(vocab) && fs::exists(merges)) {
-                if (tokenizer.load_from_files(vocab, merges)) {
-                    std::cout << GREEN << "  ✓ Загружено: " << vocab << RESET << std::endl;
-                    return true;
+            try {
+                if (fs::exists(vocab) && fs::exists(merges)) {
+                    if (tokenizer.load_from_files(vocab, merges)) {
+                        std::cout << GREEN << "Загружено: " << vocab << RESET << std::endl;
+                        return true;
+                    }
                 }
+            } catch (const fs::filesystem_error& e) {
+                // Файл не существует или нет доступа, продолжаем поиск
+                continue;
             }
         }
         return false;
     }
     
+    /**
+     * @brief Загрузить FastBPETokenizer
+     * @param tokenizer Ссылка на токенизатор для загрузки
+     * @return true если удалось загрузить
+     */
     bool load_fast_tokenizer(FastBPETokenizer& tokenizer) {
         for (const auto& [vocab, merges] : paths_) {
-            if (fs::exists(vocab) && fs::exists(merges)) {
-                if (tokenizer.load(vocab, merges)) {
-                    std::cout << GREEN << "  ✓ Загружено: " << vocab << RESET << std::endl;
-                    return true;
+            try {
+                if (fs::exists(vocab) && fs::exists(merges)) {
+                    if (tokenizer.load(vocab, merges)) {
+                        std::cout << GREEN << "Загружено: " << vocab << RESET << std::endl;
+                        return true;
+                    }
                 }
+            } catch (const fs::filesystem_error& e) {
+                // Файл не существует или нет доступа, продолжаем поиск
+                continue;
             }
         }
         return false;
     }
 };
 
-// ======================================================================
+// ============================================================================
 // Основная функция
-// ======================================================================
+// ============================================================================
 
 /**
  * @brief Точка входа в программу
  * 
  * @return int 0 при успешном выполнении, 1 при ошибке
+ * 
+ * Выполняет серию тестов:
+ * 1. Инициализация и загрузка модели
+ * 2. Сравнение одиночной и пакетной обработки
+ * 3. Статистика токенизации
+ * 4. Тест эффективности кэширования
+ * 5. Зависимость от размера батча
+ * 6. Сравнение с FastTokenizer
  */
 int main() {
     try {
         print_header("ПАКЕТНАЯ ОБРАБОТКА BPE ТОКЕНИЗАТОРОМ");
         
-        // ======================================================================
+        // ====================================================================
         // 1. Инициализация токенизатора
-        // ======================================================================
+        // ====================================================================
 
-        std::cout << YELLOW << "\n🔧 Инициализация токенизатора..." << RESET << std::endl;
+        std::cout << YELLOW << "\nИнициализация токенизатора..." << RESET << std::endl;
 
         BPETokenizer tokenizer;
         tokenizer.set_byte_level(true);    // Включаем byte-level режим для Unicode
 
         ModelLoader loader;
         if (!loader.load_basic_tokenizer(tokenizer)) {
-            std::cerr << "\n❌ Не удалось загрузить модель!" << std::endl;
-            std::cerr << "   Убедитесь, что файлы моделей находятся в директории:" << std::endl;
-            std::cerr << "   - bpe_cpp/models/bpe_8000/cpp_vocab.json" << std::endl;
-            std::cerr << "   - bpe_cpp/models/bpe_8000/cpp_merges.txt" << std::endl;
-            std::cerr << "   или в bpe_python/models/bpe_8000/" << std::endl;
+            std::cerr << RED << "\nНе удалось загрузить модель!" << RESET << std::endl;
+            std::cerr << "Убедитесь, что файлы моделей находятся в директории:" << std::endl;
+            std::cerr << "- bpe_cpp/models/bpe_10000/cpp_vocab.json" << std::endl;
+            std::cerr << "- bpe_cpp/models/bpe_10000/cpp_merges.txt" << std::endl;
             return 1;
         }
         
-        std::cout << "📊 Размер словаря: " << tokenizer.vocab_size() << std::endl;
-        std::cout << "📊 Правил слияния: " << tokenizer.merges_count() << std::endl;
+        std::cout << "Размер словаря: " << tokenizer.vocab_size() << std::endl;
+        std::cout << "Правил слияния: " << tokenizer.merges_count() << std::endl;
         
-        // ======================================================================
+        // ====================================================================
         // 2. Создание тестового батча
-        // ======================================================================
+        // ====================================================================
         
         auto batch = create_test_batch();
-        std::cout << "\n📦 Создан тестовый батч из " << batch.size() << " примеров" << std::endl;
+        std::cout << "\nСоздан тестовый батч из " << batch.size() << " примеров" << std::endl;
         
-        // ======================================================================
+        // ====================================================================
         // 3. Тест 1: Сравнение одиночной и пакетной обработки
-        // ======================================================================
+        // ====================================================================
         
         print_header("ТЕСТ 1: Сравнение производительности");
         
@@ -414,24 +470,24 @@ int main() {
         double batch_time = timer.elapsed();
         
         std::cout << std::fixed << std::setprecision(3);
-        std::cout << "📈 Одиночная обработка: " << CYAN << single_time * 1000 << " мс" << RESET << std::endl;
-        std::cout << "📈 Пакетная обработка:  " << GREEN << batch_time * 1000 << " мс" << RESET << std::endl;
-        std::cout << "⚡ Ускорение:           " << BOLD << (single_time / batch_time) << "x" << RESET << std::endl;
+        std::cout << "Одиночная обработка: " << CYAN << single_time * 1000 << " мс" << RESET << std::endl;
+        std::cout << "Пакетная обработка:  " << GREEN << batch_time * 1000 << " мс" << RESET << std::endl;
+        std::cout << "Ускорение:           " << BOLD << (single_time / batch_time) << "x" << RESET << std::endl;
         
         // Проверка корректности (результаты должны совпадать)
         bool all_match = true;
         for (size_t i = 0; i < batch.size(); ++i) {
             if (single_results[i] != batch_results[i]) {
                 all_match = false;
-                std::cout << "\n❌ Несовпадение в примере " << i << std::endl;
+                std::cout << RED << "\nНесовпадение в примере " << i << RESET << std::endl;
                 
-                std::cout << "   Одиночная: ";
+                std::cout << "Одиночная: ";
                 for (size_t j = 0; j < std::min(size_t(10), single_results[i].size()); ++j) {
                     std::cout << single_results[i][j] << " ";
                 }
                 std::cout << (single_results[i].size() > 10 ? "..." : "") << std::endl;
                 
-                std::cout << "   Пакетная:  ";
+                std::cout << "Пакетная:  ";
                 for (size_t j = 0; j < std::min(size_t(10), batch_results[i].size()); ++j) {
                     std::cout << batch_results[i][j] << " ";
                 }
@@ -439,24 +495,24 @@ int main() {
                 break;
             }
         }
-        std::cout << "✓ Корректность: " << (all_match ? GREEN + "OK" : "ОШИБКА") << RESET << std::endl;
+        std::cout << "Корректность: " << (all_match ? GREEN + "ДА" : RED + "НЕТ") << RESET << std::endl;
         
-        // ======================================================================
+        // ====================================================================
         // 4. Тест 2: Статистика по токенам
-        // ======================================================================
+        // ====================================================================
         
         print_header("ТЕСТ 2: Статистика по примерам");
         print_token_stats(batch_results, batch);
         
-        // ======================================================================
+        // ====================================================================
         // 5. Тест 3: Эффективность кэширования
-        // ======================================================================
+        // ====================================================================
         
         print_header("ТЕСТ 3: Эффективность кэширования");
         
         auto repetitive_batch = create_repetitive_batch(REPETITIVE_BATCH_SIZE);
-        std::cout << "📦 Батч с повторениями: " << repetitive_batch.size() << " примеров" << std::endl;
-        std::cout << "📊 Паттернов: 4 (повторяются циклически)" << std::endl;
+        std::cout << "Батч с повторениями: " << repetitive_batch.size() << " примеров" << std::endl;
+        std::cout << "Паттернов: 4 (повторяются циклически)" << std::endl;
         
         // Первый проход (заполнение кэша)
         timer.reset();
@@ -468,13 +524,13 @@ int main() {
         auto second_pass = tokenizer.encode_batch(repetitive_batch);
         double second_pass_time = timer.elapsed();
         
-        std::cout << "🔄 Первый проход:  " << CYAN << first_pass_time * 1000 << " мс" << RESET << std::endl;
-        std::cout << "🔄 Второй проход:  " << GREEN << second_pass_time * 1000 << " мс" << RESET << std::endl;
-        std::cout << "⚡ Ускорение:      " << BOLD << (first_pass_time / second_pass_time) << "x" << RESET << std::endl;
+        std::cout << "Первый проход: " << CYAN << first_pass_time * 1000 << " мс" << RESET << std::endl;
+        std::cout << "Второй проход: " << GREEN << second_pass_time * 1000 << " мс" << RESET << std::endl;
+        std::cout << "Ускорение:     " << BOLD << (first_pass_time / second_pass_time) << "x" << RESET << std::endl;
         
-        // ======================================================================
+        // ====================================================================
         // 6. Тест 4: Зависимость от размера батча
-        // ======================================================================
+        // ====================================================================
         
         print_header("ТЕСТ 4: Зависимость от размера батча");
         
@@ -483,7 +539,6 @@ int main() {
                   << std::setw(14) << "Время (мс)" << " │ "
                   << std::setw(12) << "На элемент" << " │ "
                   << std::setw(10) << "Ускорение" << std::endl;
-        std::cout << "------------------------------------------------------------\n";
         
         double base_time = 0;
         
@@ -511,9 +566,9 @@ int main() {
             }
         }
         
-        // ======================================================================
+        // ====================================================================
         // 7. Тест 5: Сравнение с быстрым токенизатором
-        // ======================================================================
+        // ====================================================================
 
         print_header("ТЕСТ 5: Сравнение с FastTokenizer");
 
@@ -525,7 +580,7 @@ int main() {
         FastBPETokenizer fast_tokenizer(fast_config);
 
         if (loader.load_fast_tokenizer(fast_tokenizer)) {
-            std::cout << "FastTokenizer загружен!" << std::endl;
+            std::cout << GREEN << "FastTokenizer загружен!" << RESET << std::endl;
             
             // Создаем вектор string_view для передачи в FastTokenizer
             std::vector<std::string_view> batch_views;
@@ -543,37 +598,47 @@ int main() {
             auto fast_results = fast_tokenizer.encode_batch(batch_views);
             double fast_time = timer.elapsed() * 1000;
             
-            std::cout << "📊 BPETokenizer:    " << CYAN << batch_time << " мс" << RESET << std::endl;
-            std::cout << "📊 FastTokenizer:   " << GREEN << fast_time << " мс" << RESET << std::endl;
-            std::cout << "⚡ Ускорение:        " << BOLD << (batch_time / fast_time) << "x" << RESET << std::endl;
+            std::cout << "BPETokenizer:  " << CYAN << batch_time * 1000 << " мс" << RESET << std::endl;
+            std::cout << "FastTokenizer: " << GREEN << fast_time << " мс" << RESET << std::endl;
             
-            // Проверяем корректность
-            bool fast_match = (batch_results.size() == fast_results.size());
+            // Правильное вычисление ускорения (больше = быстрее)
+            double speedup = batch_time / (fast_time / 1000);
+            std::cout << "Ускорение:     " << BOLD;
+            if (fast_time < batch_time * 1000) {
+                std::cout << GREEN << speedup << "x (быстрее)" << RESET << std::endl;
+            } else {
+                std::cout << RED << (1.0 / speedup) << "x (медленнее)" << RESET << std::endl;
+            }
+            
+            // Проверяем корректность результатов
+            bool fast_match = !fast_results.empty() && (batch_results.size() == fast_results.size());
             if (fast_match) {
                 for (size_t i = 0; i < batch_results.size(); ++i) {
                     if (batch_results[i].size() != fast_results[i].size()) {
                         fast_match = false;
-                        std::cout << "  Несовпадение размера в примере " << i << ": "
-                                << batch_results[i].size() << " vs " << fast_results[i].size() << std::endl;
+                        std::cout << "Несовпадение размера в примере " << i << ": "
+                                 << batch_results[i].size() << " vs " << fast_results[i].size() << std::endl;
                         break;
                     }
                 }
+            } else if (fast_results.empty()) {
+                std::cout << YELLOW << "FastTokenizer не вернул результатов!" << RESET << std::endl;
             }
-            std::cout << "✓ Корректность:    " << (fast_match ? GREEN + "OK" : "ОШИБКА") << RESET << std::endl;
+            std::cout << "Корректность:    " << (fast_match ? GREEN + "ДА" : RED + "НЕТ") << RESET << std::endl;
             
             // Показываем статистику FastTokenizer
             auto fast_stats = fast_tokenizer.stats();
-            std::cout << "📊 Cache hits:      " << fast_stats.cache_hits << std::endl;
-            std::cout << "📊 Cache misses:    " << fast_stats.cache_misses << std::endl;
-            std::cout << "📊 Hit rate:        " << std::fixed << std::setprecision(1)
-                    << fast_stats.cache_hit_rate() << "%" << std::endl;
+            std::cout << "Cache hits:   " << fast_stats.cache_hits << std::endl;
+            std::cout << "Cache misses: " << fast_stats.cache_misses << std::endl;
+            std::cout << "Hit rate:     " << std::fixed << std::setprecision(1)
+                     << fast_stats.cache_hit_rate() << "%" << std::endl;
         } else {
-            std::cout << YELLOW << "⚠ FastTokenizer не загружен (пропускаем)" << RESET << std::endl;
+            std::cout << YELLOW << "FastTokenizer не загружен (пропускаем)!" << RESET << std::endl;
         }
         
-        // ======================================================================
+        // ====================================================================
         // 8. Итог
-        // ======================================================================
+        // ====================================================================
         
         print_header("ИТОГИ");
         
@@ -586,23 +651,23 @@ int main() {
         
         double avg_compression = 100.0 * (1.0 - static_cast<double>(total_tokens) / total_chars);
         
-        std::cout << "\n📊 Сводка по тестированию:" << std::endl;
-        std::cout << "  • Всего примеров:    " << batch.size() << std::endl;
-        std::cout << "  • Всего символов:    " << total_chars << std::endl;
-        std::cout << "  • Всего токенов:     " << total_tokens << std::endl;
-        std::cout << "  • Среднее сжатие:    " << std::fixed << std::setprecision(1)
+        std::cout << "\nСводка по тестированию:" << std::endl;
+        std::cout << "- Всего примеров:    " << batch.size() << std::endl;
+        std::cout << "- Всего символов:    " << total_chars << std::endl;
+        std::cout << "- Всего токенов:     " << total_tokens << std::endl;
+        std::cout << "- Среднее сжатие:    " << std::fixed << std::setprecision(1)
                   << avg_compression << "%" << std::endl;
-        std::cout << "  • Токенов в среднем: " << std::fixed << std::setprecision(1)
+        std::cout << "- Токенов в среднем: " << std::fixed << std::setprecision(1)
                   << static_cast<double>(total_tokens) / batch.size() << " на пример" << std::endl;
-        std::cout << "  • Ускорение батча:   " << (single_time / batch_time) << "x" << std::endl;
+        std::cout << "- Ускорение батча:   " << (single_time / batch_time) << "x" << std::endl;
         
-        std::cout << "\n" << GREEN << BOLD << "✓ Программа успешно завершена!" << RESET << std::endl;
+        std::cout << "\n" << GREEN << BOLD << "Программа успешно завершена!" << RESET << std::endl;
         
     } catch (const std::exception& e) {
-        std::cerr << "\n❌ Ошибка: " << e.what() << std::endl;
+        std::cerr << RED << "\nОшибка: " << e.what() << RESET << std::endl;
         return 1;
     } catch (...) {
-        std::cerr << "\n❌ Неизвестная ошибка" << std::endl;
+        std::cerr << RED << "\nНеизвестная ошибка!" << RESET << std::endl;
         return 1;
     }
     

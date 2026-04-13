@@ -1,0 +1,19 @@
+{
+  "name": "CppCodeModel-Small",
+  "description": "8.3M параметров",
+  "vocab_size": 10001,
+  "d_model": 256,
+  "nhead": 4,
+  "num_layers": 4,
+  "max_len": 512,
+  "batch_size": 12,
+  "dropout": 0.15,
+  "weight_decay": 0.01,
+  "gradient_clip": 1.0,
+  "epochs": 20,
+  "learning_rate": 0.00025,
+  "warmup_steps": 1400,
+  "pad_token_id": 0,
+  "bos_token_id": 2,
+  "eos_token_id": 3
+}

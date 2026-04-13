@@ -66,12 +66,12 @@ include examples/CMakeFiles/run_compare_with_python.dir/compiler_depend.make
 # Include the progress variables for this target.
 include examples/CMakeFiles/run_compare_with_python.dir/progress.make
 
-examples/CMakeFiles/run_compare_with_python:
+examples/CMakeFiles/run_compare_with_python: examples/compare_with_python
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Запуск сравнения C++ и Python реализаций"
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ""
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ═══════════════════════════════════════════
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ============================================================
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo "Сравнение с Python реализацией"
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ═══════════════════════════════════════════
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ============================================================
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /home/john/Projects/NS/.venv/bin/python3 /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/examples/../scripts/validate_cpp_tokenizer.py
 
 run_compare_with_python: examples/CMakeFiles/run_compare_with_python

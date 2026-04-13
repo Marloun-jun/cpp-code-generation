@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG -flto=auto -fno-fat-lto-objects CMakeFiles/server.dir/server.cpp.o -o bpe_server_simple  ../libbpe_tokenizer.a -lpthread -ldl ../_deps/fmt-build/libfmt.a /usr/lib/gcc/x86_64-linux-gnu/13/libgomp.so /usr/lib/x86_64-linux-gnu/libpthread.a 

@@ -13,12 +13,12 @@
 #
 # @details Демонстрирует полную интеграцию C++ токенизатора с PyTorch DataLoader:
 #
-#          - **Создание Dataset** - пользовательский датасет, использующий C++ токенизатор
-#          - **Загрузка модели** - автоматический поиск файлов модели в проекте
-#          - **Тестирование производительности** - измерение скорости при разных параметрах
-#          - **Многопоточность** - сравнение разных значений num_workers
-#          - **Batch size** - влияние размера батча на производительность
-#          - **GPU поддержка** - автоматическое использование CUDA при наличии
+#          - **Создание Dataset**                - Пользовательский датасет, использующий C++ токенизатор
+#          - **Загрузка модели**                 - Автоматический поиск файлов модели в проекте
+#          - **Тестирование производительности** - Измерение скорости при разных параметрах
+#          - **Многопоточность**                 - Сравнение разных значений num_workers
+#          - **Batch size**                      - Влияние размера батча на производительность
+#          - **GPU поддержка**                   - Автоматическое использование CUDA при наличии
 #
 #          **Измеряемые метрики:**
 #          - Скорость обработки (примеров/сек)
@@ -63,8 +63,8 @@ sys.path.insert(0, str(CPP_BUILD_DIR))
 print("=" * 60)
 print("ТЕСТИРОВАНИЕ PYTORCH DATALOADER С C++ ТОКЕНИЗАТОРОМ")
 print("=" * 60)
-print(f"Корень проекта: {PROJECT_ROOT}")
-print(f"C++ директория: {BPE_CPP_DIR}")
+print(f"Корень проекта:       {PROJECT_ROOT}")
+print(f"C++ директория:       {BPE_CPP_DIR}")
 print(f"C++ build директория: {CPP_BUILD_DIR}")
 
 # Проверяем наличие C++ модуля
@@ -73,12 +73,12 @@ if CPP_BUILD_DIR.exists():
     found_modules = False
     for f in CPP_BUILD_DIR.iterdir():
         if f.name.endswith('.so') or 'bpe_tokenizer_cpp' in f.name:
-            print(f"   v {f.name}")
+            print(f"{f.name}")
             found_modules = True
     if not found_modules:
-        print(f" !!! C++ модули не найдены")
+        print(f"C++ модули не найдены!")
 else:
-    print(f"\n !!! C++ build директория не найдена: {CPP_BUILD_DIR}")
+    print(f"\nC++ build директория не найдена: {CPP_BUILD_DIR}!")
     print("Соберите C++ проект командой:")
     print(f"cd {BPE_CPP_DIR} && mkdir -p build && cd build && cmake .. && make")
 
@@ -93,13 +93,13 @@ try:
 except ImportError as e:
     print(f"Ошибка импорта C++ модуля: {e}")
     print("\nВозможные причины:")
-    print("   1. C++ проект не собран")
-    print("   2. Неправильный путь к модулю")
-    print("   3. Отсутствуют зависимости")
+    print("1. C++ проект не собран")
+    print("2. Неправильный путь к модулю")
+    print("3. Отсутствуют зависимости")
     print("\nРешение:")
-    print(f"   cd {BPE_CPP_DIR}")
-    print("   mkdir -p build && cd build")
-    print("   cmake .. && make -j$(nproc)")
+    print(f"cd {BPE_CPP_DIR}")
+    print("mkdir -p build && cd build")
+    print("cmake .. && make -j$(nproc)")
     sys.exit(1)
 
 
@@ -149,12 +149,13 @@ class CppCodeDataset(Dataset):
         Инициализация датасета.
         
         Args:
-            data_path: Путь к файлу с данными
+            data_path:  Путь к файлу с данными
             max_length: Максимальная длина последовательности
             vocab_size: Размер словаря (8000, 10000 или 12000)
         """
         self.max_length = max_length
         self.data_path = Path(data_path)
+        self.vocab_size = vocab_size
         
         # ======================================================================
         # ЗАГРУЗКА ДАННЫХ
@@ -163,7 +164,7 @@ class CppCodeDataset(Dataset):
         print(f"\nЗагрузка данных из {self.data_path}...")
         
         if not self.data_path.exists():
-            print(f" !!! Файл не найден, создаю тестовые данные...")
+            print(f"Файл не найден, создаю тестовые данные...")
             self._create_test_data()
         
         with open(self.data_path, 'r', encoding='utf-8') as f:
@@ -179,22 +180,28 @@ class CppCodeDataset(Dataset):
         self.tokenizer = bpe_tokenizer_cpp.FastBPETokenizer(vocab_size, True)
         
         # Ищем файлы модели в стандартных местах
-        vocab_path = BPE_CPP_DIR / 'models' / 'cpp_vocab.json'
-        merges_path = BPE_CPP_DIR / 'models' / 'cpp_merges.txt'
+        model_dir = BPE_CPP_DIR / 'models' / f'bpe_{vocab_size}'
+        vocab_path = model_dir / 'cpp_vocab.json'
+        merges_path = model_dir / 'cpp_merges.txt'
         
-        # Альтернативные пути (для моделей разных размеров)
+        # Альтернативные пути (если модель в корне models/)
         if not vocab_path.exists():
-            vocab_path = BPE_CPP_DIR / 'models' / f'vocab_{vocab_size}.json'
-            merges_path = BPE_CPP_DIR / 'models' / f'merges_{vocab_size}.txt'
+            alt_vocab_path = BPE_CPP_DIR / 'models' / 'cpp_vocab.json'
+            alt_merges_path = BPE_CPP_DIR / 'models' / 'cpp_merges.txt'
+            
+            if alt_vocab_path.exists() and alt_merges_path.exists():
+                vocab_path = alt_vocab_path
+                merges_path = alt_merges_path
         
         if vocab_path.exists() and merges_path.exists():
             self.tokenizer.load(str(vocab_path), str(merges_path))
             print(f"Модель загружена! Словарь: {self.tokenizer.vocab_size} токенов")
-            print(f"    Словарь: {vocab_path}")
-            print(f"    Слияния: {merges_path}")
+            print(f"- Словарь: {vocab_path}")
+            print(f"- Слияния: {merges_path}")
         else:
-            print(f" !!! Модель не найдена, используется пустой токенизатор")
-            print(f"Искали: {vocab_path}")
+            print(f"Модель не найдена, используется пустой токенизатор!")
+            print(f"Искали:       {vocab_path}")
+            print(f"Также искали: {BPE_CPP_DIR / 'models' / 'cpp_vocab.json'}")
     
     def _create_test_data(self) -> None:
         """Создать тестовые данные для демонстрации."""
@@ -264,8 +271,8 @@ def benchmark_dataloader(
     Сравнение производительности DataLoader с разными параметрами.
     
     Args:
-        dataset: Датасет
-        batch_size: Размер батча
+        dataset:     Датасет
+        batch_size:  Размер батча
         num_workers: Количество рабочих процессов
         num_batches: Количество батчей для измерения
         
@@ -289,13 +296,13 @@ def benchmark_dataloader(
     )
     
     # Прогрев
-    print("   Прогрев...")
+    print("Прогрев...")
     for i, batch in enumerate(dataloader):
         if i >= 5:
             break
     
     # Измерение скорости
-    print("   Измерение...")
+    print("Измерение...")
     start_time = time.time()
     
     total_samples = 0
@@ -310,11 +317,11 @@ def benchmark_dataloader(
     elapsed = time.time() - start_time
     
     samples_per_sec = total_samples / elapsed
-    time_per_batch = elapsed / num_batches * 1000  # ms
+    time_per_batch = elapsed / num_batches * 1000    # мс
     
-    print(f"   Обработано {total_samples} примеров за {elapsed:.2f} сек")
-    print(f"   Скорость: {samples_per_sec:.0f} примеров/сек")
-    print(f"   Время на батч: {time_per_batch:.2f} ms")
+    print(f"Обработано {total_samples} примеров за {elapsed:.2f} сек")
+    print(f"- Скорость:      {samples_per_sec:.0f} примеров/сек")
+    print(f"- Время на батч: {time_per_batch:.2f} мс")
     
     return samples_per_sec, time_per_batch
 
@@ -338,11 +345,11 @@ def main() -> int:
     dataset = CppCodeDataset(str(data_path), max_length=256, vocab_size=8000)
     
     print(f"\nХАРАКТЕРИСТИКИ ДАТАСЕТА:")
-    print(f"   - Всего примеров: {len(dataset)}")
+    print(f"- Всего примеров: {len(dataset)}")
     if len(dataset) > 0:
-        print(f"   - Пример текста: {dataset.texts[0][:80]}...")
+        print(f"- Пример текста:  {dataset.texts[0][:80]}...")
         sample = dataset[0]
-        print(f"   - Пример тензора: {sample[:20]}... (длина: {len(sample)})")
+        print(f"- Пример тензора: {sample[:20]}... (длина: {len(sample)})")
     
     # ======================================================================
     # ТЕСТ 1: Разные конфигурации
@@ -393,25 +400,25 @@ def main() -> int:
     print_header("СРАВНЕНИЕ С PYTHON ТОКЕНИЗАТОРОМ")
     
     # Гипотетическая скорость Python токенизатора (из предыдущих бенчмарков)
-    python_speed = 300  # экз/сек
+    python_speed = 300    # экз/сек
     
     # Берем лучший результат C++
     best_speed = max(speed for _, _, _, speed, _ in results)
     
     print(f"\nPython токенизатор (оценка): ~{python_speed} экз/сек")
-    print(f"C++ токенизатор (лучший):    ~{best_speed:.0f} экз/сек")
-    print(f"Ускорение:                   {best_speed/python_speed:.1f}x")
+    print(f"C++ токенизатор (лучший):      ~{best_speed:.0f} экз/сек")
+    print(f"Ускорение:                     {best_speed/python_speed:.1f}x")
     
     # ======================================================================
     # ТЕСТИРОВАНИЕ С GPU
     # ======================================================================
     if torch.cuda.is_available():
-        print_header("🎮 ТЕСТИРОВАНИЕ С GPU")
+        print_header("ТЕСТИРОВАНИЕ С GPU")
         
         device = torch.device('cuda')
-        print(f"GPU обнаружен: {torch.cuda.get_device_name(0)}")
+        print(f"GPU обнаружен:      {torch.cuda.get_device_name(0)}")
         print(f"Compute Capability: {torch.cuda.get_device_capability(0)}")
-        print(f"Память: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
+        print(f"Память:             {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} ГБ")
         
         dataloader = DataLoader(
             dataset, 
@@ -432,11 +439,11 @@ def main() -> int:
         elapsed = time.time() - start_time
         samples_processed = 50 * 128
         
-        print(f"   Обработано {samples_processed} примеров за {elapsed:.2f} сек")
-        print(f"   Скорость: {samples_processed/elapsed:.0f} примеров/сек")
-        print(f"   Время на батч: {elapsed/50*1000:.2f} мс")
+        print(f"Обработано {samples_processed} примеров за {elapsed:.2f} сек")
+        print(f"- Скорость:      {samples_processed/elapsed:.0f} примеров/сек")
+        print(f"- Время на батч: {elapsed/50*1000:.2f} мс")
     
-    print_header("v ТЕСТИРОВАНИЕ ЗАВЕРШЕНО")
+    print_header("ТЕСТИРОВАНИЕ ЗАВЕРШЕНО!")
     return 0
 
 

@@ -58,7 +58,7 @@ python p_6_compilation.py
 
 ### Проверка и исправление ключевых слов
 ```bash
-# Только проверка (10000 примеров)
+# Только проверка
 python p_5_keywords.py
 
 # Проверка + автоматическое исправление
@@ -116,9 +116,9 @@ D - Включить/выключить режим отладки
 ```text
 check_dataset/
 ├── reports/                                # Автоматически генерируемые отчёты
-│   ├── fixed_dataset.csv                   # Исправленная версия датасета
-│   ├── structure_report_*.txt              # Отчёт о структурных ошибках
-│   └── compilation_report_*.json           # Результаты компиляции
+│   ├── compilation_report_*.json           # Результаты компиляции
+│   ├── fixed_dataset.csv                   # Исправленный dataset по результатам "p_5_keywords.py --fix --output reports/fixed_dataset.csv"
+│   └── structure_report_*.txt              # Отчёт о структурных ошибках
 │
 ├── 2_cpp_code_generation_dataset.csv       # Основной датасет (9300 примеров)
 ├── p_1_structure.py                        # Проверка структуры
@@ -127,7 +127,7 @@ check_dataset/
 ├── p_4_descriptions.py                     # Проверка описаний
 ├── p_5_keywords.py                         # Анализ и исправление ключевых слов
 ├── p_6_compilation.py                      # Компиляция кода
-└── README.md                               # Документация
+└── README.md                               # Этот файл
 ```
 
 ## 📝 Примечания

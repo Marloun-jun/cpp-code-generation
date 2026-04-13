@@ -34,9 +34,9 @@
 #             - Проверка на различных конструкциях C++
 #
 #          **Размеры тестового кода:**
-#          - Базовый текст:       ~10 КБ (содержит классы, шаблоны, лямбды)
-#          - С multiplier=20:     ~200 КБ (реалистичная нагрузка)
-#          - С multiplier=100:    ~1 МБ (стресс-тест)
+#          - Базовый текст    - ~10 КБ (содержит классы, шаблоны, лямбды)
+#          - С multiplier=20  - ~200 КБ (реалистичная нагрузка)
+#          - С multiplier=100 - ~1 МБ (стресс-тест)
 #
 # @usage python test_compare_speed.py [--model-size SIZE] [--iterations N] [--verbose]
 #
@@ -76,7 +76,7 @@ sys.path.insert(0, str(BPE_PYTHON_DIR))
 try:
     from tokenizer import BPETokenizer
 except ImportError as e:
-    print(f"Ошибка импорта BPETokenizer: {e}")
+    print(f"Ошибка импорта BPETokenizer: {e}!")
     print(f"Убедитесь, что файл tokenizer.py существует в {BPE_PYTHON_DIR}")
     sys.exit(1)
 
@@ -193,10 +193,10 @@ def get_project_paths() -> Dict[str, Path]:
     Returns:
         Dict[str, Path]:
             Словарь с путями проекта со следующими ключами:
-            - project_root:      корневая директория проекта
-            - bpe_python_dir:    директория с Python кодом
-            - tests_dir:         директория с тестами
-            - models_dir:        директория с моделями
+            - project_root   - Корневая директория проекта
+            - bpe_python_dir - Директория с Python кодом
+            - tests_dir      - Директория с тестами
+            - models_dir     - Директория с моделями
     """
     return {
         "project_root": PROJECT_ROOT,
@@ -210,8 +210,8 @@ def print_header(title: str, width: int = 60) -> None:
     Вывести заголовок раздела для красивого форматирования вывода.
     
     Args:
-        title:    Заголовок
-        width:    Ширина линии
+        title: Заголовок
+        width: Ширина линии
     
     Example:
         >>> print_header("ТЕСТ СКОРОСТИ")
@@ -228,11 +228,11 @@ def load_test_text(multiplier: int = 20) -> str:
     Загрузить тестовый C++ код с повторением.
     
     Args:
-        multiplier:    Количество повторений базового кода
-                       (20 = ~200 КБ, 100 = ~1 МБ)
+        multiplier: Количество повторений базового кода
+                    (20 = ~200 КБ, 100 = ~1 МБ)
         
     Returns:
-        str:    Строка с тестовым кодом
+        str: Строка с тестовым кодом
         
     **Содержимое тестового кода:**
     - Классы с конструкторами и методами
@@ -250,16 +250,16 @@ def find_model_files(model_size: int = 8000) -> Tuple[Optional[Path], Optional[P
     Найти файлы модели по стандартным путям.
     
     Args:
-        model_size:    Размер модели (8000, 10000, 12000)
+        model_size: Размер модели (8000, 10000, 12000)
         
     Returns:
-        Tuple[Optional[Path], Optional[Path]]:    (путь к vocab.json, путь к merges.txt)
+        Tuple[Optional[Path], Optional[Path]]: (путь к vocab.json, путь к merges.txt)
     
     **Поиск осуществляется в:**
-    1. Стандартном пути:           bpe_python/models/bpe_{size}/
-    2. Текущей директории:         vocab.json, merges.txt
-    3. Родительской директории:    ../vocab.json, ../merges.txt
-    4. Корне bpe_python:           bpe_python/vocab.json, bpe_python/merges.txt
+    1. Стандартном пути        - bpe_python/models/bpe_{size}/
+    2. Текущей директории      - vocab.json, merges.txt
+    3. Родительской директории - ../vocab.json, ../merges.txt
+    4. Корне bpe_python        - bpe_python/vocab.json, bpe_python/merges.txt
     """
     paths = get_project_paths()
     
@@ -296,9 +296,9 @@ class SpeedTest:
     для максимальной точности измерений.
     
     **Тесты:**
-    - encode_speed:    многократное кодирование одного текста
-    - decode_speed:    многократное декодирование набора токенов
-    - roundtrip:       проверка точности на различных строках
+    - encode_speed - Многократное кодирование одного текста
+    - decode_speed - Многократное декодирование набора токенов
+    - roundtrip    - Проверка точности на различных строках
     
     **Статистика:**
     - Среднее время
@@ -312,8 +312,8 @@ class SpeedTest:
         Инициализация теста скорости.
         
         Args:
-            tokenizer:    Загруженный токенизатор
-            verbose:      Подробный вывод (включая прогресс)
+            tokenizer: Загруженный токенизатор
+            verbose:   Подробный вывод (включая прогресс)
         """
         self.tokenizer = tokenizer
         self.verbose = verbose
@@ -331,8 +331,8 @@ class SpeedTest:
         Прогрев токенизатора перед замерами.
         
         Args:
-            text:          Тестовый текст
-            iterations:    Количество итераций прогрева
+            text:       Тестовый текст
+            iterations: Количество итераций прогрева
         
         **Зачем нужен прогрев:**
         - Загрузка кода в кэш процессора
@@ -352,21 +352,21 @@ class SpeedTest:
         Тестирование скорости encode.
         
         Args:
-            text:          Тестовый текст
-            iterations:    Количество итераций для усреднения
+            text:       Тестовый текст
+            iterations: Количество итераций для усреднения
             
         Returns:
             Dict[str, Any]:
                 Словарь с результатами, содержащий:
-                - total_time:             общее время всех итераций (с)
-                - total_tokens:           общее количество токенов
-                - avg_time_per_encode:    среднее время (мс)
-                - tokens_per_second:      токенов в секунду
-                - mb_per_second:          мегабайт в секунду
-                - avg_tokens_per_text:    среднее количество токенов на текст
-                - min_tokens:             минимальное количество токенов
-                - max_tokens:             максимальное количество токенов
-                - std_tokens:             стандартное отклонение
+                - total_time          - Общее время всех итераций (с)
+                - total_tokens        - Общее количество токенов
+                - avg_time_per_encode - Среднее время (мс)
+                - tokens_per_second   - Токенов в секунду
+                - mb_per_second       - Мегабайт в секунду
+                - avg_tokens_per_text - Среднее количество токенов на текст
+                - min_tokens          - Минимальное количество токенов
+                - max_tokens          - Максимальное количество токенов
+                - std_tokens          - Стандартное отклонение
         """
         print(f"\nТест encode ({iterations} итераций)...")
         
@@ -401,8 +401,8 @@ class SpeedTest:
             'std_tokens': self._std_dev(token_counts),
         }
         
-        print(f"Среднее время:    {results['avg_time_per_encode']:.3f} мс")
-        print(f"Скорость:         {results['mb_per_second']:.2f} МБ/с")
+        print(f"Среднее время: {results['avg_time_per_encode']:.3f} мс")
+        print(f"Скорость:      {results['mb_per_second']:.2f} МБ/с")
         
         return results
     
@@ -411,17 +411,17 @@ class SpeedTest:
         Тестирование скорости decode.
         
         Args:
-            encoded_texts:    Список закодированных текстов
-            iterations:       Количество итераций
+            encoded_texts: Список закодированных текстов
+            iterations:    Количество итераций
             
         Returns:
             Dict[str, Any]:
                 Словарь с результатами, содержащий:
-                - total_time:             общее время (с)
-                - total_chars:            общее количество символов
-                - avg_time_per_decode:    среднее время (мс)
-                - chars_per_second:       символов в секунду
-                - mb_per_second:          мегабайт в секунду
+                - total_time          - Общее время (с)
+                - total_chars         - Общее количество символов
+                - avg_time_per_decode - Среднее время (мс)
+                - chars_per_second    - Символов в секунду
+                - mb_per_second       - Мегабайт в секунду
         """
         print(f"\nТест decode ({iterations} итераций)...")
         
@@ -450,8 +450,8 @@ class SpeedTest:
             'mb_per_second': (total_chars / duration) / (1024 * 1024),
         }
         
-        print(f"Среднее время:    {results['avg_time_per_decode']:.3f} мс")
-        print(f"Скорость:         {results['mb_per_second']:.2f} МБ/с")
+        print(f"Среднее время: {results['avg_time_per_decode']:.3f} мс")
+        print(f"Скорость:      {results['mb_per_second']:.2f} МБ/с")
         
         return results
     
@@ -460,15 +460,15 @@ class SpeedTest:
         Тест точности encode-decode (roundtrip).
         
         Args:
-            test_strings:    Список тестовых строк (различные конструкции C++)
+            test_strings: Список тестовых строк (различные конструкции C++)
             
         Returns:
             Dict[str, Any]:
                 Словарь с результатами, содержащий:
-                - total:       общее количество тестов
-                - perfect:     количество успешных roundtrip
-                - accuracy:    точность в процентах
-                - failed:      список ошибок с деталями
+                - total    - Общее количество тестов
+                - perfect  - Количество успешных roundtrip
+                - accuracy - Точность в процентах
+                - failed   - Список ошибок с деталями
         """
         print(f"\nТест roundtrip точности ({len(test_strings)} примеров)...")
         
@@ -510,12 +510,12 @@ class SpeedTest:
         Вычислить стандартное отклонение.
         
         Args:
-            values:    Список значений
+            values: Список значений
             
         Returns:
-            float:    Стандартное отклонение (среднеквадратичное отклонение)
+            float: Стандартное отклонение (среднеквадратичное отклонение)
         
-        **Формула:**    sqrt( Σ(x - μ)² / (n-1) )
+        **Формула:** sqrt( Σ(x - μ)² / (n-1) )
         """
         if len(values) < 2:
             return 0.0
@@ -533,52 +533,52 @@ class SpeedTest:
         Вывести отчет о тестировании.
         
         Args:
-            encode_results:       Результаты encode теста
-            decode_results:       Результаты decode теста
-            roundtrip_results:    Результаты roundtrip теста
-            text:                 Тестовый текст (для отображения размера)
+            encode_results:    Результаты encode теста
+            decode_results:    Результаты decode теста
+            roundtrip_results: Результаты roundtrip теста
+            text:              Тестовый текст (для отображения размера)
         """
         print_header("ОТЧЕТ О ТЕСТИРОВАНИИ СКОРОСТИ")
         
         # Информация о модели
         print(f"\nМодель:")
-        print(f"- размер словаря: {len(self.tokenizer.vocab)} токенов")
-        print(f"- byte-level: {self.tokenizer.byte_level}")
-        print(f"- спец. токены: {', '.join(self.tokenizer.special_tokens)}")
+        print(f"- Размер словаря: {len(self.tokenizer.vocab)} токенов")
+        print(f"- byte-level:     {self.tokenizer.byte_level}")
+        print(f"- Спец. токены:   {', '.join(self.tokenizer.special_tokens)}")
         
         # Информация о тесте
         text_bytes = len(text.encode('utf-8'))
         print(f"\nПараметры теста:")
-        print(f"- размер текста: {len(text)} символов")
-        print(f"- размер в байтах: {text_bytes / 1024:.2f} КБ")
-        print(f"- итераций encode: {encode_results['iterations']}")
-        print(f"- итераций decode: {decode_results['iterations']}")
+        print(f"- Размер текста:   {len(text)} символов")
+        print(f"- Размер в байтах: {text_bytes / 1024:.2f} КБ")
+        print(f"- Итераций encode: {encode_results['iterations']}")
+        print(f"- Итераций decode: {decode_results['iterations']}")
         
         # Результаты encode
         print(f"\nENCODE:")
-        print(f"- общее время: {encode_results['total_time']*1000:.2f} мс")
-        print(f"- среднее время: {encode_results['avg_time_per_encode']:.3f} мс")
-        print(f"- скорость: {encode_results['mb_per_second']:.2f} МБ/с")
-        print(f"- токенов/с: {encode_results['tokens_per_second']:.0f}")
-        print(f"- токенов/текст: {encode_results['avg_tokens_per_text']:.1f} "
+        print(f"- Общее время:   {encode_results['total_time']*1000:.2f} мс")
+        print(f"- Среднее время: {encode_results['avg_time_per_encode']:.3f} мс")
+        print(f"- Скорость:      {encode_results['mb_per_second']:.2f} МБ/с")
+        print(f"- Токенов/с:     {encode_results['tokens_per_second']:.0f}")
+        print(f"- Токенов/текст: {encode_results['avg_tokens_per_text']:.1f} "
               f"(min: {encode_results['min_tokens']}, max: {encode_results['max_tokens']})")
         if encode_results['std_tokens'] > 0:
-            print(f"- станд. отклонение: ±{encode_results['std_tokens']:.1f}")
+            print(f"- Станд. отклонение: ±{encode_results['std_tokens']:.1f}")
         
         # Результаты decode
         print(f"\nDECODE:")
-        print(f"- общее время: {decode_results['total_time']*1000:.2f} мс")
-        print(f"- среднее время: {decode_results['avg_time_per_decode']:.3f} мс")
-        print(f"- скорость: {decode_results['mb_per_second']:.2f} МБ/с")
-        print(f"- символов/с: {decode_results['chars_per_second']:.0f}")
+        print(f"- Общее время:   {decode_results['total_time']*1000:.2f} мс")
+        print(f"- Среднее время: {decode_results['avg_time_per_decode']:.3f} мс")
+        print(f"- Скорость:      {decode_results['mb_per_second']:.2f} МБ/с")
+        print(f"- Символов/с:    {decode_results['chars_per_second']:.0f}")
         
         # Roundtrip точность
         print(f"\nТОЧНОСТЬ ROUNDTRIP:")
-        print(f"- точность: {roundtrip_results['accuracy']:.1f}% "
+        print(f"- Точность: {roundtrip_results['accuracy']:.1f}% "
               f"({roundtrip_results['perfect']}/{roundtrip_results['total']})")
         
         if roundtrip_results['failed']:
-            print(f"- ошибки ({len(roundtrip_results['failed'])}):")
+            print(f"- Ошибки ({len(roundtrip_results['failed'])}):")
             for fail in roundtrip_results['failed'][:3]:    # Показываем первые 3
                 print(f"Пример {fail['index']}: {fail['original']}")
         
@@ -594,7 +594,7 @@ def main() -> int:
     Основная функция тестирования.
     
     Returns:
-        int:    0 при успехе, 1 при ошибке
+        int: 0 при успехе, 1 при ошибке
     
     **Последовательность действий:**
     1. Парсинг аргументов командной строки
@@ -612,11 +612,11 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
     Примеры использования:
-    python test_compare_speed.py                       # тест с параметрами по умолчанию
-    python test_compare_speed.py --model-size 10000    # модель 10000 токенов
+    python test_compare_speed.py                       # Тест с параметрами по умолчанию
+    python test_compare_speed.py --model-size 10000    # Модель 10000 токенов
     python test_compare_speed.py --iterations 100      # 100 итераций
-    python test_compare_speed.py --multiplier 50       # тестовый текст 500 КБ
-    python test_compare_speed.py --verbose             # подробный вывод
+    python test_compare_speed.py --multiplier 50       # Тестовый текст 500 КБ
+    python test_compare_speed.py --verbose             # Подробный вывод
     """
     )
     parser.add_argument('--model-size', type=int, default=8000, choices=[8000, 10000, 12000],
@@ -651,7 +651,7 @@ def main() -> int:
                     status = 'V' if vocab.exists() and merges.exists() else 'X'
                     print(f"{status} {model_dir.name}")
         else:
-            print(f"Директория {paths['models_dir']} не существует")
+            print(f"Директория {paths['models_dir']} не существует!")
         return 1
     
     try:
@@ -667,9 +667,9 @@ def main() -> int:
         print(f"\nПодготовка тестовых данных...")
         text = load_test_text(multiplier=args.multiplier)
         text_bytes = len(text.encode('utf-8'))
-        print(f"- размер текста: {len(text)} символов")
-        print(f"- размер в байтах: {text_bytes / 1024:.2f} КБ")
-        print(f"- размер в МБ: {text_bytes / (1024 * 1024):.2f} МБ")
+        print(f"- Размер текста: {len(text)} символов")
+        print(f"- Размер в КБ:   {text_bytes / 1024:.2f} КБ")
+        print(f"- Размер в МБ:   {text_bytes / (1024 * 1024):.2f} МБ")
         
         # Прогрев
         speed_test.warmup(text, iterations=5)
@@ -681,8 +681,8 @@ def main() -> int:
         print(f"\nПодготовка encode данных для decode теста...")
         encoded_texts = [tokenizer.encode(text) for _ in range(10)]
         total_tokens = sum(len(et) for et in encoded_texts)
-        print(f"- подготовлено {len(encoded_texts)} закодированных текстов")
-        print(f"- всего токенов: {total_tokens}")
+        print(f"- Подготовлено {len(encoded_texts)} закодированных текстов")
+        print(f"- Всего токенов: {total_tokens}")
         
         # Тест decode
         decode_results = speed_test.test_decode_speed(encoded_texts, iterations=args.iterations)

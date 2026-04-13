@@ -9,7 +9,7 @@
 #
 # @author Евгений П.
 # @date 2026
-# @version 3.2.0
+# @version 3.3.0
 #
 # @details Выполняет комплексную проверку структуры датасета:
 #          - Наличие ровно 5 полей в каждой строке
@@ -38,25 +38,25 @@ from typing import List, Dict
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 # ======================================================================
 
-def print_header(title: str, width: int = 70) -> None:
+def print_header(title: str, width: int = 60) -> None:
     """
     Вывести заголовок раздела.
     
     Args:
-        title:    Заголовок
-        width:    Ширина линии
+        title: Заголовок
+        width: Ширина линии
     """
     print(f"\n{'=' * width}")
     print(f"{title:^{width}}")
     print(f"{'=' * width}")
 
-def print_subheader(title: str, width: int = 70) -> None:
+def print_subheader(title: str, width: int = 60) -> None:
     """
     Вывести подзаголовок раздела.
     
     Args:
-        title:    Подзаголовок
-        width:    Ширина линии
+        title: Подзаголовок
+        width: Ширина линии
     """
     print(f"\n{'-' * width}")
     print(f"{title}")
@@ -70,7 +70,7 @@ def extract_fields(line: str) -> List[str]:
         line: Строка CSV
         
     Returns:
-        List[str]:    Список извлеченных полей
+        List[str]: Список извлеченных полей
     
     **Поддерживает:**
     - Кавычки внутри полей
@@ -104,7 +104,7 @@ def extract_fields(line: str) -> List[str]:
         else:
             current_field.append(char)
     
-    # добавляем последнее поле
+    # Добавляем последнее поле
     if current_field:
         fields.append(''.join(current_field))
     
@@ -115,74 +115,110 @@ def save_error_report(filename: str, results: Dict) -> None:
     Сохраняет подробный отчет об ошибках в файл.
     
     Args:
-        filename:    Имя исходного файла
-        results:     Результаты проверки со списком ошибок
+        filename: Имя исходного файла
+        results:  Результаты проверки со списком ошибок
     
-    **Создает файл:** `structure_report_<имя_файла>.txt`
+    **Создает файл:**
+        `NS/3_my_cpp_nn_project/check_dataset/reports/structure_report_<имя_файла>.txt`
     """
-    report_filename = f"structure_report_{filename.split('/')[-1]}.txt"
+    # Определяем базовое имя исходного файла
+    base_name = filename.split('/')[-1]
+    
+    # Формируем путь к папке reports
+    report_dir = "3_my_cpp_nn_project/check_dataset/reports/"
+    
+    # Создаем директорию, если она не существует
+    import os
+    if not os.path.exists(report_dir):
+        os.makedirs(report_dir)
+        print(f"Создана директория: {report_dir}")
+    
+    # Полный путь к файлу отчета
+    report_filename = os.path.join(report_dir, f"structure_report_{base_name}.txt")
+    
+    # Абсолютный путь для отладки
+    full_path = os.path.abspath(report_filename)
+    
+    print(f"\n[ОТЛАДКА] Сохранение отчета: {full_path}")
     
     try:
         with open(report_filename, 'w', encoding='utf-8') as f:
-            f.write("=" * 70 + "\n")
+            f.write("=" * 60 + "\n")
             f.write("ОТЧЕТ О ПРОВЕРКЕ СТРУКТУРЫ ДАТАСЕТА\n")
-            f.write("=" * 70 + "\n\n")
-            f.write(f"Файл: {filename}\n")
-            f.write(f"Время проверки: {datetime.now()}\n\n")
+            f.write("=" * 60 + "\n\n")
+            f.write(f"- Файл:               {filename}\n")
+            f.write(f"- Время проверки:     {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"- Рабочая директория: {os.getcwd()}\n\n")
             
             f.write("СТАТИСТИКА:\n")
-            f.write("-" * 40 + "\n")
-            f.write(f"Всего строк в файле: {results['total_lines']}\n")
-            f.write(f"Пропущено комментариев: {results['comments_skipped']}\n")
-            f.write(f"Пропущено заголовков: {results['header_skipped']}\n")
-            f.write(f"Валидных строк: {results['valid_rows']}\n")
-            f.write(f"Невалидных строк: {results['invalid_rows']}\n")
-            f.write(f"Всего ошибок: {len(results['errors'])}\n\n")
+            f.write("-" * 60 + "\n")
+            f.write(f"- Всего строк в файле:    {results['total_lines']}\n")
+            f.write(f"- Пропущено комментариев: {results['comments_skipped']}\n")
+            f.write(f"- Пропущено заголовков:   {results['header_skipped']}\n")
+            f.write(f"- Валидных строк:         {results['valid_rows']}\n")
+            f.write(f"- Невалидных строк:       {results['invalid_rows']}\n")
+            f.write(f"- Всего ошибок:           {len(results['errors'])}\n\n")
             
-            # группируем ошибки по категориям
-            error_categories = {
-                'description': [],
-                'code': [],
-                'style': [],
-                'topic': [],
-                'keywords': [],
-                'structure': [],
-                'other': []
-            }
-            
-            for error in results['errors']:
-                if 'description' in error.lower():
-                    error_categories['description'].append(error)
-                elif 'code' in error.lower():
-                    error_categories['code'].append(error)
-                elif 'style' in error.lower():
-                    error_categories['style'].append(error)
-                elif 'topic' in error.lower():
-                    error_categories['topic'].append(error)
-                elif 'keywords' in error.lower():
-                    error_categories['keywords'].append(error)
-                elif 'количество полей' in error or 'кавычкой' in error:
-                    error_categories['structure'].append(error)
-                else:
-                    error_categories['other'].append(error)
-            
-            f.write("РАСПРЕДЕЛЕНИЕ ОШИБОК ПО КАТЕГОРИЯМ:\n")
-            f.write("-" * 40 + "\n")
-            for category, errors in error_categories.items():
-                if errors:
-                    f.write(f"{category.capitalize()}: {len(errors)} ошибок\n")
-            
-            f.write("\n" + "=" * 70 + "\n")
-            f.write("ПОДРОБНЫЙ СПИСОК ОШИБОК:\n")
-            f.write("=" * 70 + "\n\n")
-            
-            for i, error in enumerate(results['errors'], 1):
-                f.write(f"{i}. {error}\n")
+            if not results['errors']:
+                f.write("ОШИБОК НЕ ОБНАРУЖЕНО!\n")
+                f.write("Все строки прошли проверку структуры.\n\n")
+            else:
+                # Группируем ошибки по категориям
+                error_categories = {
+                    'description': [],
+                    'code': [],
+                    'style': [],
+                    'topic': [],
+                    'keywords': [],
+                    'structure': [],
+                    'other': []
+                }
+                
+                for error in results['errors']:
+                    error_lower = error.lower()
+                    if 'description' in error_lower:
+                        error_categories['description'].append(error)
+                    elif 'code' in error_lower:
+                        error_categories['code'].append(error)
+                    elif 'style' in error_lower:
+                        error_categories['style'].append(error)
+                    elif 'topic' in error_lower:
+                        error_categories['topic'].append(error)
+                    elif 'keywords' in error_lower:
+                        error_categories['keywords'].append(error)
+                    elif 'количество полей' in error_lower or 'кавычк' in error_lower:
+                        error_categories['structure'].append(error)
+                    else:
+                        error_categories['other'].append(error)
+                
+                f.write("РАСПРЕДЕЛЕНИЕ ОШИБОК ПО КАТЕГОРИЯМ:\n")
+                f.write("-" * 40 + "\n")
+                for category, errors in error_categories.items():
+                    if errors:
+                        f.write(f"{category.capitalize()}: {len(errors)} ошибок\n")
+                f.write("\n")
+                
+                f.write("ПОДРОБНЫЙ СПИСОК ОШИБОК:\n")
+                f.write("-" * 40 + "\n\n")
+                
+                for i, error in enumerate(results['errors'], 1):
+                    f.write(f"{i:4d}. {error}\n")
         
-        print(f"\nПолный отчет сохранен в: {report_filename}")
+        print(f"Отчет успешно создан: {report_filename}")
+        print(f"Полный путь:          {full_path}")
         
+        # Проверяем, что файл действительно создан
+        if os.path.exists(report_filename):
+            file_size = os.path.getsize(report_filename)
+            print(f"Размер файла:         {file_size} байт")
+        else:
+            print(f"Файл не найден после создания!")
+            
+    except PermissionError:
+        print(f"Ошибка доступа: нет прав на запись в {full_path}!")
     except Exception as e:
-        print(f"!!! Не удалось сохранить отчет: {e}")
+        print(f"Не удалось сохранить отчет: {e}!")
+        print(f"Тип ошибки: {type(e).__name__}!")
 
 # ======================================================================
 # ОСНОВНЫЕ ФУНКЦИИ ПРОВЕРКИ
@@ -193,8 +229,8 @@ def analyze_sample_data(filename: str, sample_size: int = 5) -> None:
     Анализирует несколько примеров строк для демонстрации структуры.
     
     Args:
-        filename:       Путь к файлу датасета
-        sample_size:    Количество примеров для анализа
+        filename:    Путь к файлу датасета
+        sample_size: Количество примеров для анализа
     """
     print_header("АНАЛИЗ ПРИМЕРОВ СТРОК")
     
@@ -205,7 +241,7 @@ def analyze_sample_data(filename: str, sample_size: int = 5) -> None:
             for line_num, line in enumerate(file, 1):
                 line = line.rstrip('\n')
                 
-                # пропускаем пустые строки, комментарии и заголовок
+                # Пропускаем пустые строки, комментарии и заголовок
                 if (not line or 
                     line.startswith('#') or 
                     line == 'description,code,style,topic,keywords'):
@@ -218,54 +254,54 @@ def analyze_sample_data(filename: str, sample_size: int = 5) -> None:
         
         for i, (line_num, line) in enumerate(samples, 1):
             print(f"\nПример {i} (Строка {line_num}):")
-            print("-" * 40)
+            print("-" * 60)
             
-            # показываем сокращенную строку
+            # Показываем сокращенную строку
             preview = line[:150] + "..." if len(line) > 150 else line
             print(f"Строка: {preview}")
-            print(f"Длина: {len(line)} символов")
+            print(f"Длина:  {len(line)} символов")
             
-            # считаем кавычки и запятые
+            # Считаем кавычки и запятые
             quote_count = line.count('"')
             comma_count = line.count(',')
             
-            print(f"    \" Кавычек: {quote_count} "
-                  f"(должно быть четное число: {'V' if quote_count % 2 == 0 else 'X'})")
-            print(f"    , Запятых: {comma_count} "
-                  f"(должно быть 4: {'V' if comma_count == 4 else 'X'})")
+            print(f"\" Кавычек: {quote_count} "
+                  f"(должно быть четное число: {'да' if quote_count % 2 == 0 else 'нет'})")
+            print(f", Запятых: {comma_count} "
+                  f"(должно быть 4: {'да' if comma_count == 4 else 'нет'})")
             
-            # пытаемся извлечь поля
+            # Пытаемся извлечь поля
             try:
                 fields = extract_fields(line)
-                print(f"    Извлечено полей: {len(fields)} "
-                      f"(должно быть 5: {'V' if len(fields) == 5 else 'X'})")
+                print(f"Извлечено полей: {len(fields)} "
+                      f"(должно быть 5: {'да' if len(fields) == 5 else 'нет'})")
                 
                 if len(fields) >= 3:
                     style_value = fields[2].strip('"')
-                    print(f"    Style значение: '{style_value}'")
+                    print(f"Style значение: '{style_value}'")
                 
                 if len(fields) >= 5:
-                    print(f"    Последние 2 поля:")
+                    print(f"Последние 2 поля:")
                     topic_preview = fields[3][:50] + "..." if len(fields[3]) > 50 else fields[3]
                     keywords_preview = fields[4][:50] + "..." if len(fields[4]) > 50 else fields[4]
-                    print(f"    - topic: {topic_preview}")
-                    print(f"    - keywords: {keywords_preview}")
+                    print(f"- topic:    {topic_preview}")
+                    print(f"- keywords: {keywords_preview}")
                     
             except Exception as e:
-                print(f"X Ошибка при анализе: {e}")
+                print(f"Ошибка при анализе: {e}!")
                 
     except Exception as e:
-        print(f"X Ошибка при анализе примеров: {e}")
+        print(f"Ошибка при анализе примеров: {e}!")
 
-def check_dataset_structure_final(filename: str) -> bool:
+def check_dataset_structure(filename: str) -> bool:
     """
     Проверяет, что каждая строка имеет ровно 5 полей в правильном формате.
     
     Args:
-        filename:    Путь к файлу датасета
+        filename: Путь к файлу датасета
         
     Returns:
-        bool:    True если все проверки пройдены, False при наличии ошибок
+        bool: True если все проверки пройдены, False при наличии ошибок
     
     **Проверяет:**
     1. Строка начинается и заканчивается кавычкой
@@ -276,7 +312,7 @@ def check_dataset_structure_final(filename: str) -> bool:
     """
     print_header("ПРОВЕРКА СТРУКТУРЫ ДАТАСЕТА")
     print(f"Файл: {filename}")
-    print("-" * 70)
+    print("-" * 60)
     
     results = {
         'total_lines': 0,
@@ -303,18 +339,18 @@ def check_dataset_structure_final(filename: str) -> bool:
                 # 2. Пропускаем заголовок
                 if line_num == 1 and line == 'description,code,style,topic,keywords':
                     results['header_skipped'] += 1
-                    print("Заголовок CSV найден и пропущен")
+                    print("Заголовок CSV найден и пропущен!")
                     continue
                 
                 # 3. Проверяем базовую структуру
                 if not (line.startswith('"') and line.endswith('"')):
                     results['errors'].append(
-                        f"Строка {line_num}: Не начинается или не заканчивается кавычкой")
+                        f"Строка {line_num}: Не начинается или не заканчивается кавычкой!")
                     results['invalid_rows'] += 1
                     continue
                 
                 # 4. Проверяем количество полей (должно быть ровно 5)
-                # считаем запятые вне кавычек
+                # Считаем запятые вне кавычек
                 comma_count = 0
                 in_quotes = False
                 escaped = False
@@ -332,11 +368,11 @@ def check_dataset_structure_final(filename: str) -> bool:
                     if char == ',' and not in_quotes:
                         comma_count += 1
                 
-                # должно быть 4 запятые, разделяющие 5 полей
+                # Должно быть 4 запятые, разделяющие 5 полей
                 if comma_count != 4:
                     results['errors'].append(
                         f"Строка {line_num}: Неправильное количество полей "
-                        f"({comma_count + 1} вместо 5)")
+                        f"({comma_count + 1} вместо 5)!")
                     results['invalid_rows'] += 1
                     continue
                 
@@ -346,42 +382,42 @@ def check_dataset_structure_final(filename: str) -> bool:
                     
                     if len(fields) != 5:
                         results['errors'].append(
-                            f"Строка {line_num}: Удалось извлечь только {len(fields)} полей")
+                            f"Строка {line_num}: Удалось извлечь только {len(fields)} полей!")
                         results['invalid_rows'] += 1
                         continue
                     
                     # 6. Проверяем каждое поле
                     all_fields_valid = True
                     
-                    # поле 0: description - должно быть в кавычках
+                    # Поле 0: description - должно быть в кавычках
                     if not (fields[0].startswith('"') and fields[0].endswith('"')):
                         results['errors'].append(
-                            f"Строка {line_num}: Поле description не в кавычках")
+                            f"Строка {line_num}: Поле description не в кавычках!")
                         all_fields_valid = False
                     
-                    # поле 1: code - должно быть в кавычках
+                    # Поле 1: code - должно быть в кавычках
                     if not (fields[1].startswith('"') and fields[1].endswith('"')):
                         results['errors'].append(
-                            f"Строка {line_num}: Поле code не в кавычках")
+                            f"Строка {line_num}: Поле code не в кавычках!")
                         all_fields_valid = False
                     
-                    # поле 2: style - должно быть 'using_namespace_std' или 'explicit_std'
+                    # Поле 2: style - должно быть 'using_namespace_std' или 'explicit_std'
                     style_value = fields[2].strip('"')
                     if style_value not in ['using_namespace_std', 'explicit_std']:
                         results['errors'].append(
-                            f"Строка {line_num}: Недопустимое значение style: '{style_value}'")
+                            f"Строка {line_num}: Недопустимое значение style: '{style_value}'!")
                         all_fields_valid = False
                     
-                    # поле 3: topic - не должно быть пустым
+                    # Поле 3: topic - не должно быть пустым
                     if not fields[3].strip('"'):
                         results['errors'].append(
-                            f"Строка {line_num}: Пустое поле topic")
+                            f"Строка {line_num}: Пустое поле topic!")
                         all_fields_valid = False
                     
-                    # поле 4: keywords - не должно быть пустым
+                    # Поле 4: keywords - не должно быть пустым
                     if not fields[4].strip('"'):
                         results['errors'].append(
-                            f"Строка {line_num}: Пустое поле keywords")
+                            f"Строка {line_num}: Пустое поле keywords!")
                         all_fields_valid = False
                     
                     if all_fields_valid:
@@ -391,55 +427,55 @@ def check_dataset_structure_final(filename: str) -> bool:
                         
                 except Exception as e:
                     results['errors'].append(
-                        f"Строка {line_num}: Ошибка при разборе полей: {str(e)}")
+                        f"Строка {line_num}: Ошибка при разборе полей: {str(e)}!")
                     results['invalid_rows'] += 1
                 
-                # показываем прогресс каждые 1000 строк
+                # Показываем прогресс каждые 1000 строк
                 if line_num % 1000 == 0:
                     print(f"Обработано {line_num} строк...")
                     
     except FileNotFoundError:
-        print(f"X Ошибка: Файл '{filename}' не найден!")
+        print(f"Ошибка: Файл '{filename}' не найден!")
         return False
     except Exception as e:
-        print(f"X Ошибка при чтении файла: {e}")
+        print(f"Ошибка при чтении файла: {e}!")
         return False
     
-    # выводим результаты
+    # Выводим результаты
     print_subheader("РЕЗУЛЬТАТЫ ПРОВЕРКИ:")
-    print(f"Всего строк в файле: {results['total_lines']}")
-    print(f"Пропущено комментариев: {results['comments_skipped']}")
-    print(f"Пропущено заголовков: {results['header_skipped']}")
-    print(f"Валидных строк: {results['valid_rows']}")
-    print(f"Невалидных строк: {results['invalid_rows']}")
-    print(f"Найдено ошибок: {len(results['errors'])}")
+    print(f"- Всего строк в файле:    {results['total_lines']}")
+    print(f"- Пропущено комментариев: {results['comments_skipped']}")
+    print(f"- Пропущено заголовков:   {results['header_skipped']}")
+    print(f"- Валидных строк:         {results['valid_rows']}")
+    print(f"- Невалидных строк:       {results['invalid_rows']}")
+    print(f"- Найдено ошибок:         {len(results['errors'])}")
     
+    # Всегда сохраняем отчет
+    save_error_report(filename, results)
+
+    # Выводим детали ошибок если они есть
     if results['errors']:
         print_subheader("ДЕТАЛИ ОШИБОК")
         
-        # группируем ошибки по типам
+        # Группируем ошибки по типам
         error_types = {}
         for error in results['errors']:
-            error_type = error.split(':')[1].strip().split()[0]
+            error_type = error.split(':')[1].strip().split()[0] if ':' in error else 'unknown'
             error_types[error_type] = error_types.get(error_type, 0) + 1
         
         print("Статистика по типам ошибок:")
         for err_type, count in sorted(error_types.items()):
-            print(f"  • {err_type}: {count}")
+            print(f"- {err_type}: {count}")
         
         print(f"\nПервые 10 ошибок:")
         for i, error in enumerate(results['errors'][:10]):
-            print(f"  {i+1}. {error}")
+            print(f"{i+1}. {error}")
         
         if len(results['errors']) > 10:
             print(f"... и еще {len(results['errors']) - 10} ошибок")
         
-        # сохраняем полный отчет
-        save_error_report(filename, results)
-        
-        print_header("!!! ТРЕБУЮТСЯ ИСПРАВЛЕНИЯ")
+        print_header("ТРЕБУЮТСЯ ИСПРАВЛЕНИЯ!")
         return False
-    
     else:
         print_header("ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ УСПЕШНО!")
         print(f"Все {results['valid_rows']} строк имеют правильную структуру")
@@ -455,9 +491,9 @@ def main() -> int:
     Основная функция.
     
     Returns:
-        int:    0 при успехе, 1 при ошибке
+        int: 0 при успехе, 1 при ошибке
     """
-    # определяем путь к файлу
+    # Определяем путь к файлу
     if len(sys.argv) > 1:
         filename = sys.argv[1]
     else:
@@ -465,17 +501,17 @@ def main() -> int:
     
     print(f"Анализируемый файл: {filename}")
     
-    # анализируем несколько примеров
+    # Анализируем несколько примеров
     analyze_sample_data(filename, 3)
     
-    # запускаем полную проверку
-    is_valid = check_dataset_structure_final(filename)
+    # Запускаем полную проверку
+    is_valid = check_dataset_structure(filename)
     
     if is_valid:
         print("\nДатасет готов к использованию!")
         return 0
     else:
-        print("\n!!! Требуются исправления!")
+        print("\nТребуются исправления!")
         print("Сначала исправьте найденные ошибки структуры.")
         return 1
 

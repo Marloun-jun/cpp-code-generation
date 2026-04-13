@@ -9,7 +9,7 @@
 #
 # @author Евгений П.
 # @date 2026
-# @version 3.8.1
+# @version 3.8.0
 #
 # @details Модуль предоставляет высокопроизводительную реализацию BPE токенизатора,
 #          оптимизированную для работы с C++ кодом. Является Python-эталоном
@@ -28,12 +28,12 @@
 #             - Автоматическое удаление старых записей
 #
 #          3) **Полная поддержка специальных токенов**
-#             - `<PAD>`     - для выравнивания последовательностей
-#             - `<UNK>`     - для неизвестных символов
-#             - `<BOS>`     - начало последовательности
-#             - `<EOS>`     - конец последовательности
-#             - `<CPP>`     - маркер C++ кода
-#             - `<CODE>`    - маркер кода
+#             - `<PAD>`  - Для выравнивания последовательностей
+#             - `<UNK>`  - Для неизвестных символов
+#             - `<BOS>`  - Начало последовательности
+#             - `<EOS>`  - Конец последовательности
+#             - `<CPP>`  - Маркер C++ кода
+#             - `<CODE>` - Маркер кода
 #
 #          4) **Валидация символов C++**
 #             - Проверка наличия всех необходимых символов
@@ -45,15 +45,15 @@
 #             - Бинарный формат (компактный, для продакшена)
 #
 #          **Производительность:**
-#          - С кэшем:         ускорение до 10-50x для повторяющихся текстов
-#          - Hit rate:        60-80% для типичных сценариев
-#          - Время encode:    O(n) с константой ~0.5-1 мкс на символ
+#          - С кэшем      - Ускорение до 10-50x для повторяющихся текстов
+#          - Hit rate     - 60-80% для типичных сценариев
+#          - Время encode - O(n) с константой ~0.5-1 мкс на символ
 #
 # @usage from tokenizer import BPETokenizer
 #
 # @example
 #   # Создание и обучение
-#   tokenizer = BPETokenizer(vocab_size=8000, cache_size=12000)
+#   tokenizer = BPETokenizer(vocab_size=10000, cache_size=10000)
 #   tokenizer.train(["int main() { return 0; }"])
 #
 #   # Кодирование (первый вызов - промах кэша)
@@ -105,9 +105,9 @@ class LRUCache:
     - При переполнении удаляется первый элемент (самый старый)
     
     **Производительность:**
-    - get:         O(1)
-    - put:         O(1)
-    - hit rate:    60-80% для типичных сценариев
+    - get      - O(1)
+    - put      - O(1)
+    - hit rate - 60-80% для типичных сценариев
     """
     
     def __init__(self, capacity: int = 1000):
@@ -115,7 +115,7 @@ class LRUCache:
         Инициализация кэша.
         
         Args:
-            capacity:    Максимальное количество записей в кэше
+            capacity: Максимальное количество записей в кэше
         """
         self.cache = OrderedDict()
         self.capacity = capacity
@@ -127,10 +127,10 @@ class LRUCache:
         Получить значение из кэша.
         
         Args:
-            key:    Хеш ключа (целое число)
+            key: Хеш ключа (целое число)
             
         Returns:
-            Optional[List[int]]:    Закэшированные токены или None при промахе
+            Optional[List[int]]: Закэшированные токены или None при промахе
         """
         if key not in self.cache:
             self.misses += 1
@@ -145,8 +145,8 @@ class LRUCache:
         Поместить значение в кэш.
         
         Args:
-            key:      Хеш ключа
-            value:    Токены для кэширования
+            key:   Хеш ключа
+            value: Токены для кэширования
         """
         if key in self.cache:
             self.cache.move_to_end(key)
@@ -169,7 +169,7 @@ class LRUCache:
         Получить процент попаданий в кэш.
         
         Returns:
-            float:    Процент попаданий (0.0 - 1.0)
+            float: Процент попаданий (0.0 - 1.0)
         """
         total = self.hits + self.misses
         return self.hits / total if total > 0 else 0.0
@@ -181,11 +181,11 @@ class LRUCache:
         Returns:
             Dict:
                 Статистика со следующими ключами:
-                - size:        текущий размер кэша
-                - capacity:    максимальная емкость
-                - hits:        количество попаданий
-                - misses:      количество промахов
-                - hit_rate:    процент попаданий
+                - size     - Текущий размер кэша
+                - capacity - Максимальная емкость
+                - hits     - Количество попаданий
+                - misses   - Количество промахов
+                - hit_rate - Процент попаданий
         """
         return {
             'size': len(self.cache),
@@ -207,19 +207,19 @@ class BPETokenizer:
     ┌─────────────────┐
     │ BPETokenizer    │
     ├─────────────────┤
-    │ - vocab         │  словарь (ID -> токен)
-    │ - inverse_vocab │  обратный словарь (токен -> ID)
-    │ - merges        │  правила слияния
+    │ - vocab         │  Словарь (ID -> токен)
+    │ - inverse_vocab │  Обратный словарь (токен -> ID)
+    │ - merges        │  Правила слияния
     │ - cache         │  LRU-кэш результатов
     └─────────────────┘
     
     **Особенности:**
-    - **Кэширование**               - результаты encode для повторяющихся текстов
-    - **Полная поддержка UTF-8**    - включая 4-байтовые символы
-    - **Byte-level режим**          - аналог токенизатора GPT-4
-    - **Специальные токены**        - <PAD>, <UNK>, <BOS>, <EOS>, <CPP>, <CODE>
-    - **Валидация символов C++**    - проверка наличия всех символов
-    - **Сериализация**              - JSON и бинарный форматы
+    - **Кэширование**            - Результаты encode для повторяющихся текстов
+    - **Полная поддержка UTF-8** - Включая 4-байтовые символы
+    - **Byte-level режим**       - Аналог токенизатора GPT-4
+    - **Специальные токены**     - <PAD>, <UNK>, <BOS>, <EOS>, <CPP>, <CODE>
+    - **Валидация символов C++** - Проверка наличия всех символов
+    - **Сериализация**           - JSON и бинарный форматы
 
     @see LRUCache
     """
@@ -247,7 +247,7 @@ class BPETokenizer:
 
     def __init__(
         self,
-        vocab_size: int = 8000,
+        vocab_size: int = 10000,
         byte_level: bool = True,
         special_tokens: Optional[List[str]] = None,
         cache_size: int = 10000,
@@ -256,21 +256,21 @@ class BPETokenizer:
         Инициализация BPE токенизатора с кэшированием.
         
         Args:
-            vocab_size:        Максимальный размер словаря (включая специальные токены)
-                               Рекомендации для C++ кода:
-                               - 8000:     оптимальный баланс скорость/качество (рекомендуемый)
-                               - 10000:    для лучшего покрытия редких конструкций
-                               - 12000:    максимальное покрытие (чуть медленнее)
-            byte_level:        Использовать byte-level предобработку для UTF-8 текста:
-                               - True     - поддержка любых Unicode символов (рекомендуется)
-                               - False    - только ASCII (быстрее, но теряет русские буквы)
-            special_tokens:    Список специальных токенов. По умолчанию:
-                               ['<PAD>', '<UNK>', '<BOS>', '<EOS>', '<CPP>', '<CODE>']
-            cache_size:        Размер кэша для encode (0 = отключить кэш)
-                               Рекомендации:
-                               - 10000:    хороший баланс для большинства задач
-                               - 0:        отключить (экономия памяти)
-                               - 50000:    для серверов с большим трафиком
+            vocab_size:     Максимальный размер словаря (включая специальные токены)
+                            Рекомендации для C++ кода:
+                            - 8000  - Оптимальный баланс скорость/качество (рекомендуемый)
+                            - 10000 - Для лучшего покрытия редких конструкций
+                            - 12000 - Максимальное покрытие (чуть медленнее)
+            byte_level:     Использовать byte-level предобработку для UTF-8 текста:
+                            - True  - Поддержка любых Unicode символов (рекомендуется)
+                            - False - Только ASCII (быстрее, но теряет русские буквы)
+            special_tokens: Список специальных токенов. По умолчанию:
+                            ['<PAD>', '<UNK>', '<BOS>', '<EOS>', '<CPP>', '<CODE>']
+            cache_size:     Размер кэша для encode (0 = отключить кэш)
+                            Рекомендации:
+                            - 10000 - Хороший баланс для большинства задач
+                            - 0     - Отключить (экономия памяти)
+                            - 50000 - Для серверов с большим трафиком
         """
         self.vocab_size = vocab_size
         self.byte_level = byte_level
@@ -332,7 +332,7 @@ class BPETokenizer:
         
         # Отладочный вывод
         logger.debug(f"Байт 32 (пробел) закодирован как: {repr(self._byte_encoder[32])}")
-        logger.debug(f"Байт 10 (\\n) закодирован как: {repr(self._byte_encoder[10])}")
+        logger.debug(f"Байт 10 (\\n) закодирован как:    {repr(self._byte_encoder[10])}")
 
     def _init_byte_vocabulary(self) -> None:
         """Добавление всех байтов в словарь для byte-level режима."""
@@ -353,34 +353,129 @@ class BPETokenizer:
 
     def _byte_decode(self, text: str) -> str:
         """
-        Декодирование byte-level строки обратно в UTF-8 с поддержкой русских букв.
+        Декодирование byte-level строки обратно в UTF-8.
+        
+        **Важно**: Этот метод должен быть симметричным к _byte_encode:
+                   text = _byte_encode(original)    # original - UTF-8 строка
+                   assert _byte_decode(text) == original    # Всегда должно быть True
+        
+        Args:
+            text: Строка, содержащая байты в виде символов и составные токены
+            
+        Returns:
+            str: Восстановленная UTF-8 строка
         """
         if not self.byte_level:
             return text
         
         bytes_data = bytearray()
-        i = 0
-        while i < len(text):
-            ch = text[i]
-            if ch in self._byte_decoder:
-                bytes_data.append(self._byte_decoder[ch])
-                i += 1
-            else:
-                # Пытаемся декодировать многобайтовый UTF-8 символ
-                try:
-                    # Пробуем интерпретировать остаток как UTF-8
-                    remaining = text[i:]
-                    b = remaining.encode('utf-8', errors='ignore')
-                    if b:
-                        bytes_data.extend(b)
-                        i += 1    # Продвигаемся на один символ
-                    else:
-                        i += 1
-                except:
-                    i += 1
         
-        return bytes_data.decode('utf-8', errors='ignore')
- 
+        for ch in text:
+            if ch in self._byte_decoder:
+                # Случай 1: Это одиночный байт (из _byte_encoder)
+                bytes_data.append(self._byte_decoder[ch])
+            else:
+                # Случай 2: Это составной токен (результат слияния)
+                # Например, токен "при" может быть результатом слияния 'п' + 'р' + 'и'
+                # Такой токен должен быть преобразован в UTF-8 байты
+                bytes_data.extend(ch.encode('utf-8'))
+        
+        # Декодируем собранные байты обратно в UTF-8
+        try:
+            return bytes_data.decode('utf-8')
+        except UnicodeDecodeError as e:
+            # На случай ошибок логируем и пытаемся восстановить
+            logger.warning(f"Ошибка декодирования UTF-8: {e}!")
+            # Пробуем с игнорированием некорректных байтов
+            return bytes_data.decode('utf-8', errors='ignore')
+    
+    def test_byte_roundtrip(self) -> bool:
+        """
+        Проверка, что _byte_encode и _byte_decode работают симметрично.
+        
+        Returns:
+            bool: True если все тесты пройдены успешно
+        """
+        print("\n" + "="*60)
+        print("ТЕСТИРОВАНИЕ BYTE-LEVEL КОДИРОВАНИЯ".center(60))
+        print("="*60)
+        
+        test_strings = [
+            # Базовые C++ конструкции
+            "int main() { return 0; }",
+            "std::cout << \"Hello\" << std::endl;",
+            "class Test { public: void method(); };",
+            "template<typename T> T max(T a, T b);",
+            
+            # Русские комментарии
+            "// русский комментарий",
+            "// привет мир",
+            "// тест кириллицы",
+            "std::cout << \"Привет, мир!\" << std::endl;",
+            
+            # Русские буквы (все подряд)
+            "// а б в г д е ё ж з и й к л м н о п р с т у ф х ц ч ш щ ъ ы ь э ю я",
+            "// А Б В Г Д Е Ё Ж З И Й К Л М Н О П Р С Т У Ф Х Ц Ч Ш Щ Ъ Ы Ь Э Ю Я",
+            
+            # Смешанные тексты
+            "// русский текст",
+            "/* многострочный\n   комментарий */",
+            
+            # Пустая строка
+            "",
+            
+            # Только пробельные символы
+            "   \n\t\r   ",
+            
+            # Специальные символы C++
+            "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~",
+        ]
+        
+        all_passed = True
+        
+        for i, original in enumerate(test_strings):
+            print(f"\nТест {i+1}: {repr(original[:50])}{'...' if len(original) > 50 else ''}")
+            
+            # Кодируем
+            encoded = self._byte_encode(original)
+            print(f"Закодировано: {len(encoded)} символов")
+            
+            # Декодируем
+            decoded = self._byte_decode(encoded)
+            
+            # Проверяем
+            if original == decoded:
+                print(f"СОВПАДАЕТ!")
+            else:
+                all_passed = False
+                print(f"НЕ СОВПАДАЕТ!")
+                print(f"- Оригинал: {repr(original)}")
+                print(f"- Декод.:   {repr(decoded)}")
+                
+                # Показываем различия
+                if len(original) != len(decoded):
+                    print(f"- Длина:    {len(original)} vs {len(decoded)}")
+                
+                # Показываем первые отличающиеся символы
+                min_len = min(len(original), len(decoded))
+                for j in range(min_len):
+                    if original[j] != decoded[j]:
+                        print(f"Первое отличие на позиции {j}:")
+                        print(f"- Оригинал: {repr(original[j])} (ord={ord(original[j])})")
+                        print(f"- Декод.:   {repr(decoded[j])} (ord={ord(decoded[j])})")
+                        break
+        
+        print("\n" + "="*60)
+        if all_passed:
+            print("ВСЕ ТЕСТЫ ПРОЙДЕНЫ!".center(60))
+            print("Кодирование/декодирование работает симметрично".center(60))
+        else:
+            print("ЕСТЬ ОШИБКИ!".center(60))
+            print("Исправьте _byte_decode метод".center(60))
+        print("="*60)
+        
+        return all_passed
+    
     # ======================================================================
     # ВАЛИДАЦИЯ СИМВОЛОВ C++
     # ======================================================================
@@ -390,14 +485,14 @@ class BPETokenizer:
         Проверить, что все необходимые символы C++ есть в словаре.
         
         Returns:
-            Dict[str, bool]:     Словарь с результатами проверки для каждого символа
+            Dict[str, bool]: Словарь с результатами проверки для каждого символа
             
-        **Проверяемые     символы:**
-        - Пробельные:     пробел, \n, \t, \r
-        - Скобки:         { } ( ) [ ]
-        - Пунктуация:     ; : , .
-        - Операторы:      = + - * / % < > ! & | ^ ~ ?
-        - Специальные:    " ' \\ # _
+        **Проверяемые символы:**
+        - Пробельные:  Пробел, \n, \t, \r
+        - Скобки:      { } ( ) [ ]
+        - Пунктуация:  ; : , .
+        - Операторы:   = + - * / % < > ! & | ^ ~ ?
+        - Специальные: " ' \\ # _
         """
         char_names = {
             ' ': 'пробел',
@@ -462,16 +557,17 @@ class BPETokenizer:
         Тестирование цикла encode/decode на сохранение всех символов.
         
         Args:
-            test_string:    Тестовая строка (по умолчанию - типичный C++ код)
+            test_string: Тестовая строка (по умолчанию - типичный C++ код с Unicode)
             
         Returns:
-            bool:    True если все символы сохраняются, False если есть потери
+            bool: True если все символы сохраняются, False если есть потери
         """
         if test_string is None:
+            # Добавляем русские символы и эмодзи в тестовую строку
             test_string = (
                 "int main() {\n"
                 "    std::cout << \"Hello, world!\\n\";\n"
-                "    // Это комментарий\n"
+                "    // Русский комментарий с буквами\n"
                 "    return 0;\n"
                 "}\n"
             )
@@ -479,6 +575,7 @@ class BPETokenizer:
         ids = self.encode(test_string)
         decoded = self.decode(ids)
         
+        # Сравниваем оригинал и декодированное
         original_chars = set(test_string)
         decoded_chars = set(decoded)
         
@@ -493,6 +590,7 @@ class BPETokenizer:
             logger.warning(f"Добавлены лишние символы: {', '.join(repr(c) for c in extra)}")
             return False
         
+        # Проверяем критически важные символы
         essential = {' ', '\n', '\t', '{', '}', '(', ')', ';', '=', '"'}
         for char in essential:
             if char not in test_string:
@@ -501,7 +599,21 @@ class BPETokenizer:
                 logger.error(f"Пропал важный символ: {repr(char)}")
                 return False
         
-        logger.info("Цикл encode/decode прошел успешно!")
+        # Проверяем наличие русских символов и эмодзи в тестовой строке
+        # (если они были в оригинале)
+        russian_chars = [c for c in test_string if 'а' <= c <= 'я' or 'А' <= c <= 'Я']
+        for char in russian_chars:
+            if char not in decoded:
+                logger.error(f"Пропал русский символ: {repr(char)}")
+                return False
+        
+        emoji_chars = [c for c in test_string if ord(c) > 0xFFFF]
+        for char in emoji_chars:
+            if char not in decoded:
+                logger.error(f"Пропал эмодзи: {repr(char)}")
+                return False
+        
+        logger.info("Цикл encode/decode прошел успешно! Все символы сохранены.")
         return True
 
     # ======================================================================
@@ -514,10 +626,10 @@ class BPETokenizer:
         Подсчет частот соседних пар символов.
         
         Args:
-            words:    Список токенизированных слов (символы через пробел)
+            words: Список токенизированных слов (символы через пробел)
             
         Returns:
-            Dict[Tuple[str, str], int]:    Словарь частот пар символов
+            Dict[Tuple[str, str], int]: Словарь частот пар символов
         """
         pairs = defaultdict(int)
         for word in words:
@@ -529,18 +641,33 @@ class BPETokenizer:
     @staticmethod
     def _merge_vocab(pair: Tuple[str, str], words: List[str]) -> List[str]:
         """
-        Слияние пары символов во всех словах.
+        Слияние пары символов во всех словах с правильной обработкой UTF-8.
         
         Args:
-            pair:     Кортеж из двух символов для слияния
-            words:    Список токенизированных слов
+            pair:  Кортеж из двух символов для слияния
+            words: Список токенизированных слов
             
         Returns:
-            List[str]:    Список слов с выполненным слиянием
+            List[str]: Список слов с выполненным слиянием
         """
         new_words = []
+        
+        # Получаем байтовое представление обоих частей
+        left_bytes = pair[0].encode('utf-8')
+        right_bytes = pair[1].encode('utf-8')
+        
+        # Объединяем байты
+        combined_bytes = left_bytes + right_bytes
+        
+        # Пытаемся декодировать как UTF-8
+        try:
+            replacement = combined_bytes.decode('utf-8')
+        except UnicodeDecodeError:
+            # Если не получается, значит это байты из приватной области
+            # Просто конкатенируем строки
+            replacement = pair[0] + pair[1]
+        
         bigram = ' '.join(pair)
-        replacement = ''.join(pair)
         
         for word in words:
             new_word = word.replace(bigram, replacement)
@@ -557,14 +684,14 @@ class BPETokenizer:
         Обучение BPE токенизатора на входном корпусе текстов.
         
         Args:
-            corpus:     Список текстовых строк для обучения
-            verbose:    Выводить ли прогресс обучения в лог
+            corpus:  Список текстовых строк для обучения
+            verbose: Выводить ли прогресс обучения в лог
             
         Returns:
-            BPETokenizer:    Self для возможности цепочечных вызовов
+            BPETokenizer: Self для возможности цепочечных вызовов
             
         Raises:
-            ValueError:    Если корпус пуст или vocab_size слишком маленький
+            ValueError: Если корпус пуст или vocab_size слишком маленький
         """
         if not corpus:
             raise ValueError("Корпус для обучения не может быть пустым!")
@@ -608,10 +735,10 @@ class BPETokenizer:
         Предобработка корпуса для обучения.
         
         Args:
-            corpus:    Список текстов для обработки
+            corpus: Список текстов для обработки
             
         Returns:
-            List[str]:    Обработанный корпус
+            List[str]: Обработанный корпус
         """
         processed = []
         for text in corpus:
@@ -627,10 +754,10 @@ class BPETokenizer:
         Сбор всех уникальных символов из обработанного корпуса.
         
         Args:
-            processed_corpus:    Обработанный корпус
+            processed_corpus: Обработанный корпус
             
         Returns:
-            Set[str]:    Множество уникальных символов
+            Set[str]: Множество уникальных символов
         """
         symbols = set()
         for text in processed_corpus:
@@ -640,38 +767,61 @@ class BPETokenizer:
     def _initialize_vocabulary(self, symbols: Set[str]) -> None:
         """
         Инициализация словаря с гарантией наличия всех символов C++.
+        ВАЖНО: Все байты (0-255) добавляются в начало словаря для стабильности ID.
         """
         self.vocab.clear()
         self.inverse_vocab.clear()
         
-        # Сначала добавляем специальные токены
+        # 1. Сначала добавляем специальные токены
         for i, token in enumerate(self.special_tokens):
             self.vocab[i] = token
             self.inverse_vocab[token] = i
         
-        # Добавляем пробельные символы C++
-        essential_chars = {' ', '\n', '\t', '\r'}
-        
         next_id = len(self.special_tokens)
         
-        # Сначала добавляем обязательные символы
-        for char in sorted(essential_chars):
-            if char not in self.inverse_vocab:
-                # Проверяем, есть ли символ в byte-level представлении
-                if self.byte_level:
-                    # Пробельные символы должны быть в _byte_encoder
-                    if char in self._byte_encoder.values():
-                        continue
-                self.vocab[next_id] = char
-                self.inverse_vocab[char] = next_id
+        # 2. Добавляем ВСЕ байты (0-255) в правильном Latin-1 представлении
+        #    Это гарантирует, что ID байтов всегда одинаковы
+        print("\n[Tokenizer] Добавление всех байтов в словарь...")
+        for b in range(256):
+            # Преобразуем байт в Latin-1 символ
+            # Например, байт 32 -> ' ', байт 65 -> 'A', байт 208 -> 'Ð'
+            byte_str = bytes([b]).decode('latin1')
+            if byte_str not in self.inverse_vocab:
+                self.vocab[next_id] = byte_str
+                self.inverse_vocab[byte_str] = next_id
                 next_id += 1
         
-        # Добавляем остальные символы из корпуса
+        # 3. Если НЕ используется byte-level режим, добавляем русские буквы
+        if not self.byte_level:
+            essential_chars = {
+                ' ', '\n', '\t', '\r',    # Пробельные
+                # Добавляем русские буквы (строчные)
+                'а', 'б', 'в', 'г', 'д', 'е', 'ё', 'ж', 'з', 'и', 'й',
+                'к', 'л', 'м', 'н', 'о', 'п', 'р', 'с', 'т', 'у', 'ф',
+                'х', 'ц', 'ч', 'ш', 'щ', 'ъ', 'ы', 'ь', 'э', 'ю', 'я',
+                # Добавляем русские буквы (заглавные)
+                'А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ё', 'Ж', 'З', 'И', 'Й',
+                'К', 'Л', 'М', 'Н', 'О', 'П', 'Р', 'С', 'Т', 'У', 'Ф',
+                'Х', 'Ц', 'Ч', 'Ш', 'Щ', 'Ъ', 'Ы', 'Ь', 'Э', 'Ю', 'Я'
+            }
+            
+            for char in sorted(essential_chars):
+                if char not in self.inverse_vocab and len(self.vocab) < self.vocab_size:
+                    self.vocab[next_id] = char
+                    self.inverse_vocab[char] = next_id
+                    next_id += 1
+        
+        # 4. Добавляем остальные символы из корпуса
         for sym in sorted(symbols):
-            if sym not in self.inverse_vocab:
+            if sym not in self.inverse_vocab and len(self.vocab) < self.vocab_size:
                 self.vocab[next_id] = sym
                 self.inverse_vocab[sym] = next_id
                 next_id += 1
+                if next_id >= self.vocab_size:
+                    break
+        
+        print(f"[Tokenizer] Итоговый словарь: {len(self.vocab)} токенов")
+        print(f"[Tokenizer] ID байтов:        {len(self.special_tokens)}-{next_id-1}")
 
     def _perform_merges(self, processed_corpus: List[str], verbose: bool) -> None:
         """
@@ -713,14 +863,16 @@ class BPETokenizer:
             
             new_token = ''.join(best_pair)
             
-            # ПРОВЕРКА: если токен уже существует, пропускаем
+            # Проверка: если токен уже существует, пропускаем
             if new_token in seen_tokens:
                 if verbose:
                     logger.warning(f"Токен {new_token} уже существует - пропускаем!")
                 continue
             
+            # Используем repr() для правильного отображения UTF-8
             if verbose and (i + 1) % 500 == 0:
-                logger.info(f"Слияние {len(used_pairs)}/{num_merges}: {best_pair} -> {new_token} "
+                pair_str = f"({repr(best_pair[0])}, {repr(best_pair[1])})"
+                logger.info(f"Слияние {len(used_pairs)}/{num_merges}: {pair_str} -> {repr(new_token)} "
                         f"(частота: {freq})")
             
             # Выполняем слияние
@@ -748,10 +900,10 @@ class BPETokenizer:
         Создать хеш для текста (для использования в качестве ключа кэша).
         
         Args:
-            text:    Входной текст
+            text: Входной текст
             
         Returns:
-            int:    Хеш текста
+            int: Хеш текста
         """
         return hash(text)
 
@@ -864,7 +1016,7 @@ class BPETokenizer:
         Получить статистику использования кэша.
         
         Returns:
-            Dict[str, Union[int, float]]:    Статистика кэша
+            Dict[str, Union[int, float]]: Статистика кэша
         """
         if self._cache:
             return self._cache.stats()
@@ -886,8 +1038,8 @@ class BPETokenizer:
         Сохранение словаря и операций слияния в файлы.
         
         Args:
-            vocab_path:    Путь для сохранения словаря (JSON формат)
-            merges_path:    Путь для сохранения операций слияния (текстовый формат)
+            vocab_path:  Путь для сохранения словаря (JSON формат)
+            merges_path: Путь для сохранения операций слияния (текстовый формат)
         """
         # Сохраняем словарь
         vocab_dict = {str(k): v for k, v in self.vocab.items()}
@@ -908,7 +1060,7 @@ class BPETokenizer:
         Сохранение модели в единый бинарный файл.
         
         Args:
-            path:    Путь для сохранения
+            path: Путь для сохранения
         """
         import pickle
         
@@ -933,13 +1085,13 @@ class BPETokenizer:
         Загрузка обученного токенизатора из файлов.
         
         Args:
-            vocab_path:     Путь к файлу словаря (JSON формат)
-            merges_path:    Путь к файлу операций слияния (текстовый формат)
-            byte_level:     Использовать ли byte-level режим
-            cache_size:     Размер кэша (0 = отключить)
+            vocab_path:  Путь к файлу словаря (JSON формат)
+            merges_path: Путь к файлу операций слияния (текстовый формат)
+            byte_level:  Использовать ли byte-level режим
+            cache_size:  Размер кэша (0 = отключить)
             
         Returns:
-            BPETokenizer:    Загруженный экземпляр токенизатора
+            BPETokenizer: Загруженный экземпляр токенизатора
         """
         tokenizer = cls(byte_level=byte_level, cache_size=cache_size)
         
@@ -984,10 +1136,10 @@ class BPETokenizer:
         Загрузка модели из бинарного файла.
         
         Args:
-            path:    Путь к бинарному файлу
+            path: Путь к бинарному файлу
             
         Returns:
-            BPETokenizer:    Загруженный экземпляр токенизатора
+            BPETokenizer: Загруженный экземпляр токенизатора
         """
         import pickle
         
@@ -1047,12 +1199,6 @@ class BPETokenizer:
 if __name__ == '__main__':
     """
     Самодиагностика при запуске файла.
-    Выполняет полный цикл тестирования:
-    1. Создание токенизатора с кэшем
-    2. Обучение на небольшом корпусе C++ кода
-    3. Проверка encode/decode
-    4. Валидация символов C++
-    5. Демонстрация эффективности кэша
     """
     print("=" * 60)
     print("ТЕСТИРОВАНИЕ BPE ТОКЕНИЗАТОРА".center(60))
@@ -1064,15 +1210,22 @@ if __name__ == '__main__':
         "std::cout << \"Hello\" << std::endl;",
         "class Test { public: void method(); };",
         "template<typename T> T max(T a, T b);",
+        "🔥, 😂, 🚀"
+        "// Русский комментарий",
     ]
 
     print(f"\nКорпус: {len(corpus)} примеров")
 
     # Обучаем токенизатор с кэшем
     tokenizer = BPETokenizer(vocab_size=50, byte_level=True, cache_size=1000)
+    
+    # ТЕСТ 1: Проверка byte-level кодирования
+    tokenizer.test_byte_roundtrip()
+    
+    # ТЕСТ 2: Обучение
     tokenizer.train(corpus, verbose=True)
 
-    # Валидация символов C++
+    # ТЕСТ 3: Валидация символов C++
     print("\nВалидация символов C++:")
     results = tokenizer.validate_cpp_characters()
     missing = [name for name, present in results.items() if not present]
@@ -1081,7 +1234,7 @@ if __name__ == '__main__':
     else:
         print(f"Все символы присутствуют!")
 
-    # Тестируем на примере
+    # ТЕСТ 4: Тестируем на примере
     test_text = corpus[0]
 
     # Первый вызов (промах кэша)
@@ -1098,23 +1251,23 @@ if __name__ == '__main__':
     decoded = tokenizer.decode(encoded)
 
     print(f"\nТест encode/decode:")
-    print(f"- оригинал: {test_text}")
-    print(f"- токены: {encoded}")
-    print(f"- декодировано: {decoded}")
-    print(f"- совпадение: {'V' if test_text == decoded else 'X'}")
+    print(f"- Оригинал:     {test_text}")
+    print(f"- Токены:       {encoded}")
+    print(f"- Декодировано: {decoded}")
+    print(f"- Совпадение:   {'да' if test_text == decoded else 'нет'}")
 
-    # Тест цикла encode/decode
-    print(f"\nТест цикла encode/decode:")
+    # ТЕСТ 5: Тест цикла encode/decode с русскими символами
+    print(f"\nТест цикла encode/decode с русскими:")
     if tokenizer.test_encode_decode_cycle():
         print(f"Все символы сохраняются!")
     else:
         print(f"Есть потери символов!")
 
     print(f"\nТест кэша:")
-    print(f"- первый вызов:  {time1*1000:.3f} мс (промах)")
-    print(f"- второй вызов:  {time2*1000:.3f} мс (попадание)")
-    print(f"- ускорение:     {time1/time2:.1f}x")
-    print(f"- статистика:    {tokenizer.cache_stats()}")
+    print(f"- Первый вызов: {time1*1000:.3f} мс (промах)")
+    print(f"- Второй вызов: {time2*1000:.3f} мс (попадание)")
+    print(f"- Ускорение:    {time1/time2:.1f}x")
+    print(f"- Статистика:   {tokenizer.cache_stats()}")
 
     print(f"\n{'=' * 60}")
     print(f"ТЕСТ ЗАВЕРШЕН УСПЕШНО!".center(60))

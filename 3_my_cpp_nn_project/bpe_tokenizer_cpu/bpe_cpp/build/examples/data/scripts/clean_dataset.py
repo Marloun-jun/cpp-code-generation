@@ -12,9 +12,9 @@
 # @version 3.2.0
 #
 # @details Извлекает код на C++ из CSV файла, очищает и разделяет на:
-#          - train_code.txt (обучающая выборка) - 8000 примеров
-#          - val_code.txt   (валидационная выборка) - 800 примеров
-#          - test_code.txt  (тестовая выборка) - 500 примеров
+#          - train_code.txt (обучающая выборка)   - 8000 примеров
+#          - val_code.txt (валидационная выборка) - 800 примеров
+#          - test_code.txt  (тестовая выборка)    - 500 примеров
 #          Также создает полный корпус corpus.txt со всеми примерами.
 #
 #          **Процесс обработки:**
@@ -32,10 +32,10 @@
 # @example
 #   python clean_dataset.py
 #   # После выполнения в data/corpus/ появятся файлы:
-#   #   - corpus.txt (9322 строк)
-#   #   - train_code.txt (8000 строк)
-#   #   - val_code.txt (800 строк)
-#   #   - test_code.txt (500 строк)
+#   # - corpus.txt     (9322 строк)
+#   # - train_code.txt (8000 строк)
+#   # - val_code.txt   (800 строк)
+#   # - test_code.txt  (500 строк)
 #
 # ======================================================================
 
@@ -53,8 +53,8 @@ def print_header(title: str, width: int = 60) -> None:
     Вывести заголовок раздела для красивого форматирования вывода.
     
     Args:
-        title:    Заголовок
-        width:    Ширина линии
+        title: Заголовок
+        width: Ширина линии
     
     Example:
         >>> print_header("ЭТАП 1: ЗАГРУЗКА ДАННЫХ")
@@ -89,10 +89,10 @@ def parse_csv_line(line: str) -> List[str]:
     Разобрать строку CSV с учетом кавычек и экранирования.
     
     Args:
-        line:    Строка CSV
+        line: Строка CSV
         
     Returns:
-        List[str]:    Список полей
+        List[str]: Список полей
     
     **Поддерживает:**
     - Кавычки внутри полей
@@ -119,7 +119,7 @@ def parse_csv_line(line: str) -> List[str]:
             current = ''
         else:
             current += char
-    parts.append(current)    # последнее поле
+    parts.append(current)    # Последнее поле
     
     return parts
 
@@ -128,16 +128,16 @@ def clean_code_field(code: str) -> str:
     Очистить поле с кодом от кавычек.
     
     Args:
-        code:    Сырое поле с кодом
+        code: Сырое поле с кодом
         
     Returns:
-        str:    Очищенный код
+        str: Очищенный код
     
     **Удаляет:**
     - Внешние кавычки в начале и конце
     - Лишние пробелы
     """
-    # убираем кавычки в начале и конце
+    # Убираем кавычки в начале и конце
     if code.startswith('"') and code.endswith('"'):
         code = code[1:-1]
     return code.strip()
@@ -154,9 +154,9 @@ class CppDatasetPreparer:
     на обучающую, валидационную и тестовую выборки с заданными пропорциями.
     
     **Параметры разделения:**
-    - Train:         8000 примеров (~86%)
-    - Validation:    800 примеров (~8.5%)
-    - Test:          500 примеров (~5.5%)
+    - Train:      8000 примеров (~86%)
+    - Validation: 800 примеров (~8.5%)
+    - Test:       500 примеров (~5.5%)
     """
     
     def __init__(self, project_root: str = "bpe_tokenizer"):
@@ -164,7 +164,7 @@ class CppDatasetPreparer:
         Инициализация подготовщика датасета.
         
         Args:
-            project_root:    Корневая директория проекта
+            project_root: Корневая директория проекта
         """
         self.root = Path(project_root)
         
@@ -172,16 +172,16 @@ class CppDatasetPreparer:
         # ИСПРАВЛЕНИЕ: Обновленные пути с учетом новой структуры
         # ======================================================================
         
-        # директории
+        # Директории
         self.data_dir = self.root / 'data'            # data/
         self.raw_dir = self.data_dir / 'raw'          # data/raw/
         self.corpus_dir = self.data_dir / 'corpus'    # data/corpus/
         
-        # создаем необходимые директории
+        # Создаем необходимые директории
         self.corpus_dir.mkdir(parents=True, exist_ok=True)
         self.raw_dir.mkdir(parents=True, exist_ok=True)
         
-        # файлы
+        # Файлы
         self.input_csv = self.raw_dir / '2_cpp_code_generation_dataset.csv'    # data/raw/2_cpp_code_generation_dataset.csv
         self.corpus_file = self.corpus_dir / 'corpus.txt'                      # data/corpus/corpus.txt
         self.train_file = self.corpus_dir / 'train_code.txt'                   # data/corpus/train_code.txt
@@ -189,8 +189,8 @@ class CppDatasetPreparer:
         self.test_file = self.corpus_dir / 'test_code.txt'                     # data/corpus/test_code.txt
         
         print(f"Корневая директория: {self.root}")
-        print(f"Директория данных: {self.data_dir}")
-        print(f"Входной CSV: {self.input_csv}")
+        print(f"Директория данных:   {self.data_dir}")
+        print(f"Входной CSV:         {self.input_csv}")
         print(f"Выходная директория: {self.corpus_dir}")
     
     # ======================================================================
@@ -217,72 +217,72 @@ class CppDatasetPreparer:
         """
         print_header("ЭТАП 2: Подготовка датасета (RAW режим)")
         
-        # проверяем существование входного файла
+        # Проверяем существование входного файла
         if not self.input_csv.exists():
-            print(f"X Входной файл не найден: {self.input_csv}")
+            print(f"Входной файл не найден: {self.input_csv}!")
             print(f"Убедитесь, что файл существует в {self.raw_dir}")
             return [], [], [], []
         
-        # читаем файл
+        # Читаем файл
         print(f"\nЧтение {self.input_csv}...")
         with open(self.input_csv, 'r', encoding='utf-8') as f:
             content = f.read()
         
-        # разбираем строки
+        # Разбираем строки
         lines = content.strip().split('\n')
         print(f"Всего строк в файле: {len(lines)}")
         
         codes = []
         skipped = 0
         
-        for i, line in enumerate(lines[1:], 1):    # пропускаем заголовок
+        for i, line in enumerate(lines[1:], 1):    # Пропускаем заголовок
             line = line.strip()
             
-            # пропускаем пустые строки и комментарии
+            # Пропускаем пустые строки и комментарии
             if not line or line.startswith('#'):
                 skipped += 1
                 continue
             
-            # разбираем CSV
+            # Разбираем CSV
             parts = parse_csv_line(line)
             
-            # берем второе поле (code)
+            # Берем второе поле (code)
             if len(parts) >= 2:
                 code = clean_code_field(parts[1])
-                if code:    # не пустой
+                if code:    # Не пустой
                     codes.append(code)
             else:
                 skipped += 1
             
-            # прогресс каждые 10000 строк
+            # Прогресс каждые 10000 строк
             if i % 10000 == 0:
                 print(f"Обработано {i} строк, найдено {len(codes)} примеров кода...")
         
         total = len(codes)
         print(f"\nСтатистика:")
-        print(f"- всего примеров кода: {total}")
-        print(f"- пропущено строк: {skipped}")
+        print(f"- Всего примеров кода: {total}")
+        print(f"- Пропущено строк: {skipped}")
         
         if total > 0:
             print(f"\nПервый пример:")
             preview = codes[0][:100] + ('...' if len(codes[0]) > 100 else '')
-            print(f"   {preview}")
+            print(f"    {preview}")
         
-        # сохраняем полный корпус
+        # Сохраняем полный корпус
         self._save_corpus(codes)
         
-        # разделяем на train/val/test
+        # Разделяем на train/val/test
         train, val, test = self._split_dataset(codes)
         
-        # сохраняем разделенные файлы
+        # Сохраняем разделенные файлы
         self._save_splits(train, val, test)
         
         print_header("ПОДГОТОВКА ДАТАСЕТА ЗАВЕРШЕНА")
         print(f"Статистика:")
-        print(f"- всего примеров: {total}")
-        print(f"- train: {len(train)} ({len(train)/total*100:.1f}%)")
-        print(f"- val:   {len(val)} ({len(val)/total*100:.1f}%)")
-        print(f"- test:  {len(test)} ({len(test)/total*100:.1f}%)")
+        print(f"- Всего примеров: {total}")
+        print(f"- train:          {len(train)} ({len(train)/total*100:.1f}%)")
+        print(f"- val:            {len(val)} ({len(val)/total*100:.1f}%)")
+        print(f"- test:           {len(test)} ({len(test)/total*100:.1f}%)")
         print(f"\nФайлы сохранены в {self.corpus_dir}")
         
         return codes, train, val, test
@@ -292,7 +292,7 @@ class CppDatasetPreparer:
         Сохранить полный корпус в файл.
         
         Args:
-            codes:    Список кодов
+            codes: Список кодов
         """
         print(f"\nСоздание {self.corpus_file}...")
         with open(self.corpus_file, 'w', encoding='utf-8') as f:
@@ -300,7 +300,7 @@ class CppDatasetPreparer:
                 f.write(code + '\n')
         print(f"Сохранено {len(codes)} строк")
         
-        # проверяем сохранение
+        # Проверяем сохранение
         self._verify_corpus()
     
     def _verify_corpus(self) -> None:
@@ -326,7 +326,7 @@ class CppDatasetPreparer:
         
         print(f"\nПроверка corpus.txt:")
         preview = first_line[:100] + ('...' if len(first_line) > 100 else '')
-        print(f"   {preview}")
+        print(f"    {preview}")
         
         if '\\n' in first_line:
             print(f"Найден символ '\\n' (экранированный перевод строки)")
@@ -338,26 +338,26 @@ class CppDatasetPreparer:
         Разделить датасет на train/val/test.
         
         Args:
-            codes:    Список всех кодов
+            codes: Список всех кодов
             
         Returns:
-            Tuple[List[str], List[str], List[str]]:    train, val, test
+            Tuple[List[str], List[str], List[str]]: train, val, test
         
         **Параметры разделения:**
         - test_size: 500 примеров
-        - val_size: 800 примеров
-        - остальное: train (обычно ~8000)
+        - val_size:  800 примеров
+        - Остальное: train (обычно ~8000)
         
         @note Использует train_test_split из sklearn с фиксированным random_state
               для воспроизводимости результатов.
         """
         print(f"\nРазделение на train, val и test...")
         
-        # параметры разделения
+        # Параметры разделения
         test_size = 500
         val_size = 800
         
-        # сначала отделяем тест
+        # Сначала отделяем тест
         train_val, test = train_test_split(
             codes, 
             test_size=test_size, 
@@ -365,7 +365,7 @@ class CppDatasetPreparer:
             shuffle=True
         )
         
-        # потом отделяем валидацию от трейна
+        # Потом отделяем валидацию от трейна
         train, val = train_test_split(
             train_val, 
             test_size=val_size, 
@@ -384,27 +384,27 @@ class CppDatasetPreparer:
         Сохранить разделенные выборки в файлы.
         
         Args:
-            train:    Обучающая выборка
-            val:      Валидационная выборка
-            test:     nестовая выборка
+            train: Обучающая выборка
+            val:   Валидационная выборка
+            test:  Тестовая выборка
         """
-        # сохраняем train
+        # Сохраняем train
         with open(self.train_file, 'w', encoding='utf-8') as f:
             for code in train:
                 f.write(code + '\n')
         print(f"\nСохранен train: {len(train)} примеров -> {self.train_file.name}")
         
-        # сохраняем val
+        # Сохраняем val
         with open(self.val_file, 'w', encoding='utf-8') as f:
             for code in val:
                 f.write(code + '\n')
-        print(f"Сохранен val: {len(val)} примеров -> {self.val_file.name}")
+        print(f"Сохранен val:   {len(val)} примеров -> {self.val_file.name}")
         
-        # сохраняем test
+        # Сохраняем test
         with open(self.test_file, 'w', encoding='utf-8') as f:
             for code in test:
                 f.write(code + '\n')
-        print(f"Сохранен test: {len(test)} примеров -> {self.test_file.name}")
+        print(f"Сохранен test:  {len(test)} примеров -> {self.test_file.name}")
 
 
 # ======================================================================
@@ -416,18 +416,18 @@ def main() -> int:
     Основная функция.
 
     Returns:
-        int:    0 при успехе, 1 при ошибке
+        int: 0 при успехе, 1 при ошибке
     """
     try:
-        # определяем корень проекта
+        # Определяем корень проекта
         project_root = get_project_root()
         print_header("ПОДГОТОВКА ДАТАСЕТА C++ КОДА")
-        print(f"Корень проекта: {project_root}")
+        print(f"Корень проекта:      {project_root}")
         
-        # создаем подготовщик
+        # Создаем подготовщик
         preparer = CppDatasetPreparer(project_root=str(project_root))
         
-        # запускаем извлечение
+        # Запускаем извлечение
         codes, train, val, test = preparer.extract_codes_raw()
         
         if not codes:
@@ -439,10 +439,10 @@ def main() -> int:
         return 0
         
     except KeyboardInterrupt:
-        print("\n\n!!! Операция прервана пользователем")
+        print("\n\nОперация прервана пользователем!")
         return 1
     except Exception as e:
-        print(f"\nX Ошибка: {e}")
+        print(f"\nОшибка: {e}!")
         import traceback
         traceback.print_exc()
         return 1

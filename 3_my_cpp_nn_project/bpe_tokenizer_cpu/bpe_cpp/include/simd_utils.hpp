@@ -1,60 +1,61 @@
 /**
  * @file simd_utils.hpp
- * @brief SIMD-оптимизированные утилиты для высокопроизводительной обработки текста
+ * @brief SIMD-оптимизированные утилиты для векторной обработки текста
  * 
  * @author Евгений П.
  * @date 2026
- * @version 3.4.0
+ * @version 3.5.0
  * 
- * @details Набор функций, использующих векторные инструкции процессора
- *          для ускорения операций кодирования текста. Это ключевой компонент
- *          для достижения максимальной производительности в FastBPETokenizer.
+ * @details ВНИМАНИЕ: Этот модуль предназначен ТОЛЬКО для обработки ASCII-текстов.
+ *          Для работы с Unicode (русские буквы, эмодзи) используйте стандартные
+ *          методы из fast_tokenizer.cpp.
  * 
- *          **Поддерживаемые оптимизации:**
+ *          **Область применения:**
+ *          - Быстрая обработка гарантированно ASCII текстов
+ *          - Предварительная обработка для оптимизации
+ *          - Fallback для байтовых операций
  * 
- *          1) **AVX2 (256-бит)**
- *             - Обработка 32 символов за одну инструкцию
- *             - Ускорение до 4x по сравнению со скалярным кодом
- *             - Требует процессоры Intel Haswell+ / AMD Excavator+
+ *          **Поддерживаемые наборы инструкций:**
  * 
- *          2) **AVX (128-бит)**
- *             - Обработка 16 символов за одну инструкцию
- *             - Ускорение до 2x
- *             - Требует процессоры Intel Sandy Bridge+ / AMD Bulldozer+
+ *          AVX2 (2013+)
+ *          ┌─────────────────────────────────────────────┐
+ *          │ 256-битные регистры (YMM)                   │
+ *          │ 32 ASCII символов за 1 инструкцию           │
+ *          │ Intel Haswell, AMD Excavator+               │
+ *          └─────────────────────────────────────────────┘
  * 
- *          3) **SSE4.2**
- *             - Специализированные строковые инструкции
- *             - Ускорение поиска подстрок и сравнения строк
- *             - Требует процессоры Intel Penryn+ / AMD Barcelona+
+ *          AVX (2011+)
+ *          ┌─────────────────────────────────────────────┐
+ *          │ 128-битные регистры (XMM)                   │
+ *          │ 16 ASCII символов за 1 инструкцию           │
+ *          │ Intel Sandy Bridge, AMD Bulldozer+          │
+ *          └─────────────────────────────────────────────┘
  * 
- *          4) **Автоматический fallback**
- *             - Если SIMD недоступен, используется скалярная версия
- *             - Проверка поддержки во время компиляции и выполнения
+ *          SSE4.2 (2008+)
+ *          ┌─────────────────────────────────────────────┐
+ *          │ Строковые инструкции (STTNI)                │
+ *          │ Поиск подстрок, сравнение строк             │
+ *          │ Intel Penryn, AMD Barcelona+                │
+ *          └─────────────────────────────────────────────┘
  * 
- *          **Производительность (на 1 МБ текста):**
- *          - Скалярный код:    ~10 мс
- *          - SSE4.2:           ~5 мс (2x)
- *          - AVX:              ~3 мс (3.3x)
- *          - AVX2:             ~2 мс (5x)
+ * @warning НЕ ИСПОЛЬЗОВАТЬ для русского текста или эмодзи!
+ *          SIMD инструкции работают на уровне байтов, а не символов.
+ *          Русские буквы в UTF-8 занимают 2-3 байта и будут разбиты.
  * 
- * @note Требует компиляции с флагами:    -mavx2 -mavx -msse4.2 -march=native
- * @warning Для работы SIMD инструкций необходим процессор с соответствующей поддержкой
- * 
- * @see FastBPETokenizer
- * @see config.h
+ * @see FastBPETokenizer::encode(), FastBPETokenizer::encode_ascii()
  */
 
 #pragma once
 
 #include "config.h"
 
-#include <cstdint>
-#include <string_view>
-#include <vector>
-#include <cstring>
-#include <string>
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <string>
+#include <string_view>
+#include <vector>
 
 #ifdef USE_AVX2
     #include <immintrin.h>
@@ -71,56 +72,46 @@
 
 namespace bpe {
 
-// ======================================================================
-// SIMDUtils - класс со статическими SIMD-утилитами
-// ======================================================================
+// ============================================================================
+// SIMDUtils - статический класс с SIMD-утилитами
+// ============================================================================
 
 /**
- * @brief Класс со статическими SIMD-утилитами
+ * @brief Статические методы для SIMD-оптимизированной обработки ASCII
  * 
- * Содержит методы для векторной обработки данных.
- * Все методы автоматически определяют доступность SIMD
- * и используют оптимальную реализацию с автоматическим fallback.
+ * Все методы предназначены ТОЛЬКО для работы с ASCII (1 байт на символ).
+ * Для корректной обработки Unicode используйте обычные строковые операции.
  * 
- * **Важные особенности:**
- * - Все методы статические (не нужно создавать объект)
- * - Потокобезопасны (не используют глобальное состояние)
- * - Проверяют поддержку инструкций на этапе компиляции и выполнения
- * - Автоматически выбирают оптимальную реализацию
+ * **Потокобезопасность:** Все методы потокобезопасны и не имеют состояния.
  * 
- * \include examples/simd_example.cpp
- * Пример использования:
- * \code
- * // Проверка поддержки
- * if (SIMDUtils::check_avx2_support()) {
- *     std::cout << "AVX2 доступен\n";
+ * **Рекомендации по использованию:**
+ * @code
+ * // 1. Простое кодирование ASCII (автовыбор)
+ * auto tokens = SIMDUtils::encode_optimal(text, lookup, unk_id);
+ * 
+ * // 2. Если нужен конкретный уровень (например, для бенчмарков)
+ * if (SIMDUtils::has_avx2()) {
+ *     tokens = SIMDUtils::encode_avx2(text, lookup, unk_id);
  * }
  * 
- * // Кодирование с оптимальной реализацией
- * uint32_t lookup[256] = {...};
- * auto tokens = SIMDUtils::encode_avx2(text, lookup, 0);
+ * // 3. Для отладки
+ * std::cout << "SIMD уровень: " << SIMDUtils::get_simd_level() << "\n";
+ * @endcode
  * 
- * // Поиск подстроки с SSE4.2
- * size_t pos = SIMDUtils::find_substring_sse42(text, "pattern");
- * \endcode
+ * @note Для русского текста используйте FastBPETokenizer::encode().
  */
 class SIMDUtils {
 public:
-    // ======================================================================
-    // Проверка поддержки инструкций (compile-time)
-    // ======================================================================
+    // ========================================================================
+    // Проверка поддержки (compile-time)
+    // ========================================================================
 
     /**
-     * @brief Проверить доступность AVX2 инструкций при компиляции
+     * @brief Проверка доступности AVX2 при компиляции
+     * @return true если код скомпилирован с поддержкой AVX2
      * 
-     * @return true если AVX2 включен в сборке
-     * 
-     * **Определяется по макросам:**
-     * - USE_AVX2 (устанавливается CMake из config.h)
-     * - __AVX2__ (устанавливается компилятором при -mavx2)
-     * 
-     * @note Это проверка времени компиляции, не гарантирует поддержку процессором!
-     * @see check_avx2_support() для проверки во время выполнения
+     * @note Это только compile-time проверка! Используйте check_avx2_support()
+     *       для runtime проверки процессора.
      */
     static constexpr bool has_avx2() {
         #if defined(USE_AVX2) || defined(__AVX2__)
@@ -131,9 +122,7 @@ public:
     }
 
     /**
-     * @brief Проверить доступность AVX инструкций при компиляции
-     * 
-     * @return true если AVX включен в сборке
+     * @brief Проверка доступности AVX при компиляции
      */
     static constexpr bool has_avx() {
         #if defined(USE_AVX) || defined(__AVX__)
@@ -144,9 +133,7 @@ public:
     }
 
     /**
-     * @brief Проверить доступность SSE4.2 инструкций при компиляции
-     * 
-     * @return true если SSE4.2 включен в сборке
+     * @brief Проверка доступности SSE4.2 при компиляции
      */
     static constexpr bool has_sse42() {
         #if defined(USE_SSE42) || defined(__SSE4_2__)
@@ -156,35 +143,43 @@ public:
         #endif
     }
 
-    // ======================================================================
-    // Проверка поддержки инструкций (runtime)
-    // ======================================================================
+    /**
+     * @brief Проверка наличия любой SIMD поддержки
+     */
+    static constexpr bool has_any_simd() {
+        return has_avx2() || has_avx() || has_sse42();
+    }
+
+    // ========================================================================
+    // Проверка поддержки (runtime)
+    // ========================================================================
 
     /**
-     * @brief Проверить поддержку AVX2 во время выполнения
+     * @brief Проверить поддержку AVX2 процессором во время выполнения
      * 
      * @return true если процессор поддерживает AVX2
      * 
-     * **Алгоритм:**
-     * 1. Вызывает CPUID с функцией 7 (Extended Features)
-     * 2. Проверяет бит 5 в EBX (AVX2 support)
+     * Использует инструкцию CPUID для определения возможностей процессора.
      * 
-     * **Платформозависимость:**
-     * - Windows:             использует __cpuid из <intrin.h>
-     * - Linux/macOS:         использует inline asm
-     * - Другие платформы:    возвращает false
+     * **Пример:**
+     * @code
+     * if (SIMDUtils::check_avx2_support()) {
+     *     std::cout << "Запускаем AVX2 версию (только ASCII!)\n";
+     *     tokens = SIMDUtils::encode_avx2(text, lookup, unk_id);
+     * } else {
+     *     tokens = SIMDUtils::encode_scalar(text, lookup);
+     * }
+     * @endcode
      * 
-     * @warning Если код скомпилирован с -mavx2, но процессор не поддерживает,
-     *          программа упадет с SIGILL. Всегда проверяйте перед использованием!
+     * @warning Всегда проверяйте перед использованием AVX2 инструкций!
+     *          Исполнение AVX2 на процессоре без поддержки вызовет SIGILL.
      */
     static bool check_avx2_support() {
         #if defined(_MSC_VER)
-            // Windows: используем __cpuid
             int cpuInfo[4];
             __cpuid(cpuInfo, 7);
             return (cpuInfo[1] >> 5) & 1;
         #elif defined(__GNUC__) || defined(__clang__)
-            // Linux/Mac: используем asm для x86_64
             #if defined(__x86_64__) || defined(__i386__)
                 unsigned int eax, ebx, ecx, edx;
                 __asm__ volatile(
@@ -205,17 +200,13 @@ public:
     }
 
     /**
-     * @brief Проверить поддержку AVX во время выполнения
-     * 
-     * @return true если процессор поддерживает AVX
-     * 
-     * Проверяет бит 28 в ECX после CPUID с функцией 1.
+     * @brief Проверить поддержку AVX процессором
      */
     static bool check_avx_support() {
         #if defined(_MSC_VER)
             int cpuInfo[4];
             __cpuid(cpuInfo, 1);
-            return (cpuInfo[2] & (1 << 28)) != 0;    // bit 28 = AVX
+            return (cpuInfo[2] & (1 << 28)) != 0;
         #elif defined(__GNUC__) || defined(__clang__)
             #if defined(__x86_64__) || defined(__i386__)
                 unsigned int eax, ebx, ecx, edx;
@@ -226,7 +217,7 @@ public:
                     : "a"(1)
                     : "cc"
                 );
-                return (ecx & (1 << 28)) != 0;    // bit 28 = AVX
+                return (ecx & (1 << 28)) != 0;
             #else
                 return false;
             #endif
@@ -236,17 +227,13 @@ public:
     }
 
     /**
-     * @brief Проверить поддержку SSE4.2 во время выполнения
-     * 
-     * @return true если процессор поддерживает SSE4.2
-     * 
-     * Проверяет бит 20 в ECX после CPUID с функцией 1.
+     * @brief Проверить поддержку SSE4.2 процессором
      */
     static bool check_sse42_support() {
         #if defined(_MSC_VER)
             int cpuInfo[4];
             __cpuid(cpuInfo, 1);
-            return (cpuInfo[2] & (1 << 20)) != 0;    // bit 20 = SSE4.2
+            return (cpuInfo[2] & (1 << 20)) != 0;
         #elif defined(__GNUC__) || defined(__clang__)
             #if defined(__x86_64__) || defined(__i386__)
                 unsigned int eax, ebx, ecx, edx;
@@ -257,7 +244,7 @@ public:
                     : "a"(1)
                     : "cc"
                 );
-                return (ecx & (1 << 20)) != 0;    // bit 20 = SSE4.2
+                return (ecx & (1 << 20)) != 0;
             #else
                 return false;
             #endif
@@ -266,409 +253,14 @@ public:
         #endif
     }
 
-    // ======================================================================
-    // AVX2 оптимизации (256-битные регистры, 32 символа за раз)
-    // ======================================================================
-
     /**
-     * @brief AVX2-ускоренное кодирование текста в ID токенов
+     * @brief Получить рекомендуемый уровень SIMD для текущего процессора
      * 
-     * @param text Входной текст для кодирования (string_view)
-     * @param lookup_table Таблица преобразования char -> ID (256 элементов)
-     * @param unknown_id ID для неизвестных символов (не используется в этой версии)
-     * @return std::vector<uint32_t> Вектор ID токенов
-     * 
-     * **Алгоритм работы с AVX2:**
-     * 1. Загружает 32 символа за раз в 256-битный регистр
-     * 2. Расширяет 8-битные символы до 16-битных индексов
-     * 3. Извлекает индексы в массив
-     * 4. Получает ID из lookup_table для каждого индекса
-     * 5. Повторяет для всех 32-символьных блоков
-     * 6. Обрабатывает остаток скалярно
-     * 
-     * **Производительность:**
-     * - Теоретическое ускорение:    32x (32 символа за раз)
-     * - Реальное ускорение:         ~4-5x из-за накладных расходов
-     * - Обрабатывает:               ~200-300 МБ/с на современных CPU
-     * 
-     * **Пример:**
-     * \code
-     * uint32_t lookup[256];
-     * for (int i = 0; i < 256; ++i) lookup[i] = i;    // Сопоставление идентификационных данных
-     * 
-     * auto tokens = SIMDUtils::encode_avx2("Hello World!", lookup, 0);
-     * // tokens = [72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100, 33]
-     * \endcode
-     * 
-     * @note Если AVX2 недоступен (проверка времени компиляции),
-     *       автоматически используется скалярная версия.
-     */
-    static std::vector<uint32_t> encode_avx2(std::string_view text, 
-                                             const uint32_t* lookup_table,
-                                             uint32_t unknown_id) {
-        std::vector<uint32_t> result;
-        result.reserve(text.size());
-        
-        (void)unknown_id;    // Подавляем предупреждение о неиспользуемом параметре
-        
-        #if defined(USE_AVX2) || defined(__AVX2__)
-            // ===== AVX2-оптимизированная версия =====
-            // Обрабатываем по 32 символа за раз (256 бит)
-            size_t i = 0;
-            
-            // Основной цикл для полных 32-символьных блоков
-            for (; i + 32 <= text.size(); i += 32) {
-                // загружаем 32 символа (256 бит)
-                __m256i chars = _mm256_loadu_si256(
-                    reinterpret_cast<const __m256i*>(text.data() + i)
-                );
-                
-                // Расширяем 8-битные символы до 16-битных индексов
-                // _mm256_cvtepu8_epi16 работает с 128-битным входом, поэтому
-                // разбиваем 256-битный регистр на два 128-битных
-                __m128i chars_lo = _mm256_extracti128_si256(chars, 0);
-                __m128i chars_hi = _mm256_extracti128_si256(chars, 1);
-                
-                __m256i indices_lo = _mm256_cvtepu8_epi16(chars_lo);
-                __m256i indices_hi = _mm256_cvtepu8_epi16(chars_hi);
-                
-                // Сохраняем 16-битные индексы в массивы с выравниванием для AVX
-                alignas(32) uint16_t indices_array_lo[16];
-                alignas(32) uint16_t indices_array_hi[16];
-                
-                _mm256_store_si256(reinterpret_cast<__m256i*>(indices_array_lo), indices_lo);
-                _mm256_store_si256(reinterpret_cast<__m256i*>(indices_array_hi), indices_hi);
-                
-                // Получаем ID из lookup table
-                for (int j = 0; j < 16; ++j) {
-                    result.push_back(lookup_table[indices_array_lo[j]]);
-                }
-                for (int j = 0; j < 16; ++j) {
-                    result.push_back(lookup_table[indices_array_hi[j]]);
-                }
-            }
-            
-            // Обрабатываем оставшиеся символы скалярно
-            for (; i < text.size(); ++i) {
-                result.push_back(lookup_table[static_cast<unsigned char>(text[i])]);
-            }
-            
-        #else
-            // ===== Скалярная версия (fallback) =====
-            for (char c : text) {
-                result.push_back(lookup_table[static_cast<unsigned char>(c)]);
-            }
-        #endif
-        
-        return result;
-    }
-
-    // ======================================================================
-    // AVX оптимизации (128-битные регистры, 16 символов за раз)
-    // ======================================================================
-
-    /**
-     * @brief AVX-ускоренное кодирование текста в ID токенов
-     * 
-     * @param text Входной текст для кодирования
-     * @param lookup_table Таблица преобразования char -> ID (256 элементов)
-     * @param unknown_id ID для неизвестных символов
-     * @return std::vector<uint32_t> Вектор ID токенов
-     * 
-     * **Алгоритм работы с AVX (128-бит):**
-     * 1. Загружает 16 символов за раз в 128-битный регистр
-     * 2. Расширяет первые 8 символов до 16-битных индексов
-     * 3. Сохраняет их и получает ID
-     * 4. Сдвигает регистр и обрабатывает следующие 8 символов
-     * 
-     * **Отличие от AVX2:** Обрабатывает 16 символов за раз вместо 32,
-     * но работает на более старых процессорах (Sandy Bridge и новее).
-     * 
-     * @note Использует 128-битные AVX инструкции (XMM регистры)
-     */
-    static std::vector<uint32_t> encode_avx(std::string_view text, 
-                                            const uint32_t* lookup_table,
-                                            uint32_t unknown_id) {
-        std::vector<uint32_t> result;
-        result.reserve(text.size());
-        
-        (void)unknown_id;
-        
-        #if defined(USE_AVX) || defined(__AVX__)
-            // ===== AVX-оптимизированная версия =====
-            // Обрабатываем по 16 символов за раз (128 бит)
-            size_t i = 0;
-            
-            for (; i + 16 <= text.size(); i += 16) {
-                // Загружаем 16 символов (128 бит)
-                __m128i chars = _mm_loadu_si128(
-                    reinterpret_cast<const __m128i*>(text.data() + i)
-                );
-                
-                // Расширяем 8-битные символы до 16-битных индексов (первые 8)
-                __m128i indices = _mm_cvtepu8_epi16(chars);
-                
-                // Сохраняем индексы
-                alignas(16) uint16_t indices_array[8];
-                _mm_store_si128(reinterpret_cast<__m128i*>(indices_array), indices);
-                
-                // Получаем ID для первых 8 символов
-                for (int j = 0; j < 8; ++j) {
-                    result.push_back(lookup_table[indices_array[j]]);
-                }
-                
-                // Для оставшихся 8 символов сдвигаем регистр
-                __m128i chars_high = _mm_srli_si128(chars, 8);
-                __m128i indices_high = _mm_cvtepu8_epi16(chars_high);
-                
-                alignas(16) uint16_t indices_array_high[8];
-                _mm_store_si128(reinterpret_cast<__m128i*>(indices_array_high), indices_high);
-                
-                for (int j = 0; j < 8; ++j) {
-                    result.push_back(lookup_table[indices_array_high[j]]);
-                }
-            }
-            
-            // Обрабатываем оставшиеся символы скалярно
-            for (; i < text.size(); ++i) {
-                result.push_back(lookup_table[static_cast<unsigned char>(text[i])]);
-            }
-            
-        #else
-            // Fallback на скалярную версию
-            for (char c : text) {
-                result.push_back(lookup_table[static_cast<unsigned char>(c)]);
-            }
-        #endif
-        
-        return result;
-    }
-
-    /**
-     * @brief Скалярное кодирование текста (базовая версия)
-     * 
-     * @param text Входной текст
-     * @param lookup_table Таблица преобразования char -> ID
-     * @return std::vector<uint32_t> Вектор ID токенов
-     */
-    static std::vector<uint32_t> encode_scalar(std::string_view text,
-                                               const uint32_t* lookup_table) {
-        std::vector<uint32_t> result;
-        result.reserve(text.size());
-        
-        for (char c : text) {
-            result.push_back(lookup_table[static_cast<unsigned char>(c)]);
-        }
-        
-        return result;
-    }
-
-    // ======================================================================
-    // SSE4.2 оптимизации (строковые операции)
-    // ======================================================================
-
-    /**
-     * @brief SSE4.2-ускоренный поиск подстроки
-     * 
-     * @param text Текст для поиска (haystack)
-     * @param pattern Искомый паттерн (needle)
-     * @return size_t Позиция первого вхождения или std::string_view::npos
-     * 
-     * **Алгоритм:**
-     * 1. Использует инструкцию _mm_cmpistri для сравнения строк
-     * 2. Сравнивает по 16 байт за раз
-     * 3. Для длинных паттернов (>16) проверяет по частям
-     * 
-     * **Производительность:**
-     * - Для коротких паттернов:    в 2-3 раза быстрее std::string::find
-     * - Для длинных паттернов:     сравнима с std::search
-     * - Лучше всего работает с паттернами длиной <= 16
-     * 
-     * **Пример:**
-     * \code
-     * std::string text = "The quick brown fox jumps over the lazy dog";
-     * size_t pos = SIMDUtils::find_substring_sse42(text, "fox");
-     * // pos = 16
-     * \endcode
-     * 
-     * @note Требует SSE4.2, иначе использует std::string::find
-     */
-    static size_t find_substring_sse42(std::string_view text, std::string_view pattern) {
-        if (pattern.empty()) return 0;
-        if (pattern.size() > text.size()) return std::string_view::npos;
-        
-        #if defined(USE_SSE42) || defined(__SSE4_2__)
-            // Используем SSE4.2 строковые инструкции
-            const char* haystack = text.data();
-            size_t haystack_len = text.size();
-            const char* needle = pattern.data();
-            size_t needle_len = pattern.size();
-            
-            for (size_t i = 0; i <= haystack_len - needle_len; ++i) {
-                __m128i chunk = _mm_loadu_si128(reinterpret_cast<const __m128i*>(haystack + i));
-                __m128i pattern_vec = _mm_loadu_si128(reinterpret_cast<const __m128i*>(needle));
-                
-                // Режим сравнения: упорядоченное равенство байтов
-                unsigned int mode = _SIDD_CMP_EQUAL_ORDERED | _SIDD_UBYTE_OPS;
-                int result = _mm_cmpistri(pattern_vec, chunk, mode);
-                
-                if (result == 0 && _mm_cmpistrz(pattern_vec, chunk, mode)) {
-                    // Найдено совпадение в первых 16 байтах
-                    size_t match_pos = i;
-                    
-                    // Проверяем остаток паттерна, если он длиннее 16 байт
-                    if (needle_len <= 16) {
-                        return match_pos;
-                    } else {
-                        // Для длинных паттернов проверяем по частям
-                        bool match = true;
-                        for (size_t j = 16; j < needle_len; j += 16) {
-                            __m128i chunk_next = _mm_loadu_si128(
-                                reinterpret_cast<const __m128i*>(haystack + i + j)
-                            );
-                            __m128i pattern_next = _mm_loadu_si128(
-                                reinterpret_cast<const __m128i*>(needle + j)
-                            );
-                            
-                            if (_mm_cmpistrc(pattern_next, chunk_next, mode) == 0) {
-                                match = false;
-                                break;
-                            }
-                        }
-                        if (match) {
-                            return match_pos;
-                        }
-                    }
-                }
-            }
-            
-            return std::string_view::npos;
-        #else
-            // Fallback на стандартный поиск
-            auto pos = text.find(pattern);
-            return pos;
-        #endif
-    }
-
-    /**
-     * @brief SSE4.2-ускоренная проверка равенства строк
-     * 
-     * @param a Первая строка
-     * @param b Вторая строка
-     * @return true если строки равны
-     * 
-     * **Алгоритм:**
-     * 1. Проверяет длину (если разная -> false)
-     * 2. Проверяет указатели (если одинаковые -> true)
-     * 3. Сравнивает по 16 байт за раз с _mm_cmpeq_epi8
-     * 4. Проверяет оставшиеся байты скалярно
-     * 
-     * **Производительность:**
-     * - Для длинных строк:     в 2-3 раза быстрее memcmp
-     * - Для коротких строк:    сравнима с operator==
-     * 
-     * **Пример:**
-     * \code
-     * bool eq = SIMDUtils::strings_equal_sse42("hello", "hello");     // true
-     * bool neq = SIMDUtils::strings_equal_sse42("hello", "world");    // false
-     * \endcode
-     */
-    static bool strings_equal_sse42(std::string_view a, std::string_view b) {
-        if (a.size() != b.size()) return false;
-        if (a.data() == b.data()) return true;
-        
-        #if defined(USE_SSE42) || defined(__SSE4_2__)
-            size_t len = a.size();
-            const char* a_ptr = a.data();
-            const char* b_ptr = b.data();
-            
-            // Сравниваем по 16 байт за раз
-            size_t i = 0;
-            for (; i + 16 <= len; i += 16) {
-                __m128i a_chunk = _mm_loadu_si128(reinterpret_cast<const __m128i*>(a_ptr + i));
-                __m128i b_chunk = _mm_loadu_si128(reinterpret_cast<const __m128i*>(b_ptr + i));
-                
-                __m128i cmp = _mm_cmpeq_epi8(a_chunk, b_chunk);
-                int mask = _mm_movemask_epi8(cmp);
-                
-                if (mask != 0xFFFF) {
-                    return false;
-                }
-            }
-            
-            // Сравниваем оставшиеся байты скалярно
-            for (; i < len; ++i) {
-                if (a_ptr[i] != b_ptr[i]) {
-                    return false;
-                }
-            }
-            
-            return true;
-        #else
-            return a == b;
-        #endif
-    }
-
-    // ======================================================================
-    // Общие утилиты
-    // ======================================================================
-
-    /**
-     * @brief Получить максимальный уровень SIMD поддержки
-     * 
-     * @return std::string Строка с описанием доступных инструкций
-     * 
-     * Определяет наивысший уровень SIMD, доступный при компиляции:
-     * - "AVX2 (256-bit)"    - если есть AVX2
-     * - "AVX (128-bit)"     - если есть AVX
-     * - "SSE4.2"            - если есть SSE4.2
-     * - "SSE4.1" / "SSSE3" / "SSE3" / "SSE2"
-     * - "Скалярный"         - если SIMD отсутствует
-     * 
-     * **Пример:**
-     * \code
-     * std::cout << "SIMD уровень: " << SIMDUtils::get_simd_level() << std::endl;
-     * // Вывод: "SIMD уровень: AVX2 (256-bit)"
-     * \endcode
-     */
-    static std::string get_simd_level() {
-        std::string level = "Скалярный";
-        
-        #if defined(__AVX2__)
-            level = "AVX2 (256-bit)";
-        #elif defined(__AVX__)
-            level = "AVX (128-bit)";
-        #elif defined(__SSE4_2__)
-            level = "SSE4.2";
-        #elif defined(__SSE4_1__)
-            level = "SSE4.1";
-        #elif defined(__SSSE3__)
-            level = "SSSE3";
-        #elif defined(__SSE3__)
-            level = "SSE3";
-        #elif defined(__SSE2__)
-            level = "SSE2";
-        #endif
-        
-        return level;
-    }
-
-    /**
-     * @brief Проверить, доступна ли какая-либо SIMD оптимизация
-     * @return true если есть поддержка SIMD (любого уровня)
-     */
-    static constexpr bool has_any_simd() {
-        return has_avx2() || has_avx() || has_sse42();
-    }
-
-    /**
-     * @brief Получить рекомендуемую реализацию encode для текущего процессора
-     * 
-     * @return int Код рекомендуемой реализации:
-     *         2    - AVX2
-     *         1    - AVX
-     *         0    - SSE4.2
-     *        -1    - скалярная
+     * @return int Код реализации:
+     *         2  - AVX2 (256-bit)
+     *         1  - AVX (128-bit)  
+     *         0  - SSE4.2
+     *         -1 - Скалярная
      */
     static int get_recommended_implementation() {
         if (check_avx2_support() && has_avx2()) return 2;
@@ -677,19 +269,377 @@ public:
         return -1;
     }
 
+    // ========================================================================
+    // AVX2 оптимизации (256-bit, 32 ASCII символа за раз)
+    // ========================================================================
+
     /**
-     * @brief Выбрать оптимальную реализацию encode для текущего процессора
+     * @brief AVX2-ускоренное кодирование ASCII текста в ID токенов
      * 
-     * @param text Входной текст
-     * @param lookup_table Таблица преобразования
+     * @param text Входной текст (ДОЛЖЕН БЫТЬ ТОЛЬКО ASCII!)
+     * @param lookup_table Таблица char->ID (должна содержать 256 элементов)
+     * @param unknown_id ID для неизвестных (не используется в этой версии)
+     * @return std::vector<uint32_t> Вектор ID токенов
+     * 
+     * **Алгоритм работы:**
+     * @code
+     * ┌─────────────────────────────────────────────────────┐
+     * │ Поток обработки (только ASCII!):                    │
+     * │                                                     │
+     * │ Текст:    H e l l o   W o r l d !                   │
+     * │           |                                         │
+     * │ Загрузка: 32 ASCII символа в YMM регистр            │
+     * │           ┌───────────────────────────┐             │
+     * │ YMM0:     │H│e│l│l│o│ │W│o│r│l│d│!│...│             │
+     * │           └───────────────────────────┘             │
+     * │           |                                         │
+     * │ Разбивка на 2 XMM регистра                          │
+     * │ XMM0 - Первые 16 символов                           │
+     * │ XMM1 - Вторые 16 символов                           │
+     * │           |                                         │
+     * │ Расширение до 16-битных индексов                    │
+     * │           |                                         │
+     * │ Сохранение индексов в массив                        │
+     * │           |                                         │
+     * │ Получение ID из lookup-таблицы                      │
+     * └─────────────────────────────────────────────────────┘
+     * @endcode
+     * 
+     * **Производительность:** ~200-300 МБ/с на современных CPU
+     * 
+     * @warning РАБОТАЕТ ТОЛЬКО С ASCII! Русский текст будет испорчен.
+     */
+    static std::vector<uint32_t> encode_avx2(std::string_view text,
+                                             const uint32_t* lookup_table,
+                                             uint32_t unknown_id) {
+        std::vector<uint32_t> result;
+        result.reserve(text.size());
+
+        (void)unknown_id;    // Не используется в AVX2 версии
+
+        #if defined(USE_AVX2) || defined(__AVX2__)
+            size_t i = 0;
+
+            // Основной цикл: 32 символа за итерацию
+            for (; i + 32 <= text.size(); i += 32) {
+                // Загрузка 32 символов (256 бит)
+                __m256i chars = _mm256_loadu_si256(
+                    reinterpret_cast<const __m256i*>(text.data() + i)
+                );
+
+                // Разбиваем на два 128-битных регистра
+                __m128i chars_lo = _mm256_extracti128_si256(chars, 0);
+                __m128i chars_hi = _mm256_extracti128_si256(chars, 1);
+
+                // Расширяем 8-битные символы до 16-битных индексов
+                __m256i indices_lo = _mm256_cvtepu8_epi16(chars_lo);
+                __m256i indices_hi = _mm256_cvtepu8_epi16(chars_hi);
+
+                // Сохраняем индексы (требуется выравнивание для AVX)
+                alignas(32) uint16_t indices_array_lo[16];
+                alignas(32) uint16_t indices_array_hi[16];
+
+                _mm256_store_si256(reinterpret_cast<__m256i*>(indices_array_lo), indices_lo);
+                _mm256_store_si256(reinterpret_cast<__m256i*>(indices_array_hi), indices_hi);
+
+                // Получаем ID для всех 32 символов
+                for (int j = 0; j < 16; ++j) {
+                    result.push_back(lookup_table[indices_array_lo[j]]);
+                }
+                for (int j = 0; j < 16; ++j) {
+                    result.push_back(lookup_table[indices_array_hi[j]]);
+                }
+            }
+
+            // Обработка остатка (скалярно)
+            for (; i < text.size(); ++i) {
+                result.push_back(lookup_table[static_cast<unsigned char>(text[i])]);
+            }
+
+        #else
+            // Fallback на скалярную версию
+            for (char c : text) {
+                result.push_back(lookup_table[static_cast<unsigned char>(c)]);
+            }
+        #endif
+
+        return result;
+    }
+
+    // ========================================================================
+    // AVX оптимизации (128-bit, 16 ASCII символов за раз)
+    // ========================================================================
+
+    /**
+     * @brief AVX-ускоренное кодирование ASCII (128-битные регистры)
+     * 
+     * Обрабатывает 16 символов за итерацию.
+     * Работает на процессорах Sandy Bridge и новее.
+     * 
+     * @warning Только для ASCII! Русский текст будет испорчен.
+     */
+    static std::vector<uint32_t> encode_avx(std::string_view text,
+                                            const uint32_t* lookup_table,
+                                            uint32_t unknown_id) {
+        std::vector<uint32_t> result;
+        result.reserve(text.size());
+
+        (void)unknown_id;
+
+        #if defined(USE_AVX) || defined(__AVX__)
+            size_t i = 0;
+
+            // Основной цикл: 16 символов за итерацию
+            for (; i + 16 <= text.size(); i += 16) {
+                // Загрузка 16 символов (128 бит)
+                __m128i chars = _mm_loadu_si128(
+                    reinterpret_cast<const __m128i*>(text.data() + i)
+                );
+
+                // Обработка первых 8 символов
+                __m128i indices = _mm_cvtepu8_epi16(chars);
+                alignas(16) uint16_t indices_array[8];
+                _mm_store_si128(reinterpret_cast<__m128i*>(indices_array), indices);
+
+                for (int j = 0; j < 8; ++j) {
+                    result.push_back(lookup_table[indices_array[j]]);
+                }
+
+                // Обработка следующих 8 символов (сдвиг на 8 байт)
+                __m128i chars_high = _mm_srli_si128(chars, 8);
+                __m128i indices_high = _mm_cvtepu8_epi16(chars_high);
+                alignas(16) uint16_t indices_array_high[8];
+                _mm_store_si128(reinterpret_cast<__m128i*>(indices_array_high), indices_high);
+
+                for (int j = 0; j < 8; ++j) {
+                    result.push_back(lookup_table[indices_array_high[j]]);
+                }
+            }
+
+            // Обработка остатка
+            for (; i < text.size(); ++i) {
+                result.push_back(lookup_table[static_cast<unsigned char>(text[i])]);
+            }
+
+        #else
+            for (char c : text) {
+                result.push_back(lookup_table[static_cast<unsigned char>(c)]);
+            }
+        #endif
+
+        return result;
+    }
+
+    // ========================================================================
+    // Скалярная версия (базовый уровень)
+    // ========================================================================
+
+    /**
+     * @brief Скалярное кодирование (без SIMD)
+     * 
+     * Базовая версия, работает на любых процессорах.
+     * Используется как fallback, если SIMD недоступен.
+     * 
+     * @note Это единственная версия, которая может работать с Unicode,
+     *       но она всё равно работает на уровне байтов.
+     *       Для правильной обработки Unicode используйте FastBPETokenizer.
+     */
+    static std::vector<uint32_t> encode_scalar(std::string_view text,
+                                               const uint32_t* lookup_table) {
+        std::vector<uint32_t> result;
+        result.reserve(text.size());
+
+        for (char c : text) {
+            result.push_back(lookup_table[static_cast<unsigned char>(c)]);
+        }
+
+        return result;
+    }
+
+    // ========================================================================
+    // SSE4.2 оптимизации (строковые операции)
+    // ========================================================================
+
+    /**
+     * @brief SSE4.2-ускоренный поиск подстроки (только ASCII)
+     * 
+     * @param text Текст для поиска (haystack)
+     * @param pattern Искомый паттерн (needle)
+     * @return size_t Позиция первого вхождения или npos
+     * 
+     * **Производительность:**
+     * - Короткие паттерны (≤16) - В 2-3 раза быстрее std::string::find
+     * - Длинные паттерны (>16)  - Сравнима с std::search
+     * 
+     * @code
+     * std::string_view text = "The quick brown fox jumps over the lazy dog";
+     * size_t pos = SIMDUtils::find_substring_sse42(text, "fox");
+     * // pos = 16
+     * @endcode
+     * 
+     * @warning Для паттернов с Unicode может давать неверные результаты!
+     */
+    static size_t find_substring_sse42(std::string_view text, std::string_view pattern) {
+        if (pattern.empty()) return 0;
+        if (pattern.size() > text.size()) return std::string_view::npos;
+
+        #if defined(USE_SSE42) || defined(__SSE4_2__)
+            const char* haystack = text.data();
+            size_t haystack_len = text.size();
+            const char* needle = pattern.data();
+            size_t needle_len = pattern.size();
+
+            // Для паттернов до 16 байт используем SSE4.2 строковые инструкции
+            if (needle_len <= 16) {
+                alignas(16) char pattern_padded[16] = {0};
+                std::memcpy(pattern_padded, needle, needle_len);
+                __m128i pattern_vec = _mm_load_si128(
+                    reinterpret_cast<const __m128i*>(pattern_padded)
+                );
+
+                for (size_t i = 0; i <= haystack_len - needle_len; ++i) {
+                    __m128i chunk = _mm_loadu_si128(
+                        reinterpret_cast<const __m128i*>(haystack + i)
+                    );
+
+                    unsigned int mode = _SIDD_CMP_EQUAL_ORDERED | _SIDD_UBYTE_OPS;
+                    int result = _mm_cmpistri(pattern_vec, chunk, mode);
+
+                    if (result < 16) {
+                        bool match = true;
+                        for (size_t j = 0; j < needle_len; ++j) {
+                            if (haystack[i + result + j] != needle[j]) {
+                                match = false;
+                                break;
+                            }
+                        }
+                        if (match && i + result <= haystack_len - needle_len) {
+                            return i + result;
+                        }
+                    }
+                }
+                return std::string_view::npos;
+            } else {
+                // Для длинных паттернов используем стандартный подход
+                auto pos = text.find(pattern);
+                return pos;
+            }
+        #else
+            return text.find(pattern);
+        #endif
+    }
+
+    /**
+     * @brief SSE4.2-ускоренное сравнение строк (только ASCII)
+     * 
+     * @param a Первая строка
+     * @param b Вторая строка
+     * @return true если строки идентичны
+     * 
+     * **Производительность:** до 3x быстрее memcmp для длинных строк
+     * 
+     * @warning Для Unicode строк может давать неверные результаты!
+     */
+    static bool strings_equal_sse42(std::string_view a, std::string_view b) {
+        if (a.size() != b.size()) return false;
+        if (a.data() == b.data()) return true;
+
+        #if defined(USE_SSE42) || defined(__SSE4_2__)
+            size_t len = a.size();
+            const char* a_ptr = a.data();
+            const char* b_ptr = b.data();
+
+            size_t i = 0;
+            for (; i + 16 <= len; i += 16) {
+                __m128i a_chunk = _mm_loadu_si128(
+                    reinterpret_cast<const __m128i*>(a_ptr + i)
+                );
+                __m128i b_chunk = _mm_loadu_si128(
+                    reinterpret_cast<const __m128i*>(b_ptr + i)
+                );
+
+                __m128i cmp = _mm_cmpeq_epi8(a_chunk, b_chunk);
+                int mask = _mm_movemask_epi8(cmp);
+
+                if (mask != 0xFFFF) {
+                    return false;
+                }
+            }
+
+            for (; i < len; ++i) {
+                if (a_ptr[i] != b_ptr[i]) {
+                    return false;
+                }
+            }
+
+            return true;
+        #else
+            return a == b;
+        #endif
+    }
+
+    // ========================================================================
+    // Утилиты для информации
+    // ========================================================================
+
+    /**
+     * @brief Получить строковое описание уровня SIMD
+     * 
+     * @return std::string Описание доступных инструкций
+     * 
+     * @code
+     * std::cout << "SIMD: " << SIMDUtils::get_simd_level() << std::endl;
+     * // Возможные выводы:
+     * // "AVX2 (256-bit) - ТОЛЬКО ДЛЯ ASCII!"
+     * // "AVX (128-bit)  - ТОЛЬКО ДЛЯ ASCII!"
+     * // "SSE4.2         - ТОЛЬКО ДЛЯ ASCII!"
+     * // "SSE4.1         - ТОЛЬКО ДЛЯ ASCII!"
+     * // "SSSE3          - ТОЛЬКО ДЛЯ ASCII!"
+     * // "SSE3           - ТОЛЬКО ДЛЯ ASCII!"
+     * // "SSE2           - ТОЛЬКО ДЛЯ ASCII!"
+     * // "Скалярный      - работает с Unicode, но медленнее"
+     * @endcode
+     */
+    static std::string get_simd_level() {
+        std::string level = "Скалярный (работает с Unicode, но медленнее)";
+
+        #if defined(__AVX2__)
+            level = "AVX2 (256-bit) - ТОЛЬКО ДЛЯ ASCII!";
+        #elif defined(__AVX__)
+            level = "AVX (128-bit) - ТОЛЬКО ДЛЯ ASCII!";
+        #elif defined(__SSE4_2__)
+            level = "SSE4.2 - ТОЛЬКО ДЛЯ ASCII!";
+        #elif defined(__SSE4_1__)
+            level = "SSE4.1 - ТОЛЬКО ДЛЯ ASCII!";
+        #elif defined(__SSSE3__)
+            level = "SSSE3 - ТОЛЬКО ДЛЯ ASCII!";
+        #elif defined(__SSE3__)
+            level = "SSE3 - ТОЛЬКО ДЛЯ ASCII!";
+        #elif defined(__SSE2__)
+            level = "SSE2 - ТОЛЬКО ДЛЯ ASCII!";
+        #endif
+
+        return level;
+    }
+
+    /**
+     * @brief Оптимальное кодирование с автовыбором реализации (ТОЛЬКО ASCII)
+     * 
+     * @param text Входной текст (ДОЛЖЕН БЫТЬ ТОЛЬКО ASCII!)
+     * @param lookup_table Таблица char->ID
      * @param unknown_id ID неизвестного символа
      * @return std::vector<uint32_t> Результат кодирования
+     * 
+     * Самая простая в использовании функция - автоматически выбирает
+     * наилучшую доступную реализацию для текущего процессора.
+     * 
+     * @warning РАБОТАЕТ ТОЛЬКО С ASCII! Для Unicode используйте encode().
      */
     static std::vector<uint32_t> encode_optimal(std::string_view text,
                                                 const uint32_t* lookup_table,
                                                 uint32_t unknown_id) {
         int impl = get_recommended_implementation();
-        
+
         switch (impl) {
             case 2:
                 return encode_avx2(text, lookup_table, unknown_id);
@@ -701,46 +651,40 @@ public:
     }
 };
 
-} // namespace bpe
+}    // namespace bpe
 
 /**
  * @example examples/simd_benchmark.cpp
- * Пример бенчмарка SIMD оптимизаций:
+ * Бенчмарк для сравнения производительности SIMD реализаций
+ * 
+ * @include examples/simd_benchmark.cpp
  * 
  * @code
  * #include "simd_utils.hpp"
  * #include <benchmark/benchmark.h>
- * #include <iostream>
  * 
- * static void BM_SIMD_Encode(benchmark::State& state) {
+ * static void BM_Encode(benchmark::State& state) {
  *     uint32_t lookup[256];
  *     for (int i = 0; i < 256; ++i) lookup[i] = i;
  *     
- *     std::string text(1000000, 'a');    // 1 МБ текста
- *     
- *     int impl = bpe::SIMDUtils::get_recommended_implementation();
+ *     std::string text(1024 * 1024, 'a');    // 1 МБ ASCII
  *     
  *     for (auto _ : state) {
- *         std::vector<uint32_t> tokens;
- *         switch (impl) {
- *             case 2: tokens = bpe::SIMDUtils::encode_avx2(text, lookup, 0); break;
- *             case 1: tokens = bpe::SIMDUtils::encode_avx(text, lookup, 0); break;
- *             default: tokens = bpe::SIMDUtils::encode_scalar(text, lookup); break;
- *         }
+ *         auto tokens = bpe::SIMDUtils::encode_optimal(text, lookup, 0);
  *         benchmark::DoNotOptimize(tokens);
  *     }
  *     
  *     state.SetBytesProcessed(state.iterations() * text.size());
  * }
  * 
- * BENCHMARK(BM_SIMD_Encode);
+ * BENCHMARK(BM_Encode);
  * BENCHMARK_MAIN();
  * @endcode
  */
 
 /**
- * @example examples/simd_example.cpp
- * Полный пример использования SIMD оптимизаций:
+ * @example examples/simd_demo.cpp
+ * Демонстрация всех возможностей SIMDUtils
  * 
- * @include examples/simd_example.cpp
+ * @include examples/simd_demo.cpp
  */

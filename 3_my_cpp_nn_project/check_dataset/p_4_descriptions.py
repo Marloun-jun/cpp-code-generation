@@ -28,9 +28,9 @@
 # @example
 #   python p_4_descriptions.py
 #   # Результаты:
-#   #   - Статистика проблем в выборке
-#   #   - Примеры хороших описаний
-#   #   - Рекомендации по улучшению
+#   # - Статистика проблем в выборке
+#   # - Примеры хороших описаний
+#   # - Рекомендации по улучшению
 #
 # ======================================================================
 
@@ -45,7 +45,7 @@ from typing import List, Tuple, Dict
 
 # Глаголы, с которых должны начинаться описания
 VALID_VERBS = [
-    # инфинитивы (что сделать?)
+    # Инфинитивы (что сделать?)
     'написать', 'создать', 'реализовать', 'разработать', 
     'показать', 'сделать', 'добавить', 'открыть',
     'выполнить', 'считать', 'прочитать', 'записать',
@@ -53,7 +53,7 @@ VALID_VERBS = [
     'продемонстрировать', 'представить', 'привести', 
     'описать', 'объяснить',
     
-    # императивы (сделай)
+    # Императивы (сделай)
     'напиши', 'создай', 'реализуй', 'разработай',
     'покажи', 'сделай', 'добавь', 'открой',
     'выполни', 'считай', 'прочитай', 'запиши',
@@ -72,25 +72,25 @@ CODE_INDICATORS = [
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 # ======================================================================
 
-def print_header(title: str, width: int = 70) -> None:
+def print_header(title: str, width: int = 60) -> None:
     """
     Вывести заголовок раздела.
     
     Args:
-        title:    Заголовок
-        width:    Ширина линии
+        title: Заголовок
+        width: Ширина линии
     """
     print(f"\n{'=' * width}")
     print(f"{title:^{width}}")
     print(f"{'=' * width}")
 
-def print_subheader(title: str, width: int = 70) -> None:
+def print_subheader(title: str, width: int = 60) -> None:
     """
     Вывести подзаголовок раздела.
     
     Args:
-        title:    Подзаголовок
-        width:    Ширина линии
+        title: Подзаголовок
+        width: Ширина линии
     """
     print(f"\n{'-' * width}")
     print(f"{title}")
@@ -111,11 +111,11 @@ def check_descriptions(filename: str, sample_size: int = 200) -> Dict[str, int]:
     Returns:
         Dict[str, int]:
             Статистика проблем:
-            - wrong_verb:      не начинаются с глагола
-            - too_short:       слишком короткие (<10 символов)
-            - too_long:        слишком длинные (>500 символов)
-            - code_in_desc:    содержат код C++
-            - bad_format:      ошибки формата CSV
+            - wrong_verb   - Не начинаются с глагола
+            - too_short    - Слишком короткие (<10 символов)
+            - too_long     - Слишком длинные (>500 символов)
+            - code_in_desc - Содержат код C++
+            - bad_format   - Ошибки формата CSV
     
     **Процесс:**
     1. Сбор всех валидных строк датасета
@@ -125,9 +125,9 @@ def check_descriptions(filename: str, sample_size: int = 200) -> Dict[str, int]:
     """
     print_header("ВЫБОРОЧНАЯ ПРОВЕРКА ОПИСАНИЙ")
     print(f"Проверяем {sample_size} случайных примеров")
-    print("=" * 70)
+    print("=" * 60)
     
-    # собираем все строки с данными
+    # Собираем все строки с данными
     data_lines: List[Tuple[int, str]] = []
     
     try:
@@ -135,53 +135,53 @@ def check_descriptions(filename: str, sample_size: int = 200) -> Dict[str, int]:
             for line_num, raw_line in enumerate(f, 1):
                 raw_line = raw_line.rstrip('\n')
                 
-                # пропускаем пустые строки и комментарии
+                # Пропускаем пустые строки и комментарии
                 if not raw_line.strip() or raw_line.strip().startswith('#'):
                     continue
                 
-                # проверяем базовую структуру
+                # Проверяем базовую структуру
                 if not raw_line.startswith('"') or not raw_line.endswith('"'):
                     continue
                 
                 data_lines.append((line_num, raw_line))
     except FileNotFoundError:
-        print(f"X Ошибка: Файл '{filename}' не найден!")
+        print(f"Ошибка: Файл '{filename}' не найден!")
         return {}
     except Exception as e:
-        print(f"X Ошибка при чтении файла: {e}")
+        print(f"Ошибка при чтении файла: {e}!")
         return {}
     
     print(f"Всего строк с данными: {len(data_lines)}")
     
-    # берём случайную выборку
+    # Берём случайную выборку
     if sample_size > len(data_lines):
         sample_size = len(data_lines)
-        print(f"!!! Размер выборки уменьшен до {sample_size} (максимум)")
+        print(f"Размер выборки уменьшен до {sample_size} (максимум)")
     
     sample = random.sample(data_lines, sample_size)
     
     print(f"\nПроверяем {sample_size} случайных строк...")
     
-    # критерии проверки
+    # Критерии проверки
     issues = {
-        'wrong_verb': 0,      # не начинается с глагола
-        'too_short': 0,       # слишком короткое
-        'too_long': 0,        # слишком длинное
-        'code_in_desc': 0,    # код в описании
-        'bad_format': 0       # плохое форматирование
+        'wrong_verb': 0,      # Не начинается с глагола
+        'too_short': 0,       # Слишком короткое
+        'too_long': 0,        # Слишком длинное
+        'code_in_desc': 0,    # Код в описании
+        'bad_format': 0       # Плохое форматирование
     }
     
-    # проверяем каждую строку в выборке
+    # Проверяем каждую строку в выборке
     for i, (line_num, line) in enumerate(sample, 1):
         try:
-            # парсим строку (упрощённый парсинг CSV)
+            # Парсим строку (упрощённый парсинг CSV)
             parts = line.split('","')
             
             if len(parts) < 5:
                 issues['bad_format'] += 1
                 continue
             
-            # первое поле - описание (убираем начальную кавычку)
+            # Первое поле - описание (убираем начальную кавычку)
             description = parts[0][1:] if parts[0].startswith('"') else parts[0]
             
             # ==================================================================
@@ -195,11 +195,11 @@ def check_descriptions(filename: str, sample_size: int = 200) -> Dict[str, int]:
             if not starts_with_verb:
                 issues['wrong_verb'] += 1
                 
-                # показываем примеры первых 3 проблем
+                # Показываем примеры первых 3 проблем
                 if issues['wrong_verb'] <= 3:
-                    print(f"\n!!! Строка {line_num}: не начинается с глагола")
+                    print(f"\nСтрока {line_num}: не начинается с глагола!")
                     preview = description[:100] + "..." if len(description) > 100 else description
-                    print(f"     Описание: {preview}")
+                    print(f"Описание: {preview}")
             
             # ==================================================================
             # Проверка 2: Длина описания
@@ -230,11 +230,11 @@ def check_descriptions(filename: str, sample_size: int = 200) -> Dict[str, int]:
         print("ВСЕ описания в выборке корректны!")
     else:
         print(f"Найдено проблем в {total_issues} из {sample_size} проверенных строк:")
-        print(f" - не начинаются с глагола: {issues['wrong_verb']}")
-        print(f" - слишком короткие (<10): {issues['too_short']}")
-        print(f" - слишком длинные (>500): {issues['too_long']}")
-        print(f" - содержат код: {issues['code_in_desc']}")
-        print(f" - ошибки формата: {issues['bad_format']}")
+        print(f"- Не начинаются с глагола: {issues['wrong_verb']}")
+        print(f"- Слишком короткие (<10):  {issues['too_short']}")
+        print(f"- Слишком длинные (>500):  {issues['too_long']}")
+        print(f"- Содержат код:            {issues['code_in_desc']}")
+        print(f"- Ошибки формата:          {issues['bad_format']}")
     
     # ======================================================================
     # ПРИМЕРЫ ХОРОШИХ ОПИСАНИЙ
@@ -243,13 +243,13 @@ def check_descriptions(filename: str, sample_size: int = 200) -> Dict[str, int]:
     print_subheader("ПРИМЕРЫ ХОРОШИХ ОПИСАНИЙ")
     
     good_examples = []
-    for line_num, line in sample[:20]:  # просматриваем первые 20 из выборки
+    for line_num, line in sample[:20]:    # Просматриваем первые 20 из выборки
         try:
             parts = line.split('","')
             if len(parts) >= 5:
                 description = parts[0][1:] if parts[0].startswith('"') else parts[0]
                 
-                # проверяем, хорошее ли описание
+                # Проверяем, хорошее ли описание
                 if (len(description) >= 20 and 
                     len(description) <= 200 and
                     any(description.lower().startswith(verb) for verb in VALID_VERBS) and
@@ -264,7 +264,7 @@ def check_descriptions(filename: str, sample_size: int = 200) -> Dict[str, int]:
             preview = desc[:120] + "..." if len(desc) > 120 else desc
             print(f"     {preview}")
     else:
-        print("!!! Хороших примеров не найдено в выборке")
+        print("Хороших примеров не найдено в выборке!")
     
     return issues
 
@@ -278,13 +278,13 @@ def main() -> int:
     Основная функция.
     
     Returns:
-        int:    0 при успехе, 1 при ошибке
+        int: 0 при успехе, 1 при ошибке
     """
     filename = '3_my_cpp_nn_project/check_dataset/2_cpp_code_generation_dataset.csv'
     
     print(f"Анализируемый файл: {filename}")
     
-    # проверяем описания
+    # Проверяем описания
     issues = check_descriptions(filename, sample_size=200)
     
     if not issues:
@@ -300,31 +300,31 @@ def main() -> int:
     
     if issues.get('wrong_verb', 0) > 0:
         recommendations.append(
-            "* Убедитесь, что описания начинаются с глагола:\n"
-            " - 'напиши', 'создай', 'реализуй', 'разработай'\n"
-            " - 'написать', 'создать', 'реализовать', 'разработать'"
+            "Убедитесь, что описания начинаются с глагола:\n"
+            "- 'напиши', 'создай', 'реализуй', 'разработай'\n"
+            "- 'написать', 'создать', 'реализовать', 'разработать'"
         )
     
     if issues.get('too_short', 0) > 0:
         recommendations.append(
-            "* Описания должны быть информативными (минимум 10 символов)"
+            "Описания должны быть информативными (минимум 10 символов)"
         )
     
     if issues.get('too_long', 0) > 0:
         recommendations.append(
-            "* Описания не должны быть слишком длинными (максимум 500 символов)"
+            "Описания не должны быть слишком длинными (максимум 500 символов)"
         )
     
     if issues.get('code_in_desc', 0) > 0:
         recommendations.append(
-            "* Не включайте код C++ в описание:\n"
-            " - код должен быть только в поле 'code'\n"
-            " - описание должно описывать, что делает программа, а не содержать код"
+            "Не включайте код C++ в описание:\n"
+            "- Код должен быть только в поле 'code'\n"
+            "- Описание должно описывать, что делает программа, а не содержать код"
         )
     
     if issues.get('bad_format', 0) > 0:
         recommendations.append(
-            "* Проверьте формат CSV строк (должно быть ровно 5 полей в кавычках)"
+            "Проверьте формат CSV строк (должно быть ровно 5 полей в кавычках)"
         )
     
     if recommendations:

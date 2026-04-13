@@ -66,13 +66,8 @@ include benchmarks/CMakeFiles/run_benchmarks.dir/compiler_depend.make
 # Include the progress variables for this target.
 include benchmarks/CMakeFiles/run_benchmarks.dir/progress.make
 
-benchmarks/CMakeFiles/run_benchmarks: benchmarks/bench_tokenizer
-benchmarks/CMakeFiles/run_benchmarks: benchmarks/bench_fast_tokenizer
-benchmarks/CMakeFiles/run_benchmarks: benchmarks/bench_comparison
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Запуск всех бенчмарков"
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/benchmarks && ./bench_tokenizer
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/benchmarks && ./bench_fast_tokenizer
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/benchmarks && ./bench_comparison
+benchmarks/CMakeFiles/run_benchmarks:
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Запуск всех бенчмарков (тихий режим, результаты в JSON)!"
 
 run_benchmarks: benchmarks/CMakeFiles/run_benchmarks
 run_benchmarks: benchmarks/CMakeFiles/run_benchmarks.dir/build.make

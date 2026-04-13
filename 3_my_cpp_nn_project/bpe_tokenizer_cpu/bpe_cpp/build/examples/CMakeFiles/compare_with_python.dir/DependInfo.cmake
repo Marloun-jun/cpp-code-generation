@@ -8,6 +8,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
+  "/home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/examples/compare_with_python.cpp" "examples/CMakeFiles/compare_with_python.dir/compare_with_python.cpp.o" "gcc" "examples/CMakeFiles/compare_with_python.dir/compare_with_python.cpp.o.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

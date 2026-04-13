@@ -69,9 +69,9 @@ include examples/CMakeFiles/run_fast_tokenizer_demo.dir/progress.make
 examples/CMakeFiles/run_fast_tokenizer_demo: examples/fast_tokenizer_demo
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Запуск fast_tokenizer_demo"
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ""
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ═══════════════════════════════════════════
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ============================================================
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo "Запуск fast_tokenizer_demo..."
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ═══════════════════════════════════════════
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ============================================================
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples/fast_tokenizer_demo
 
 run_fast_tokenizer_demo: examples/CMakeFiles/run_fast_tokenizer_demo

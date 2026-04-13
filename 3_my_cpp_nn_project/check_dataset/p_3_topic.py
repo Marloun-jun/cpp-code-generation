@@ -27,9 +27,9 @@
 # @example
 #   python p_3_topic.py
 #   # Результаты:
-#   #   - Список всех уникальных тем в порядке появления
-#   #   - Статистика баланса стилей для каждой темы
-#   #   - Рекомендации по исправлению
+#   # - Список всех уникальных тем в порядке появления
+#   # - Статистика баланса стилей для каждой темы
+#   # - Рекомендации по исправлению
 #
 # ======================================================================
 
@@ -46,8 +46,8 @@ def print_header(title: str, width: int = 60) -> None:
     Вывести заголовок раздела.
     
     Args:
-        title:    Заголовок
-        width:    Ширина линии
+        title: Заголовок
+        width: Ширина линии
     """
     print(f"\n{'=' * width}")
     print(f"{title:^{width}}")
@@ -58,8 +58,8 @@ def print_subheader(title: str, width: int = 60) -> None:
     Вывести подзаголовок раздела.
     
     Args:
-        title:    Подзаголовок
-        width:    Ширина линии
+        title: Подзаголовок
+        width: Ширина линии
     """
     print(f"\n{'-' * width}")
     print(f"{title}")
@@ -74,10 +74,10 @@ def extract_unique_topics_in_order(filename: str) -> List[str]:
     Извлекает уникальные темы в порядке их появления в датасете.
     
     Args:
-        filename:    Путь к файлу датасета
+        filename: Путь к файлу датасета
         
     Returns:
-        List[str]:    Список уникальных тем в порядке появления
+        List[str]: Список уникальных тем в порядке появления
     
     **Процесс:**
     1. Чтение файла построчно
@@ -87,18 +87,19 @@ def extract_unique_topics_in_order(filename: str) -> List[str]:
     5. Извлечение предпоследнего поля (индекс -2)
     6. Сохранение уникальных тем в порядке первого появления
     
-    **Дополнительно:** Проверка на возможные опечатки:
-    - Дубликаты с разным регистром
-    - Разные разделители (подчеркивание vs дефис)
-    - Похожие названия
+    **Дополнительно:**
+        Проверка на возможные опечатки:
+        - Дубликаты с разным регистром
+        - Разные разделители (подчеркивание vs дефис)
+        - Похожие названия
     """
     print_header("АНАЛИЗ КАТЕГОРИЗАЦИИ ТЕМ (TOPIC)")
-    print("Поле: второе с конца (перед ключевыми словами)")
-    print("Порядок: как идут в датасете (сверху вниз)")
+    print("- Поле    - Второе с конца (перед ключевыми словами)")
+    print("- Порядок - Как идут в датасете (сверху вниз)")
     print("=" * 60)
     
-    topics = []            # для сохранения порядка
-    seen_topics = set()    # для проверки уникальности
+    topics = []            # Для сохранения порядка
+    seen_topics = set()    # Для проверки уникальности
     line_num = 0
     data_line_num = 0
     parse_errors = 0
@@ -109,20 +110,20 @@ def extract_unique_topics_in_order(filename: str) -> List[str]:
                 line_num += 1
                 raw_line = raw_line.rstrip('\n')
                 
-                # пропускаем пустые строки и комментарии
+                # Пропускаем пустые строки и комментарии
                 if not raw_line.strip() or raw_line.strip().startswith('#'):
                     continue
                 
                 data_line_num += 1
                 
-                # проверяем базовую структуру
+                # Проверяем базовую структуру
                 if not raw_line.startswith('"') or not raw_line.endswith('"'):
                     continue
                 
-                # разделяем по "," (простой способ, не идеальный но для темы достаточно)
+                # Разделяем по ","
                 parts = raw_line.split('","')
                 
-                if len(parts) >= 5:      # должно быть минимум 5 полей
+                if len(parts) >= 5:      # Должно быть минимум 5 полей
                     topic = parts[-2]    # -1 это последнее, -2 предпоследнее
                     
                     if topic not in seen_topics:
@@ -131,21 +132,21 @@ def extract_unique_topics_in_order(filename: str) -> List[str]:
                 else:
                     parse_errors += 1
                 
-                # показываем прогресс каждые 1000 строк
+                # Показываем прогресс каждые 1000 строк
                 if data_line_num % 1000 == 0:
                     print(f"Обработано {data_line_num} строк...")
                     
     except FileNotFoundError:
-        print(f"X Ошибка: Файл '{filename}' не найден!")
+        print(f"Ошибка: Файл '{filename}' не найден!")
         return []
     except Exception as e:
-        print(f"X Ошибка при чтении файла: {e}")
+        print(f"Ошибка при чтении файла: {e}!")
         return []
     
     print(f"\nСТАТИСТИКА:")
-    print(f" - всего строк обработано: {data_line_num}")
-    print(f" - ошибок парсинга: {parse_errors}")
-    print(f" - уникальных тем найдено: {len(topics)}")
+    print(f"- Всего строк обработано: {data_line_num}")
+    print(f"- Ошибок парсинга:        {parse_errors}")
+    print(f"- Уникальных тем найдено: {len(topics)}")
     
     print_subheader("ТЕМЫ В ПОРЯДКЕ ПОЯВЛЕНИЯ")
     for i, topic in enumerate(topics, 1):
@@ -159,12 +160,12 @@ def extract_unique_topics_in_order(filename: str) -> List[str]:
     
     possible_issues = []
     
-    # проверяем похожие названия (без сортировки, в порядке появления)
+    # Проверяем похожие названия (без сортировки, в порядке появления)
     for i in range(len(topics)):
         for j in range(i + 1, len(topics)):
             t1, t2 = topics[i].lower(), topics[j].lower()
             
-            # проверяем разные варианты опечаток
+            # Проверяем разные варианты опечаток
             if t1 == t2:
                 possible_issues.append(
                     f"Дубликат (разный регистр): '{topics[i]}' и '{topics[j]}'")
@@ -179,11 +180,11 @@ def extract_unique_topics_in_order(filename: str) -> List[str]:
                     f"Возможная опечатка: '{topics[i]}' и '{topics[j]}'")
     
     if possible_issues:
-        print(f"!!! Найдены возможные проблемы ({len(possible_issues)}):")
-        for issue in possible_issues[:5]:   # показываем первые 5
-            print(f"  • {issue}")
+        print(f"Найдены возможные проблемы ({len(possible_issues)}):")
+        for issue in possible_issues[:5]:    # Показываем первые 5
+            print(f"- {issue}")
         if len(possible_issues) > 5:
-            print(f"  ... и еще {len(possible_issues) - 5} проблем")
+            print(f"... и еще {len(possible_issues) - 5} проблем")
     else:
         print("Очевидных проблем не найдено!")
     
@@ -194,28 +195,28 @@ def check_topic_balance_simple(filename: str, topics: List[str]) -> Dict[str, Di
     Проверяет баланс между стилями для каждой темы.
     
     Args:
-        filename:    Путь к файлу датасета
-        topics:      Список тем для проверки
+        filename: Путь к файлу датасета
+        topics:   Список тем для проверки
         
     Returns:
         Dict[str, Dict[str, int]]: Статистика по темам:
             {
                 "тема": {
-                    "using":       количество с using_namespace_std,
-                    "explicit":    количество с explicit_std
+                    "using":    Количество с using_namespace_std,
+                    "explicit": Количество с explicit_std
                 }
             }
     
     **Критерии:**
-    - Хорошо: минимум 2 примера каждого стиля
-    - Проблема: отсутствие одного из стилей
-    - Предупреждение: мало примеров (менее 2)
+    - Хорошо:         Минимум 2 примера каждого стиля
+    - Проблема:       Отсутствие одного из стилей
+    - Предупреждение: Мало примеров (менее 2)
     """
     print_header("ПРОВЕРКА БАЛАНСА ПО СТИЛЯМ")
     print("Для каждой темы проверяется наличие примеров в обоих стилях")
     print("=" * 60)
     
-    # инициализируем статистику
+    # Инициализируем статистику
     topic_stats = {topic: {'using': 0, 'explicit': 0} for topic in topics}
     style_errors = 0
     line_num = 0
@@ -226,7 +227,7 @@ def check_topic_balance_simple(filename: str, topics: List[str]) -> Dict[str, Di
                 line_num += 1
                 raw_line = raw_line.rstrip('\n')
                 
-                # пропускаем пустые строки и комментарии
+                # Пропускаем пустые строки и комментарии
                 if not raw_line.strip() or raw_line.strip().startswith('#'):
                     continue
                 
@@ -237,28 +238,28 @@ def check_topic_balance_simple(filename: str, topics: List[str]) -> Dict[str, Di
                     continue
                 
                 try:
-                    # извлекаем нужные поля
-                    # parts[0] - описание (убираем начальную кавычку)
-                    # parts[1] - код
-                    # parts[2] - стиль
-                    # parts[3] - тема
-                    # parts[4] - ключевые слова (убираем конечную кавычку)
+                    # Извлекаем нужные поля
+                    # parts[0] - Описание (убираем начальную кавычку)
+                    # parts[1] - Код
+                    # parts[2] - Стиль
+                    # parts[3] - Тема
+                    # parts[4] - Ключевые слова (убираем конечную кавычку)
                     style = parts[2]
                     topic = parts[3]
                     
-                    # проверяем стиль
+                    # Проверяем стиль
                     if 'using_namespace_std' in style:
                         style_type = 'using'
                     elif 'explicit_std' in style:
                         style_type = 'explicit'
                     else:
                         style_errors += 1
-                        # добавим вывод проблемных строк
-                        if style_errors <= 4:  # покажем первые 4
-                            print(f"Строка {line_num}: неопределённый стиль '{style}'")
+                        # Добавим вывод проблемных строк
+                        if style_errors <= 4:    # Покажем первые 4
+                            print(f"Строка {line_num}: неопределённый стиль '{style}'!")
                         continue
                     
-                    # обновляем статистику
+                    # Обновляем статистику
                     if topic in topic_stats:
                         topic_stats[topic][style_type] += 1
                         
@@ -266,7 +267,7 @@ def check_topic_balance_simple(filename: str, topics: List[str]) -> Dict[str, Di
                     continue
                     
     except Exception as e:
-        print(f"X Ошибка при анализе баланса: {e}")
+        print(f"Ошибка при анализе баланса: {e}!")
         return topic_stats
     
     # ======================================================================
@@ -299,23 +300,23 @@ def check_topic_balance_simple(filename: str, topics: List[str]) -> Dict[str, Di
     
     if good_topics:
         print_subheader("ТЕМЫ С ХОРОШИМ БАЛАНСОМ:")
-        for topic, using, explicit in good_topics[:10]:    # показываем первые 10
-            print(f"  • {topic:25} using={using:3}, explicit={explicit:3}")
+        for topic, using, explicit in good_topics[:10]:    # Показываем первые 10
+            print(f"- {topic:25} using={using:3}, explicit={explicit:3}")
         if len(good_topics) > 10:
-            print(f"  ... и еще {len(good_topics) - 10} тем")
+            print(f"... и еще {len(good_topics) - 10} тем")
     
     if warning_topics:
-        print_subheader("!!! ТЕМЫ С МАЛЫМ КОЛИЧЕСТВОМ ПРИМЕРОВ")
+        print_subheader("ТЕМЫ С МАЛЫМ КОЛИЧЕСТВОМ ПРИМЕРОВ:")
         for topic, using, explicit in warning_topics:
-            print(f"  • {topic:25} using={using:3}, explicit={explicit:3} (нужно больше)")
+            print(f"- {topic:25} using={using:3}, explicit={explicit:3} (нужно больше)")
     
     if problems:
-        print_subheader("ПРОБЛЕМНЫЕ ТЕМЫ")
+        print_subheader("ПРОБЛЕМНЫЕ ТЕМЫ:")
         print(f"Найдено проблем: {len(problems)}")
         for problem in problems[:10]:
-            print(f"  • {problem}")
+            print(f"- {problem}")
         if len(problems) > 10:
-            print(f"  ... и еще {len(problems) - 10} проблем")
+            print(f"... и еще {len(problems) - 10} проблем")
     else:
         print("\nВсе темы имеют примеры в обоих стилях!")
     
@@ -333,20 +334,20 @@ def main() -> int:
     Основная функция.
     
     Returns:
-        int:    0 при успехе, 1 при ошибке
+        int: 0 при успехе, 1 при ошибке
     """
     filename = '3_my_cpp_nn_project/check_dataset/2_cpp_code_generation_dataset.csv'
     
     print(f"Анализируемый файл: {filename}")
     
-    # извлекаем темы в порядке появления
+    # Извлекаем темы в порядке появления
     topics = extract_unique_topics_in_order(filename)
     
     if not topics:
-        print("X Не удалось извлечь темы из файла")
+        print("Не удалось извлечь темы из файла!")
         return 1
     
-    # проверяем баланс по стилям
+    # Проверяем баланс по стилям
     stats = check_topic_balance_simple(filename, topics)
     
     # ======================================================================
@@ -358,10 +359,10 @@ def main() -> int:
     if 10 <= len(topics) <= 50:
         print(f"Количество тем: {len(topics)} (идеально: 20-50)")
     elif len(topics) < 20:
-        print(f"!!! Мало тем: {len(topics)} (рекомендуется 20-50)")
-        print("Возможно, нужно добавить больше разнообразных тем")
+        print(f"Мало тем: {len(topics)} (рекомендуется 20-50)")
+        print("Возможно, нужно добавить больше разнообразных тем!")
     else:
-        print(f"!!! Много тем: {len(topics)} (рекомендуется не более 50)")
+        print(f"Много тем: {len(topics)} (рекомендуется не более 50)")
         print("Рассмотрите объединение похожих тем!")
     
     return 0

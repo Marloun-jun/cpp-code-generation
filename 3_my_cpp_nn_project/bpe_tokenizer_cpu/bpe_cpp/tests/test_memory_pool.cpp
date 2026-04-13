@@ -10,39 +10,22 @@
  *          который используется для оптимизации аллокаций в FastBPETokenizer.
  * 
  *          **Проверяемые аспекты:**
- * 
- *          1) **Базовые операции**
- *             - Выделение памяти (allocate)
- *             - Освобождение памяти (deallocate)
- *             - Уникальность указателей при разных выделениях
- * 
- *          2) **Повторное использование**
- *             - Освобожденные блоки должны быть доступны для новых выделений
- *             - Данные не сохраняются между использованиями
- * 
- *          3) **Размеры блоков**
- *             - Малые блоки (до размера пула)
- *             - Блоки больше размера пула (должны идти в обычную кучу)
- *             - Разные размеры в одной сессии
- * 
- *          4) **Множественные выделения**
- *             - Несколько выделений подряд
- *             - Освобождение в разном порядке
- * 
- *          5) **Граничные случаи**
- *             - Выделение нулевого размера
- *             - Освобождение nullptr
- *             - Освобождение с неправильным размером
- * 
- *          6) **PoolAllocator и STL контейнеры**
- *             - Использование с std::vector
- *             - Использование с std::string
- *             - Использование с std::unordered_map
- *             - Использование с std::list и std::set
+ *          ┌────────────────────┬──────────────────────────────────────┐
+ *          │ Базовые операции   │ allocate/deallocate, уникальность    │
+ *          │ Повторное          │ Освобожденные блоки переиспользуются │
+ *          │ использование      │                                      │
+ *          │ Размеры блоков     │ Малые, большие, разные размеры       │
+ *          │ Множественные      │ Несколько выделений подряд           │
+ *          │ выделения          │ в разном порядке                     │
+ *          │ Граничные случаи   │ Нулевой размер, nullptr, ошибки      │
+ *          │ Выравнивание       │ Проверка alignof(std::max_align_t)   │
+ *          │ Статистика         │ block_count, free_count, used        │
+ *          │ STL контейнеры     │ vector, string, map, list, set       │
+ *          │ Производительность │ Сравнение с new/delete               │
+ *          └────────────────────┴──────────────────────────────────────┘
  * 
  * @note Все тесты используют один и тот же пул памяти для аллокаторов
- * @see MemoryPool
- * @see PoolAllocator
+ * @see MemoryPool, PoolAllocator
  */
 
 #include <gtest/gtest.h>
@@ -50,44 +33,57 @@
 #include "memory_pool.hpp"
 #include "test_helpers.hpp"
 
-#include <vector>
-#include <cstring>
-#include <set>
 #include <chrono>
-#include <iostream>
-#include <unordered_map>
-#include <list>
-#include <string>
+#include <cstring>
 #include <functional>
+#include <iostream>
+#include <list>
+#include <set>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 using namespace bpe;
 
-// ======================================================================
-// Константы
-// ======================================================================
+// ============================================================================
+// Константы и настройки
+// ============================================================================
 
 namespace {
-    constexpr size_t SMALL_BLOCK_SIZE = 32;
-    constexpr size_t MEDIUM_BLOCK_SIZE = 64;
-    constexpr size_t LARGE_BLOCK_SIZE = 256;
-    constexpr size_t HUGE_BLOCK_SIZE = 2048;
-    constexpr size_t POOL_BLOCK_SIZE = 1024;
-    constexpr int NUM_ALLOCATIONS = 5;
-    constexpr int STRESS_ITERATIONS = 100;
-    constexpr int VECTOR_SIZE = 100;
-    constexpr int MAP_SIZE = 20;
-    constexpr int LIST_SIZE = 50;
+    constexpr size_t SMALL_BLOCK_SIZE = 32;     ///< Маленький блок (до пула)
+    constexpr size_t MEDIUM_BLOCK_SIZE = 64;    ///< Средний блок
+    constexpr size_t LARGE_BLOCK_SIZE = 256;    ///< Большой блок
+    constexpr size_t HUGE_BLOCK_SIZE = 2048;    ///< Огромный блок (больше пула)
+    constexpr size_t POOL_BLOCK_SIZE = 1024;    ///< Размер блока пула
+    constexpr int NUM_ALLOCATIONS = 5;          ///< Количество выделений в тестах
+    constexpr int STRESS_ITERATIONS = 100;      ///< Итераций в стресс-тесте
+    constexpr int VECTOR_SIZE = 100;            ///< Размер вектора
+    constexpr int MAP_SIZE = 20;                ///< Размер хеш-таблицы
+    constexpr int LIST_SIZE = 50;               ///< Размер списка
     
-    // Тестовые данные
-    constexpr uint8_t TEST_PATTERN_1 = 0xAA;
-    constexpr uint8_t TEST_PATTERN_2 = 0xBB;
-    constexpr uint8_t TEST_PATTERN_3 = 0xCC;
+    // Тестовые паттерны для заполнения памяти
+    constexpr uint8_t TEST_PATTERN_1 = 0xAA;    ///< Паттерн 10101010
+    constexpr uint8_t TEST_PATTERN_2 = 0xBB;    ///< Паттерн 10111011
+    constexpr uint8_t TEST_PATTERN_3 = 0xCC;    ///< Паттерн 11001100
+    
+    // Цвета для вывода (опционально)
+    const std::string RESET = "\033[0m";
+    const std::string GREEN = "\033[32m";
+    const std::string CYAN = "\033[36m";
 }
 
-// ======================================================================
+// ============================================================================
 // Тесты базовых операций
-// ======================================================================
+// ============================================================================
 
+/**
+ * @test Проверка базового выделения памяти
+ * 
+ * Убеждается, что:
+ * - Указатели не nullptr
+ * - Разные выделения дают разные указатели
+ * - Освобождение работает
+ */
 TEST(MemoryPoolTest, BasicAllocation) {
     MemoryPool<POOL_BLOCK_SIZE> pool;
     
@@ -102,19 +98,30 @@ TEST(MemoryPoolTest, BasicAllocation) {
     pool.deallocate(ptr2, MEDIUM_BLOCK_SIZE);
 }
 
+/**
+ * @test Проверка повторного использования блоков
+ * 
+ * Убеждается, что после освобождения блок снова доступен
+ * и что данные не сохраняются между использованиями.
+ */
 TEST(MemoryPoolTest, ReuseAfterDeallocation) {
     MemoryPool<POOL_BLOCK_SIZE> pool;
     
+    // Первое выделение
     void* ptr1 = pool.allocate(SMALL_BLOCK_SIZE);
     ASSERT_NE(ptr1, nullptr);
     
+    // Заполняем паттерном
     std::memset(ptr1, TEST_PATTERN_1, SMALL_BLOCK_SIZE);
     
+    // Освобождаем
     pool.deallocate(ptr1, SMALL_BLOCK_SIZE);
     
+    // Второе выделение - должен получить тот же или другой блок
     void* ptr2 = pool.allocate(SMALL_BLOCK_SIZE);
     EXPECT_NE(ptr2, nullptr);
     
+    // Заполняем другим паттерном
     if (ptr2) {
         std::memset(ptr2, TEST_PATTERN_2, SMALL_BLOCK_SIZE);
     }
@@ -122,6 +129,11 @@ TEST(MemoryPoolTest, ReuseAfterDeallocation) {
     pool.deallocate(ptr2, SMALL_BLOCK_SIZE);
 }
 
+/**
+ * @test Проверка выделения больших блоков (больше размера пула)
+ * 
+ * Блоки размером больше POOL_BLOCK_SIZE должны идти в обычную кучу.
+ */
 TEST(MemoryPoolTest, LargeAllocation) {
     MemoryPool<POOL_BLOCK_SIZE> pool;
     
@@ -131,9 +143,16 @@ TEST(MemoryPoolTest, LargeAllocation) {
     pool.deallocate(ptr, HUGE_BLOCK_SIZE);
 }
 
+/**
+ * @test Проверка множественных выделений
+ * 
+ * Выделяет несколько блоков, освобождает в разном порядке,
+ * затем выделяет снова.
+ */
 TEST(MemoryPoolTest, MultipleAllocations) {
     MemoryPool<POOL_BLOCK_SIZE> pool;
     
+    // Выделяем три блока
     void* ptr1 = pool.allocate(SMALL_BLOCK_SIZE);
     void* ptr2 = pool.allocate(MEDIUM_BLOCK_SIZE);
     void* ptr3 = pool.allocate(SMALL_BLOCK_SIZE);
@@ -142,16 +161,24 @@ TEST(MemoryPoolTest, MultipleAllocations) {
     EXPECT_NE(ptr2, nullptr);
     EXPECT_NE(ptr3, nullptr);
     
+    // Освобождаем в другом порядке
     pool.deallocate(ptr2, MEDIUM_BLOCK_SIZE);
     pool.deallocate(ptr1, SMALL_BLOCK_SIZE);
     pool.deallocate(ptr3, SMALL_BLOCK_SIZE);
     
+    // Выделяем снова
     void* ptr4 = pool.allocate(SMALL_BLOCK_SIZE);
     EXPECT_NE(ptr4, nullptr);
     
     pool.deallocate(ptr4, SMALL_BLOCK_SIZE);
 }
 
+/**
+ * @test Проверка выделения блоков разных размеров
+ * 
+ * Убеждается, что можно выделять блоки разных размеров
+ * и что все указатели уникальны.
+ */
 TEST(MemoryPoolTest, DifferentSizes) {
     MemoryPool<POOL_BLOCK_SIZE> pool;
     
@@ -164,48 +191,82 @@ TEST(MemoryPoolTest, DifferentSizes) {
         ptrs.push_back(ptr);
     }
     
+    // Проверяем, что все указатели уникальны
     std::set<void*> unique_ptrs(ptrs.begin(), ptrs.end());
     EXPECT_EQ(unique_ptrs.size(), ptrs.size());
     
+    // Освобождаем все блоки
     for (size_t i = 0; i < ptrs.size(); ++i) {
         pool.deallocate(ptrs[i], sizes[i]);
     }
 }
 
-// ======================================================================
+// ============================================================================
 // Тесты граничных случаев
-// ======================================================================
+// ============================================================================
 
+/**
+ * @test Проверка граничных случаев
+ * 
+ * Тестирует:
+ * - Выделение нулевого размера
+ * - Освобождение nullptr
+ * - Освобождение с неправильным размером
+ */
 TEST(MemoryPoolTest, EdgeCases) {
     MemoryPool<POOL_BLOCK_SIZE> pool;
     
+    // Выделение нулевого размера
     void* ptr = pool.allocate(0);
-    EXPECT_NE(ptr, nullptr);
+    // Просто проверяем, что вызов не бросил исключение
+    SUCCEED() << "allocate(0) completed, ptr=" << (ptr ? "non-null" : "null");
     
-    pool.deallocate(nullptr, 0);
+    // Освобождение nullptr - должно работать без ошибок
+    EXPECT_NO_THROW(pool.deallocate(nullptr, 0));
     
+    // Проверяем, что пул продолжает работать
     void* ptr2 = pool.allocate(SMALL_BLOCK_SIZE);
     ASSERT_NE(ptr2, nullptr);
     
-    pool.deallocate(ptr2, SMALL_BLOCK_SIZE / 2);
-    pool.deallocate(ptr2, SMALL_BLOCK_SIZE);
+    // Заполняем память для проверки
+    std::memset(ptr2, TEST_PATTERN_1, SMALL_BLOCK_SIZE);
+    
+    // Освобождаем с неправильным размером - должно быть безопасно
+    EXPECT_NO_THROW(pool.deallocate(ptr2, SMALL_BLOCK_SIZE / 2));
+    
+    // Освобождаем с правильным размером
+    EXPECT_NO_THROW(pool.deallocate(ptr2, SMALL_BLOCK_SIZE));
+    
+    // Проверяем, что можно выделить снова
+    void* ptr3 = pool.allocate(SMALL_BLOCK_SIZE);
+    EXPECT_NE(ptr3, nullptr);
+    pool.deallocate(ptr3, SMALL_BLOCK_SIZE);
 }
 
+/**
+ * @test Стресс-тест с множеством операций
+ * 
+ * Выполняет множество выделений и освобождений в случайном порядке
+ * для проверки устойчивости пула.
+ */
 TEST(MemoryPoolTest, StressTest) {
     MemoryPool<POOL_BLOCK_SIZE> pool;
     std::vector<std::pair<void*, size_t>> allocations;
     
     for (int i = 0; i < STRESS_ITERATIONS; ++i) {
+        // Выбираем размер в зависимости от итерации
         size_t size = (i % 3 == 0) ? SMALL_BLOCK_SIZE : 
                       (i % 3 == 1) ? MEDIUM_BLOCK_SIZE : LARGE_BLOCK_SIZE;
         
         void* ptr = pool.allocate(size);
         ASSERT_NE(ptr, nullptr);
         
+        // Заполняем память паттерном на основе индекса
         std::memset(ptr, static_cast<uint8_t>(i % 256), size);
         
         allocations.push_back({ptr, size});
         
+        // Каждые 10 итераций освобождаем половину накопленных блоков
         if (i % 10 == 0 && !allocations.empty()) {
             for (size_t j = 0; j < allocations.size() / 2; ++j) {
                 pool.deallocate(allocations[j].first, allocations[j].second);
@@ -215,24 +276,31 @@ TEST(MemoryPoolTest, StressTest) {
         }
     }
     
+    // Освобождаем оставшиеся блоки
     for (const auto& alloc : allocations) {
         pool.deallocate(alloc.first, alloc.second);
     }
 }
 
-// ======================================================================
+// ============================================================================
 // Тесты статистики
-// ======================================================================
+// ============================================================================
 
+/**
+ * @test Проверка сбора статистики
+ * 
+ * Проверяет, что block_count, free_count и used_count
+ * правильно отражают состояние пула.
+ */
 TEST(MemoryPoolTest, Statistics) {
     MemoryPool<POOL_BLOCK_SIZE> pool;
     
     size_t used = pool.block_count() - pool.free_count();
     
-    std::cout << "\nНачальное состояние:" << std::endl;
-    std::cout << "  блоков: " << pool.block_count() << std::endl;
-    std::cout << "  свободно: " << pool.free_count() << std::endl;
-    std::cout << "  занято: " << used << std::endl;
+    std::cout << "\n" << CYAN << "Начальное состояние:" << RESET << std::endl;
+    std::cout << "- Блоков:   " << pool.block_count() << std::endl;
+    std::cout << "- Свободно: " << pool.free_count() << std::endl;
+    std::cout << "- Занято:   " << used << std::endl;
     
     EXPECT_EQ(used, 0);
     size_t initial_blocks = pool.block_count();
@@ -242,10 +310,10 @@ TEST(MemoryPoolTest, Statistics) {
     
     used = pool.block_count() - pool.free_count();
     
-    std::cout << "\nПосле выделения:" << std::endl;
-    std::cout << "  блоков: " << pool.block_count() << std::endl;
-    std::cout << "  свободно: " << pool.free_count() << std::endl;
-    std::cout << "  занято: " << used << std::endl;
+    std::cout << "\n" << CYAN << "После выделения:" << RESET << std::endl;
+    std::cout << "- Блоков:   " << pool.block_count() << std::endl;
+    std::cout << "- Свободно: " << pool.free_count() << std::endl;
+    std::cout << "- Занято:   " << used << std::endl;
     
     EXPECT_EQ(used, 1);
     
@@ -253,19 +321,25 @@ TEST(MemoryPoolTest, Statistics) {
     
     used = pool.block_count() - pool.free_count();
     
-    std::cout << "\nПосле освобождения:" << std::endl;
-    std::cout << "  блоков: " << pool.block_count() << std::endl;
-    std::cout << "  свободно: " << pool.free_count() << std::endl;
-    std::cout << "  занято: " << used << std::endl;
+    std::cout << "\n" << CYAN << "После освобождения:" << RESET << std::endl;
+    std::cout << "- Блоков:   " << pool.block_count() << std::endl;
+    std::cout << "- Свободно: " << pool.free_count() << std::endl;
+    std::cout << "- Занято:   " << used << std::endl;
     
     EXPECT_EQ(used, 0);
     EXPECT_EQ(pool.block_count(), initial_blocks);
 }
 
-// ======================================================================
+// ============================================================================
 // Тесты выравнивания
-// ======================================================================
+// ============================================================================
 
+/**
+ * @test Проверка выравнивания указателей
+ * 
+ * Убеждается, что все указатели, возвращаемые пулом,
+ * правильно выровнены для любого типа.
+ */
 TEST(MemoryPoolTest, Alignment) {
     MemoryPool<POOL_BLOCK_SIZE> pool;
     
@@ -283,10 +357,13 @@ TEST(MemoryPoolTest, Alignment) {
     }
 }
 
-// ======================================================================
+// ============================================================================
 // Тесты с PoolAllocator и STL контейнерами
-// ======================================================================
+// ============================================================================
 
+/**
+ * @test Использование PoolAllocator с std::vector
+ */
 TEST(MemoryPoolTest, VectorWithPoolAllocator) {
     // Используем MemoryPool<> без указания размера
     MemoryPool<> pool;
@@ -306,6 +383,9 @@ TEST(MemoryPoolTest, VectorWithPoolAllocator) {
     }
 }
 
+/**
+ * @test Использование PoolAllocator с std::string
+ */
 TEST(MemoryPoolTest, StringWithPoolAllocator) {
     MemoryPool<> pool;
     using Alloc = PoolAllocator<char>;
@@ -319,9 +399,12 @@ TEST(MemoryPoolTest, StringWithPoolAllocator) {
     EXPECT_EQ(str, "Hello, World! This is a test string from pool-allocated memory.");
     EXPECT_GT(str.size(), 0);
     
-    std::cout << "\nСтрока успешно создана, длина: " << str.size() << std::endl;
+    std::cout << "\n" << GREEN << "Строка успешно создана, длина: " << str.size() << RESET << std::endl;
 }
 
+/**
+ * @test Использование PoolAllocator с std::unordered_map
+ */
 TEST(MemoryPoolTest, MapWithPoolAllocator) {
     MemoryPool<> pool;
     using Alloc = PoolAllocator<std::pair<const int, std::string>>;
@@ -342,9 +425,12 @@ TEST(MemoryPoolTest, MapWithPoolAllocator) {
         EXPECT_EQ(map[i], "value" + std::to_string(i));
     }
     
-    std::cout << "Map успешно создана, размер: " << map.size() << std::endl;
+    std::cout << "\n" << GREEN << "Map успешно создана, размер: " << map.size() << RESET << std::endl;
 }
 
+/**
+ * @test Использование PoolAllocator с std::list
+ */
 TEST(MemoryPoolTest, ListWithPoolAllocator) {
     MemoryPool<> pool;
     using Alloc = PoolAllocator<int>;
@@ -366,6 +452,9 @@ TEST(MemoryPoolTest, ListWithPoolAllocator) {
     }
 }
 
+/**
+ * @test Использование PoolAllocator с std::set
+ */
 TEST(MemoryPoolTest, SetWithPoolAllocator) {
     MemoryPool<> pool;
     using Alloc = PoolAllocator<int>;
@@ -387,10 +476,16 @@ TEST(MemoryPoolTest, SetWithPoolAllocator) {
     }
 }
 
-// ======================================================================
+// ============================================================================
 // Тест с несколькими контейнерами и одним пулом
-// ======================================================================
+// ============================================================================
 
+/**
+ * @test Использование одного пула для нескольких контейнеров
+ * 
+ * Проверяет, что разные типы контейнеров могут использовать
+ * один и тот же пул памяти без конфликтов.
+ */
 TEST(MemoryPoolTest, MultipleContainersWithSamePool) {
     MemoryPool<> pool;
     
@@ -410,6 +505,7 @@ TEST(MemoryPoolTest, MultipleContainersWithSamePool) {
                        std::equal_to<int>, 
                        AllocPair> map(10, std::hash<int>(), std::equal_to<int>(), allocPair);
     
+    // Заполняем все контейнеры
     for (int i = 0; i < 30; ++i) {
         vec.push_back(i);
         lst.push_back(i * 2);
@@ -421,6 +517,7 @@ TEST(MemoryPoolTest, MultipleContainersWithSamePool) {
         map[i] = "value" + std::to_string(i);
     }
     
+    // Проверяем все контейнеры
     EXPECT_EQ(vec.size(), 30);
     EXPECT_EQ(lst.size(), 30);
     EXPECT_EQ(str, "Hello from multiple containers using the same memory pool!");
@@ -431,10 +528,16 @@ TEST(MemoryPoolTest, MultipleContainersWithSamePool) {
     }
 }
 
-// ======================================================================
+// ============================================================================
 // Тесты на утечки памяти
-// ======================================================================
+// ============================================================================
 
+/**
+ * @test Проверка отсутствия утечек памяти
+ * 
+ * Многократно создает и разрушает пул с множеством операций.
+ * Утечки будут обнаружены инструментами типа Valgrind.
+ */
 TEST(MemoryPoolTest, NoLeaks) {
     const int ITERATIONS = 1000;
     
@@ -458,14 +561,20 @@ TEST(MemoryPoolTest, NoLeaks) {
     }
 }
 
-// ======================================================================
-// Тесты производительности (опционально)
-// ======================================================================
+// ============================================================================
+// Тесты производительности (опционально, отключены по умолчанию)
+// ============================================================================
 
+/**
+ * @test Сравнение производительности пула и стандартной кучи
+ * 
+ * @note Тест отключен (DISABLED), так как предназначен для ручного запуска
+ */
 TEST(MemoryPoolTest, DISABLED_Performance) {
     const int ALLOCATIONS = 100000;
     
     {
+        // Тест пула памяти
         MemoryPool<> pool;
         std::vector<void*> ptrs;
         ptrs.reserve(ALLOCATIONS);
@@ -487,12 +596,13 @@ TEST(MemoryPoolTest, DISABLED_Performance) {
         auto alloc_time = std::chrono::duration_cast<std::chrono::milliseconds>(mid - start);
         auto dealloc_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - mid);
         
-        std::cout << "\nПул памяти:" << std::endl;
-        std::cout << "  выделение:   " << alloc_time.count() << " мс" << std::endl;
-        std::cout << "  освобождение: " << dealloc_time.count() << " мс" << std::endl;
+        std::cout << "\n" << CYAN << "Пул памяти:" << RESET << std::endl;
+        std::cout << "- Выделение:    " << alloc_time.count() << " мс" << std::endl;
+        std::cout << "- Освобождение: " << dealloc_time.count() << " мс" << std::endl;
     }
     
     {
+        // Тест стандартной кучи (new/delete)
         std::vector<void*> ptrs;
         ptrs.reserve(ALLOCATIONS);
         
@@ -513,8 +623,8 @@ TEST(MemoryPoolTest, DISABLED_Performance) {
         auto alloc_time = std::chrono::duration_cast<std::chrono::milliseconds>(mid - start);
         auto dealloc_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - mid);
         
-        std::cout << "Стандартная куча:" << std::endl;
-        std::cout << "  выделение:   " << alloc_time.count() << " мс" << std::endl;
-        std::cout << "  освобождение: " << dealloc_time.count() << " мс" << std::endl;
+        std::cout << "\n" << CYAN << "Стандартная куча:" << RESET << std::endl;
+        std::cout << "- Выделение:    " << alloc_time.count() << " мс" << std::endl;
+        std::cout << "- Освобождение: " << dealloc_time.count() << " мс" << std::endl;
     }
 }

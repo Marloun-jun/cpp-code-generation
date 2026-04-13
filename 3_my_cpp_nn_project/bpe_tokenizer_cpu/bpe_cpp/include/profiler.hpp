@@ -1,356 +1,428 @@
 /**
  * @file profiler.hpp
- * @brief Простой встроенный профайлер для BPE токенизатора
+ * @brief Легковесный профайлер для измерения производительности
  * 
  * @author Евгений П.
  * @date 2026
- * @version 3.4.0
+ * @version 3.7.0
  * 
- * @details Легковесная система профилирования для поиска узких мест
- *          и оптимизации производительности. Предоставляет:
+ * @details Встроенная система профилирования для поиска узких мест
+ *          и оптимизации производительности токенизатора.
  * 
- *          **Замер времени**            - точность до наносекунд
- *          **Статистика**               - min/max/avg время, количество вызовов
- *          **Автоматические отчеты**    - таблица с сортировкой по времени
- *          **RAII стиль**               - автоматическое начало/конец замера
- *          **Макросы**                  - удобное добавление профилирования
- *          **Потокобезопасность**       - через std::mutex
+ *          **Возможности:**
+ *          - Замер времени с наносекундной точностью
+ *          - Статистика (min/max/avg, количество вызовов)
+ *          - Автоматические отчеты с сортировкой
+ *          - RAII стиль через ScopedTimer
+ *          - Удобные макросы PROFILE_FUNCTION/PROFILE_BLOCK
+ *          - Потокобезопасность через std::mutex
+ *          - Поддержка вложенных вызовов через стек
+ *          - Нулевые накладные расходы при отключении
  * 
- *          **Типичное использование:**
- *          \code
- *          // Включить профилирование
+ *          **Архитектура:**
+ *          - Meyers singleton для глобальных данных (единый экземпляр)
+ *          - thread_local стек для поддержки вложенных вызовов
+ *          - RAII для автоматического замера
+ * 
+ *          **Типовой цикл оптимизации:**
+ *          @code
+ *          // 1. Включаем профилирование
  *          SimpleProfiler::setEnabled(true);
  *          SimpleProfiler::setOutputFile("profile.txt");
  *          
- *          // В функции, которую хотим измерить
- *          void slow_function() {
- *              PROFILE_FUNCTION();    // Автоматический замер
- *              // ... код ...
- *          }
+ *          // 2. Запускаем тесты
+ *          run_benchmarks();
  *          
- *          // В блоке кода
- *          {
- *              PROFILE_BLOCK("critical_section");
- *              // ... критический код ...
- *          }
+ *          // 3. Анализируем отчет
+ *          SimpleProfiler::printReport();
  *          
- *          // В конце программы
- *          SimpleProfiler::printReport();    // Вывод в консоль
- *          SimpleProfiler::saveReport();     // Сохранение в файл
- *          \endcode
+ *          // 4. Оптимизируем самые медленные операции
+ *          // 5. Повторяем
+ *          @endcode
  * 
- * @note Создан специально для этапа оптимизации производительности
- * @warning Профилирование добавляет небольшие накладные расходы
+ *          **Накладные расходы:**
+ *          - Включено  - ~50-100 нс на замер
+ *          - Отключено - Проверка одного bool (1-2 такта)
  * 
- * @see FastBPETokenizer
+ * @see FastBPETokenizer (использует этот профайлер)
  */
 
 #pragma once
 
+#include <algorithm>
 #include <chrono>
-#include <string>
+#include <climits>
+#include <cstdint>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
 #include <map>
 #include <mutex>
-#include <iostream>
-#include <iomanip>
-#include <fstream>
+#include <string>
 #include <vector>
-#include <algorithm>
-#include <cstdint>
-#include <climits>
 
 namespace bpe {
 
-// ======================================================================
+// ============================================================================
 // SimpleProfiler - основной класс профайлера
-// ======================================================================
+// ============================================================================
 
 /**
- * @brief Простой профайлер для замера времени выполнения операций
+ * @brief Простой встроенный профайлер
  * 
- * Реализует два способа профилирования:
- * 1. Ручной: start() / stop()
- * 2. RAII: ScopedTimer (рекомендуемый)
+ * **Архитектура:**
+ * - Meyers singleton для глобальных данных (stats, mutex, enabled)
+ * - thread_local стек для поддержки вложенных вызовов
+ * - RAII для автоматического замера
  * 
- * **Как это работает:**
- * - Каждый поток имеет свой текущий замер (thread_local)
- * - Статистика собирается глобально с мьютексом
- * - Отчет сортируется по общему времени (самые медленные операции первыми)
+ * **Пример использования:**
+ * @code
+ * // Включение/выключение
+ * SimpleProfiler::setEnabled(true);
  * 
- * **Производительность:**
- * - Накладные расходы:     ~50-100 нс на замер
- * - Потокобезопасность:    минимальные блокировки
- * - Память:                O(количество уникальных операций)
+ * // Вариант 1: Ручной замер (с поддержкой вложенности)
+ * SimpleProfiler::start("encode");
+ * // ... код ...
+ * SimpleProfiler::start("tokenize_word");    // Вложенный вызов
+ * // ... код ...
+ * SimpleProfiler::stop("tokenize_word");
+ * // ... код ...
+ * SimpleProfiler::stop("encode");
  * 
- * \include examples/profiler_example.cpp
- * Пример использования:
- * \code
- * #include "profiler.hpp"
+ * // Вариант 2: RAII (рекомендуется)
+ * {
+ *     SimpleProfiler::ScopedTimer timer("decode");
+ *     // ... код ...
+ * } // автоматический stop()
  * 
- * int main() {
- *     bpe::SimpleProfiler::setEnabled(true);
- *     
- *     for (int i = 0; i < 1000; ++i) {
- *         PROFILE_BLOCK("fast_operation");
- *         // Быстрая операция
- *     }
- *     
- *     {
- *         PROFILE_BLOCK("slow_operation");
- *         std::this_thread::sleep_for(std::chrono::milliseconds(10));
- *     }
- *     
- *     bpe::SimpleProfiler::printReport();
- *     return 0;
+ * // Вариант 3: Макросы (еще удобнее)
+ * void my_function() {
+ *     PROFILE_FUNCTION();    // Использует имя функции
+ *     // ... код ...
  * }
- * \endcode
+ * 
+ * // Вывод результатов
+ * SimpleProfiler::printReport();
+ * SimpleProfiler::saveReport();
+ * @endcode
  */
 class SimpleProfiler {
 private:
+    // ========================================================================
+    // Внутренние структуры данных
+    // ========================================================================
+
     /**
-     * @brief Структура со статистикой по операции
+     * @brief Статистика по одной операции
      */
     struct Stats {
-        int64_t total_time_ns = 0;          ///< Суммарное время (наносекунды)
-        int64_t min_time_ns = INT64_MAX;    ///< Минимальное время
-        int64_t max_time_ns = 0;            ///< Максимальное время
+        int64_t total_time_ns = 0;          ///< Суммарное время (нс)
+        int64_t min_time_ns = INT64_MAX;    ///< Минимальное время (нс)
+        int64_t max_time_ns = 0;            ///< Максимальное время (нс)
         int call_count = 0;                 ///< Количество вызовов
-        int current_depth = 0;              ///< Текущая глубина (для вложенных вызовов)
     };
-    
-    // Статические члены (inline для C++17)
-    static inline std::map<std::string, Stats> stats_;                         ///< Глобальная статистика
-    static inline std::mutex mutex_;                                           ///< Мьютекс для stats_
-    static inline std::string current_output_file_ = "profiler_report.txt";    ///< Файл отчета
-    static inline bool enabled_ = true;                                        ///< Флаг активности
+
+    /**
+     * @brief Элемент стека вызовов
+     */
+    struct StackFrame {
+        std::string name;                                             ///< Имя операции
+        std::chrono::high_resolution_clock::time_point start_time;    ///< Время начала
+    };
+
+    /**
+     * @brief Meyers singleton для глобальных данных
+     * 
+     * Гарантирует единственность данных во всей программе.
+     * Инициализация потокобезопасна (C++11 и выше).
+     */
+    struct GlobalData {
+        std::map<std::string, Stats> stats;                 ///< Глобальная статистика
+        std::mutex mutex;                                   ///< Мьютекс для защиты stats
+        std::string output_file = "profiler_report.txt";    ///< Файл для отчета
+        bool enabled = false;                               ///< Флаг активности профайлера
+
+        /**
+         * @brief Получить единственный экземпляр глобальных данных
+         * @return GlobalData& Ссылка на статический объект
+         */
+        static GlobalData& instance() {
+            static GlobalData data;
+            return data;
+        }
+    };
+
+    /**
+     * @brief Получить thread_local стек вызовов
+     * @return std::vector<StackFrame>& Ссылка на стек текущего потока
+     */
+    static std::vector<StackFrame>& get_call_stack() {
+        thread_local std::vector<StackFrame> call_stack;
+        return call_stack;
+    }
 
 public:
-    // ==================== Основные методы ====================
+    // ========================================================================
+    // Ручное управление замерами (с поддержкой вложенности)
+    // ========================================================================
 
     /**
      * @brief Начать замер операции
-     * 
      * @param name Имя операции (должно быть уникальным)
      * 
-     * **Важно:**    start() и stop() должны вызываться в паре
-     *               и из одного потока. Для вложенных замеров 
-     *               используйте ScopedTimer или PROFILE_BLOCK.
-     * 
-     * @see stop()
+     * @note Поддерживает вложенные вызовы. Каждый start() должен иметь
+     *       соответствующий stop() с тем же именем в обратном порядке.
      */
     static void start(const std::string& name) {
-        if (!enabled_) return;
-        
-        thread_local std::string current_operation;
-        thread_local std::chrono::high_resolution_clock::time_point start_time;
-        
-        if (current_operation.empty()) {
-            current_operation = name;
-            start_time = std::chrono::high_resolution_clock::now();
+        auto& data = GlobalData::instance();
+        if (!data.enabled) {
+            return;
         }
+
+        auto& call_stack = get_call_stack();
+        call_stack.push_back({name, std::chrono::high_resolution_clock::now()});
     }
-    
+
     /**
      * @brief Закончить замер операции
+     * @param name Имя операции (должно совпадать с последним start)
      * 
-     * @param name Имя операции (должно совпадать с start)
-     * 
-     * Автоматически обновляет статистику:
-     * - total_time_ns += длительность
-     * - min_time_ns = min(текущий, duration)
-     * - max_time_ns = max(текущий, duration)
-     * - call_count++
+     * @note Завершает последний запущенный замер с указанным именем.
+     *       Если имена не совпадают, выводит предупреждение (в debug режиме).
      */
     static void stop(const std::string& name) {
-        if (!enabled_) return;
-        
-        thread_local std::string current_operation;
-        thread_local std::chrono::high_resolution_clock::time_point start_time;
-        
-        if (!current_operation.empty() && current_operation == name) {
-            auto end_time = std::chrono::high_resolution_clock::now();
-            auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                end_time - start_time).count();
-            
-            std::lock_guard<std::mutex> lock(mutex_);
-            auto& s = stats_[name];
+        auto& data = GlobalData::instance();
+        if (!data.enabled) {
+            return;
+        }
+
+        auto& call_stack = get_call_stack();
+
+        if (call_stack.empty()) {
+#ifndef NDEBUG
+            std::cerr << "[PROFILER] Внимание: stop(\"" << name
+                      << "\") вызывается с пустым стеком!\n";
+#endif
+            return;
+        }
+
+        const auto& frame = call_stack.back();
+        if (frame.name != name) {
+#ifndef NDEBUG
+            std::cerr << "[PROFILER] Внимание: stop(\"" << name
+                      << "\") не соответствует start(\"" << frame.name
+                      << "\") на вершине стека! Глубина: " << call_stack.size() << "\n";
+#endif
+            return;
+        }
+
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            end_time - frame.start_time).count();
+
+        {
+            std::lock_guard<std::mutex> lock(data.mutex);
+            auto& s = data.stats[name];
             s.total_time_ns += duration;
             s.min_time_ns = std::min(s.min_time_ns, duration);
             s.max_time_ns = std::max(s.max_time_ns, duration);
             s.call_count++;
-            
-            current_operation.clear();
         }
+
+        call_stack.pop_back();
     }
 
-    // ==================== ScopedTimer (RAII) ====================
+    // ========================================================================
+    // RAII ScopedTimer
+    // ========================================================================
 
     /**
      * @brief RAII класс для автоматического замера времени
      * 
-     * Начинает замер в конструкторе и заканчивает в деструкторе.
-     * Исключобезопасен и удобен для вложенных замеров.
+     * Начинает замер в конструкторе, заканчивает в деструкторе.
+     * Исключениебезопасен и поддерживает перемещение.
      * 
-     * \code
+     * @code
      * {
      *     SimpleProfiler::ScopedTimer timer("encode_batch");
-     *      // код для замера
-     * }    // автоматический stop()
-     * \endcode
+     *     process_batch();    // Время этой функции будет измерено
+     * }
+     * @endcode
      */
     class ScopedTimer {
     private:
         std::string name_;
-        std::chrono::high_resolution_clock::time_point start_;
-        
+        bool active_ = false;
+
     public:
         /**
-         * @brief Конструктор - начинаем замер
+         * @brief Конструктор - начало замера
          * @param name Имя операции
          */
         explicit ScopedTimer(const std::string& name) : name_(name) {
-            if (enabled_) {
-                start_ = std::chrono::high_resolution_clock::now();
+            auto& data = GlobalData::instance();
+            if (data.enabled) {
+                active_ = true;
+                start(name_);
             }
         }
-        
+
         /**
          * @brief Конструктор перемещения
          */
         ScopedTimer(ScopedTimer&& other) noexcept
-            : name_(std::move(other.name_)), start_(other.start_) {
-            // После перемещения other не должен вызывать stop в деструкторе
-            other.name_.clear();
+            : name_(std::move(other.name_)), active_(other.active_) {
+            other.active_ = false;
         }
-        
+
         /**
-         * @brief Деструктор - заканчиваем замер и обновляем статистику
+         * @brief Деструктор - конец замера
          */
         ~ScopedTimer() {
-            if (!enabled_ || name_.empty()) return;
-            
-            auto end = std::chrono::high_resolution_clock::now();
-            auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                end - start_).count();
-            
-            std::lock_guard<std::mutex> lock(mutex_);
-            auto& s = stats_[name_];
-            s.total_time_ns += duration;
-            s.min_time_ns = std::min(s.min_time_ns, duration);
-            s.max_time_ns = std::max(s.max_time_ns, duration);
-            s.call_count++;
+            if (active_) {
+                auto& data = GlobalData::instance();
+                if (data.enabled) {
+                    stop(name_);
+                }
+            }
         }
-        
-        // Запрещаем копирование
+
+        // Запрет копирования
         ScopedTimer(const ScopedTimer&) = delete;
         ScopedTimer& operator=(const ScopedTimer&) = delete;
     };
 
-    // ==================== Управление ====================
+    // ========================================================================
+    // Управление профайлером
+    // ========================================================================
 
     /**
-     * @brief Сбросить всю статистику
-     * 
-     * Очищает все накопленные данные. Полезно перед новым
-     * циклом профилирования.
+     * @brief Сбросить всю накопленную статистику
      */
     static void reset() {
-        std::lock_guard<std::mutex> lock(mutex_);
-        stats_.clear();
+        auto& data = GlobalData::instance();
+        std::lock_guard<std::mutex> lock(data.mutex);
+        data.stats.clear();
     }
-    
+
     /**
      * @brief Включить/выключить профилирование
-     * 
-     * @param enabled true     - профилирование активно
-     *                false    - все вызовы игнорируются
-     * 
-     * Можно отключать профилирование в production сборках
-     * для нулевых накладных расходов.
+     * @param enabled true - активен, false - все вызовы игнорируются
      */
     static void setEnabled(bool enabled) {
-        enabled_ = enabled;
+        auto& data = GlobalData::instance();
+        data.enabled = enabled;
     }
-    
+
     /**
      * @brief Проверить, включено ли профилирование
-     * @return true если профилирование активно
      */
     static bool isEnabled() {
-        return enabled_;
+        auto& data = GlobalData::instance();
+        return data.enabled;
     }
-    
+
     /**
-     * @brief Установить файл для отчета
-     * 
-     * @param filename Путь к файлу (по умолчанию "profiler_report.txt")
-     * 
-     * @see saveReport()
+     * @brief Установить файл для сохранения отчета
+     * @param filename Путь к файлу
      */
     static void setOutputFile(const std::string& filename) {
-        current_output_file_ = filename;
+        auto& data = GlobalData::instance();
+        data.output_file = filename;
     }
 
-    // ==================== Отчеты ====================
+    /**
+     * @brief Получить количество уникальных операций
+     */
+    static size_t getOperationCount() {
+        auto& data = GlobalData::instance();
+        std::lock_guard<std::mutex> lock(data.mutex);
+        return data.stats.size();
+    }
 
     /**
-     * @brief Вывести отчет в консоль или поток
-     * 
+     * @brief Получить общее время всех операций
+     * @return int64_t Время в наносекундах
+     */
+    static int64_t getTotalTime() {
+        auto& data = GlobalData::instance();
+        std::lock_guard<std::mutex> lock(data.mutex);
+        int64_t total = 0;
+        for (const auto& [_, s] : data.stats) {
+            total += s.total_time_ns;
+        }
+        return total;
+    }
+
+    /**
+     * @brief Проверить, есть ли незакрытые замеры в текущем потоке
+     * @return true если есть незакрытые замеры
+     */
+    static bool hasPendingMeasurements() {
+        auto& data = GlobalData::instance();
+        if (!data.enabled) return false;
+        auto& call_stack = get_call_stack();
+        return !call_stack.empty();
+    }
+
+    /**
+     * @brief Получить текущую глубину стека вызовов
+     */
+    static size_t getCallStackDepth() {
+        auto& data = GlobalData::instance();
+        if (!data.enabled) return 0;
+        auto& call_stack = get_call_stack();
+        return call_stack.size();
+    }
+
+    // ========================================================================
+    // Отчеты
+    // ========================================================================
+
+    /**
+     * @brief Вывести отчет в указанный поток
      * @param os Выходной поток (по умолчанию std::cout)
      * 
-     * Формат отчета:
-     * - Таблица с колонками: Операция, Вызовов, Всего (мс),
-     *   Среднее (мкс), Мин (мкс), Макс (мкс), % времени
-     * - Сортировка по общему времени (убывание)
-     * - Итоговая статистика
-     * 
-     * \code
-     * ================================================================================
+     * **Формат отчета:**
+     * @code
+     * ============================================================
      * ОТЧЕТ ПРОФИЛИРОВАНИЯ
-     * ================================================================================
-     * Операция           Вызовов     Всего (мс)    Среднее     Мин     Макс  % времени
-     * --------------------------------------------------------------------------------
-     * encode_batch            10       123.456       12.3      5.6     45.6      45.2%
-     * decode                   5        67.890       13.6      8.9     23.4      24.8%
-     * tokenize_word          100        45.678        0.5      0.3      1.2      16.7%
-     * --------------------------------------------------------------------------------
-     * Всего операций: 3
-     * Общее время: 273.024 мс
-     * ================================================================================
-     * \endcode
+     * ============================================================
+     * 
+     *   encode
+     * - Вызовов:   270
+     * - Всего:     22497.988 мс
+     * - Среднее:   83325.88 мкс
+     * - Мин:       0.10 мкс
+     * - Макс:      21615378.70 мкс
+     * - % времени: 99.9%
+     * ------------------------------------------------------------
+     * Всего операций: 11
+     * Общее время:    22511.233 мс
+     * ============================================================
+     * @endcode
      */
     static void printReport(std::ostream& os = std::cout) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        auto& data = GlobalData::instance();
+        std::lock_guard<std::mutex> lock(data.mutex);
         
-        if (stats_.empty()) {
-            os << "Нет данных профилирования\n";
+        if (data.stats.empty()) {
+            os << "Нет данных профилирования!\n";
             return;
         }
         
-        // Сортируем по общему времени (убывание)
+        // Сортируем
         std::vector<std::pair<std::string, Stats>> sorted(
-            stats_.begin(), stats_.end());
+            data.stats.begin(), data.stats.end());
         std::sort(sorted.begin(), sorted.end(),
             [](const auto& a, const auto& b) {
                 return a.second.total_time_ns > b.second.total_time_ns;
             });
         
-        // Верхняя линия (80 символов =)
-        os << "\n" << "==============================================================" << "\n";
+        // Вывод отчета
+        os << "\n============================================================\n";
         os << "ОТЧЕТ ПРОФИЛИРОВАНИЯ\n";
-        os << "==============================================================" << "\n\n";
-
-        // Заголовок таблицы (без изменений)
-        os << std::left << std::setw(30) << "Операция"
-        << std::right << std::setw(12) << "Вызовов"
-        << std::setw(15) << "Всего (мс)"
-        << std::setw(12) << "Среднее(мкс)"
-        << std::setw(12) << "Мин(мкс)"
-        << std::setw(12) << "Макс(мкс)"
-        << std::setw(10) << "% времени" << "\n";
-
-        // Линия-разделитель
-        os << "------------------------------------------------------------" << "\n";
+        os << "============================================================\n\n";
         
         int64_t total_time_all = 0;
         for (const auto& [name, s] : sorted) {
@@ -366,22 +438,28 @@ public:
             double percent = (total_time_all > 0) ? 
                 (100.0 * s.total_time_ns / total_time_all) : 0.0;
             
-            os << std::left << std::setw(30) << name.substr(0, 29)
-               << std::right << std::setw(12) << s.call_count
-               << std::fixed << std::setprecision(3)
-               << std::setw(15) << total_ms
-               << std::setprecision(1)
-               << std::setw(12) << avg_us
-               << std::setw(12) << min_us
-               << std::setw(12) << max_us
-               << std::setw(9) << std::setprecision(1) << percent << "%\n";
+            os << "  " << name << "\n";
+            os << "- Вызовов:   " << s.call_count << "\n";
+            os << "- Всего:     " << std::fixed << std::setprecision(3) << total_ms << " мс\n";
+            os << "- Среднее:   " << std::fixed << std::setprecision(2) << avg_us << " мкс\n";
+            os << "- Мин:       " << std::fixed << std::setprecision(2) << min_us << " мкс\n";
+            os << "- Макс:      " << std::fixed << std::setprecision(2) << max_us << " мкс\n";
+            os << "- % времени: " << std::fixed << std::setprecision(1) << percent << "%\n";
+            os << "\n";
         }
         
-        os << "------------------------------------------------------------" << "\n";
-        os << "Всего операций: " << stats_.size() << "\n";
-        os << "Общее время: " << std::fixed << std::setprecision(3)
-           << total_time_all / 1'000'000.0 << " мс\n";
-        os << "==============================================================" << "\n\n";
+        os << "------------------------------------------------------------\n";
+        os << "Всего операций: " << data.stats.size() << "\n";
+        os << "Общее время:    " << std::fixed << std::setprecision(3)
+        << total_time_all / 1'000'000.0 << " мс\n";
+        
+        if (hasPendingMeasurements()) {
+            os << "\nВНИМАНИЕ: Обнаружены незакрытые замеры!\n";
+            os << "Глубина стека:  " << getCallStackDepth() << "\n";
+        }
+        
+        os << "============================================================\n\n";
+        os.flush();
     }
     
     /**
@@ -392,55 +470,40 @@ public:
      * @see setOutputFile()
      */
     static void saveReport() {
-        std::ofstream file(current_output_file_);
+        auto& data = GlobalData::instance();
+        std::ofstream file(data.output_file);
         if (file.is_open()) {
             printReport(file);
-            std::cout << "Отчет сохранен в: " << current_output_file_ << "\n";
+            file.close();
+            std::cout << "Отчет сохранен в: " << data.output_file << "\n";
         } else {
             std::cerr << "Ошибка: не удалось открыть файл " 
-                      << current_output_file_ << " для записи\n";
+                      << data.output_file << " для записи!\n";
         }
-    }
-    
-    /**
-     * @brief Получить количество зарегистрированных операций
-     * @return size_t Количество уникальных операций
-     */
-    static size_t getOperationCount() {
-        std::lock_guard<std::mutex> lock(mutex_);
-        return stats_.size();
-    }
-    
-    /**
-     * @brief Получить общее время выполнения всех операций
-     * @return int64_t Общее время в наносекундах
-     */
-    static int64_t getTotalTime() {
-        std::lock_guard<std::mutex> lock(mutex_);
-        int64_t total = 0;
-        for (const auto& [_, s] : stats_) {
-            total += s.total_time_ns;
-        }
-        return total;
     }
 };
 
-// ======================================================================
-// Удобные макросы для использования
-// ======================================================================
+}    // namespace bpe
+
+// ============================================================================
+// Удобные макросы
+// ============================================================================
+
+// Помощник для конкатенации
+#define CONCAT(a, b) CONCAT_INNER(a, b)
+#define CONCAT_INNER(a, b) a##b
 
 /**
  * @def PROFILE_BLOCK(name)
  * @brief Замерить время выполнения блока кода
  * 
  * Использование:
- * \code
+ * @code
  * {
- *     PROFILE_BLOCK("encode_batch");    // Код для замера
- * }    // Автоматическое завершение
- * \endcode
- * 
- * Создает переменную с уникальным именем, используя __LINE__.
+ *     PROFILE_BLOCK("encode_batch");
+ *     // Код для замера
+ * }
+ * @endcode
  */
 #define PROFILE_BLOCK(name) \
     bpe::SimpleProfiler::ScopedTimer CONCAT(_profiler, __LINE__)(name)
@@ -449,83 +512,97 @@ public:
  * @def PROFILE_FUNCTION()
  * @brief Замерить время выполнения функции
  * 
- * Использование:
- * \code
- * void myFunction() {
- *     PROFILE_FUNCTION();    // Использует __FUNCTION__ как имя
- *     // Код функции
- * }
- * \endcode
- * 
  * Автоматически использует имя функции как название операции.
+ * 
+ * @code
+ * void myFunction() {
+ *     PROFILE_FUNCTION();
+ *     // Код функции будет измерен
+ * }
+ * @endcode
  */
 #define PROFILE_FUNCTION() \
     bpe::SimpleProfiler::ScopedTimer _profiler(__FUNCTION__)
 
-// Помощник для конкатенации (внутренний макрос)
-#define CONCAT(a, b) CONCAT_INNER(a, b)
-#define CONCAT_INNER(a, b) a##b
-
-// Версия с условной компиляцией
+/**
+ * @def IF_PROFILING(x)
+ * @brief Условная компиляция для профилирования
+ * 
+ * Использование с флагом компиляции -DENABLE_PROFILING
+ * 
+ * @code
+ * IF_PROFILING(SimpleProfiler::setEnabled(true));
+ * @endcode
+ */
 #ifdef ENABLE_PROFILING
     #define IF_PROFILING(x) x
 #else
     #define IF_PROFILING(x)
 #endif
 
-} // namespace bpe
-
 /**
- * @example examples/profiler_example.cpp
- * Полный пример использования профайлера:
+ * @example examples/profiler_demo.cpp
+ * Демонстрация использования профайлера с вложенными вызовами
+ * 
+ * @include examples/profiler_demo.cpp
  * 
  * @code
  * #include "profiler.hpp"
  * #include <thread>
- * #include <vector>
+ * #include <chrono>
  * 
- * void slow_function() {
+ * void worker(int id) {
  *     PROFILE_FUNCTION();
- *     std::this_thread::sleep_for(std::chrono::milliseconds(10));
+ *     std::this_thread::sleep_for(std::chrono::milliseconds(10 * id));
  * }
  * 
- * void fast_function() {
+ * void nested_example() {
  *     PROFILE_FUNCTION();
- *     volatile int sum = 0;
- *     for (int i = 0; i < 10000; ++i) sum += i;
+ *     
+ *     // Вложенный замер
+ *     {
+ *         PROFILE_BLOCK("inner_operation");
+ *         std::this_thread::sleep_for(std::chrono::milliseconds(2));
+ *     }
+ *     
+ *     std::this_thread::sleep_for(std::chrono::milliseconds(3));
  * }
  * 
  * int main() {
- *     bpe::SimpleProfiler::setEnabled(true);
- *     bpe::SimpleProfiler::setOutputFile("profile_results.txt");
+ *     using namespace bpe;
  *     
- *     std::cout << "Профилирование " 
- *               << (bpe::SimpleProfiler::isEnabled() ? "включено" : "отключено") 
- *               << "\n";
+ *     // Включаем профилирование
+ *     SimpleProfiler::setEnabled(true);
+ *     SimpleProfiler::setOutputFile("demo_profile.txt");
  *     
+ *     // Тестируем разные операции
  *     for (int i = 0; i < 5; ++i) {
- *         slow_function();
+ *         PROFILE_BLOCK("fast_operation");
+ *         volatile int sum = 0;
+ *         for (int j = 0; j < 10000; ++j) sum += j;
  *     }
  *     
- *     for (int i = 0; i < 100; ++i) {
- *         fast_function();
+ *     for (int i = 0; i < 3; ++i) {
+ *         PROFILE_BLOCK("slow_operation");
+ *         std::this_thread::sleep_for(std::chrono::milliseconds(5));
  *     }
  *     
- *     {
- *         PROFILE_BLOCK("mixed_work");
- *         for (int i = 0; i < 3; ++i) {
- *             slow_function();
- *         }
- *         for (int i = 0; i < 50; ++i) {
- *             fast_function();
- *         }
+ *     // Вложенные вызовы
+ *     for (int i = 0; i < 2; ++i) {
+ *         nested_example();
  *     }
  *     
- *     std::cout << "Всего операций: " << bpe::SimpleProfiler::getOperationCount() << "\n";
- *     std::cout << "Общее время: " << bpe::SimpleProfiler::getTotalTime() / 1e6 << " мс\n\n";
+ *     for (int i = 1; i <= 3; ++i) {
+ *         worker(i);
+ *     }
  *     
- *     bpe::SimpleProfiler::printReport();
- *     bpe::SimpleProfiler::saveReport();
+ *     // Выводим результаты
+ *     std::cout << "\nСтатистика:\n";
+ *     std::cout << "- Операций:    " << SimpleProfiler::getOperationCount() << "\n";
+ *     std::cout << "- Общее время: " << SimpleProfiler::getTotalTime() / 1e6 << " мс\n";
+ *     
+ *     SimpleProfiler::printReport();
+ *     SimpleProfiler::saveReport();
  *     
  *     return 0;
  * }

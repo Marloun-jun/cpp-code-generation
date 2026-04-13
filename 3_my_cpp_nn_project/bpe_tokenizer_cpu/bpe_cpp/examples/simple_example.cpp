@@ -10,24 +10,28 @@
  *          в максимально простой и понятной форме. Идеально подходит для
  *          первого знакомства с библиотекой.
  * 
- *          Основные демонстрируемые концепции:
- *          - Загрузка обученной модели из файлов
- *          - Кодирование (encode)      - преобразование текста в токены
- *          - Декодирование (decode)    - восстановление текста из токенов
- *          - Проверка Roundtrip        - код -> токены -> код
- *          - Статистика токенизации
+ *          **Демонстрируемые концепции:**
+ *          ┌────────────────────┬────────────────────────────────────────┐
+ *          │ Загрузка модели    │ Из файлов vocab.json + merges.txt      │
+ *          │ Кодирование        │ Текст -> последовательность токенов    │
+ *          │ Декодирование      │ Токены -> восстановленный текст        │
+ *          │ Roundtrip проверка │ Код -> токены -> код (должен совпасть) │
+ *          │ Статистика         │ Размер словаря, количество токенов     │
+ *          └────────────────────┴────────────────────────────────────────┘
  * 
- *          Поддерживаемые токенизаторы:
- *          - BPETokenizer (базовая реализация)
- *          - FastTokenizer (оптимизированная версия с кэшированием)
+ *          **Режимы работы:**
+ *          - Базовый - Тестирует один пример (функция факториала)
+ *          --all     - Тестирует все 8 примеров разной сложности
+ *          --fast    - Использует оптимизированную версию FastTokenizer
+ *          --verbose - Показывает детальную статистику по токенам
  * 
  * @usage ./simple_example [options]
  * 
  * @options
- *   --verbose, -v    Подробный вывод (показывает все примеры полностью)
- *   --all, -a        Тестировать все примеры (по умолчанию только один)
- *   --fast, -f       Использовать FastTokenizer вместо базового
- *   --help, -h       Показать эту справку
+ *   --verbose, -v - Подробный вывод (показывает все примеры полностью)
+ *   --all, -a     - Тестировать все примеры (по умолчанию только один)
+ *   --fast, -f    - Использовать FastTokenizer вместо базового
+ *   --help, -h    - Показать справку
  * 
  * @example
  *   # Запуск с базовым токенизатором (рекомендуется для начала)
@@ -40,44 +44,42 @@
  *   ./simple_example --all
  * 
  * @note Для работы требуются файлы модели:
- *       - models/bpe_8000/cpp_vocab.json
- *       - models/bpe_8000/cpp_merges.txt
+ *       - models/bpe_10000/cpp_vocab.json
+ *       - models/bpe_10000/cpp_merges.txt
  *       (можно получить через python tools/convert_vocab.py)
  * 
- * @see BPETokenizer
- * @see FastTokenizer
- * @see utils::Timer
+ * @see BPETokenizer, FastTokenizer, utils::Timer
  */
 
 #include "bpe_tokenizer.hpp"
 #include "fast_tokenizer.hpp"
 #include "utils.hpp"
 
-#include <iostream>
-#include <iomanip>
-#include <fstream>
-#include <vector>
-#include <string>
-#include <map>
-#include <set>
-#include <memory>
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <set>
+#include <string>
+#include <vector>
 
 namespace fs = std::filesystem;
 using namespace bpe;
 
-// ======================================================================
-// Константы
-// ======================================================================
+// ============================================================================
+// Константы и настройки
+// ============================================================================
 
 namespace {
-    constexpr int WIDTH = 60;
-    constexpr size_t DEFAULT_VOCAB_SIZE = 8000;
-    constexpr size_t DEFAULT_CACHE_SIZE = 10000;
+    constexpr int WIDTH = 60;                       ///< Ширина таблиц для вывода
+    constexpr size_t DEFAULT_VOCAB_SIZE = 10000;    ///< Размер словаря по умолчанию
+    constexpr size_t DEFAULT_CACHE_SIZE = 10000;    ///< Размер кэша для FastTokenizer
     
-    // Цвета для вывода (опционально)
+    // ANSI цвета для красивого вывода
     const std::string RESET = "\033[0m";
     const std::string GREEN = "\033[32m";
     const std::string YELLOW = "\033[33m";
@@ -86,12 +88,22 @@ namespace {
     const std::string BOLD = "\033[1m";
 }
 
-// ======================================================================
+// ============================================================================
 // Вспомогательные функции для вывода
-// ======================================================================
+// ============================================================================
 
 /**
- * @brief Выводит заголовок раздела
+ * @brief Выводит заголовок раздела с красивым оформлением
+ * 
+ * @param title Заголовок для вывода
+ * 
+ * @code
+ * print_header("ЗАГРУЗКА МОДЕЛИ");
+ * // Вывод:
+ * // ┌────────────────────────────────────────────────────────────┐
+ * // │                      ЗАГРУЗКА МОДЕЛИ                       │
+ * // └────────────────────────────────────────────────────────────┘
+ * @endcode
  */
 void print_header(const std::string& title) {
     // Верхняя граница
@@ -121,6 +133,11 @@ void print_header(const std::string& title) {
  * 
  * @param str Исходная строка
  * @return std::string Строка с экранированными символами
+ * 
+ * @code
+ * std::string s = "Hello\nWorld\t!";
+ * std::cout << escape_string(s);    // Вывод: Hello\nWorld\t!
+ * @endcode
  */
 std::string escape_string(const std::string& str) {
     std::string result;
@@ -148,12 +165,17 @@ std::string escape_string(const std::string& str) {
     return result;
 }
 
-// ======================================================================
+// ============================================================================
 // Класс для поиска файлов модели
-// ======================================================================
+// ============================================================================
 
 /**
  * @brief Класс для поиска файлов модели по различным путям
+ * 
+ * Пытается найти файлы vocab.json и merges.txt в различных расположениях:
+ * - ../models/bpe_10000/               - Из папки bpe_cpp
+ * - models/bpe_10000/                  - Текущая директория
+ * - ../../bpe_python/models/bpe_10000/ - Из корня проекта
  */
 class ModelFinder {
 private:
@@ -161,45 +183,50 @@ private:
     
 public:
     ModelFinder() {
-        // ===== C++ модели (приоритет 1) =====
+        // C++ модели из папки проекта
         candidates_.emplace_back("../models/bpe_8000/cpp_vocab.json", 
-                                 "../models/bpe_8000/cpp_merges.txt");
+                                "../models/bpe_8000/cpp_merges.txt");
         candidates_.emplace_back("../models/bpe_10000/cpp_vocab.json", 
-                                 "../models/bpe_10000/cpp_merges.txt");
+                                "../models/bpe_10000/cpp_merges.txt");
         candidates_.emplace_back("../models/bpe_12000/cpp_vocab.json", 
-                                 "../models/bpe_12000/cpp_merges.txt");
+                                "../models/bpe_12000/cpp_merges.txt");
         
-        // ===== Если запуск из той же директории =====
+        // C++ модели в текущей директории
         candidates_.emplace_back("models/bpe_8000/cpp_vocab.json", 
-                                 "models/bpe_8000/cpp_merges.txt");
+                                "models/bpe_8000/cpp_merges.txt");
         candidates_.emplace_back("models/bpe_10000/cpp_vocab.json", 
-                                 "models/bpe_10000/cpp_merges.txt");
+                                "models/bpe_10000/cpp_merges.txt");
         candidates_.emplace_back("models/bpe_12000/cpp_vocab.json", 
-                                 "models/bpe_12000/cpp_merges.txt");
+                                "models/bpe_12000/cpp_merges.txt");
         
-        // ===== Python модели (приоритет 2) =====
+        // Python модели из корня проекта
         candidates_.emplace_back("../../bpe_python/models/bpe_8000/vocab.json", 
-                                 "../../bpe_python/models/bpe_8000/merges.txt");
+                                "../../bpe_python/models/bpe_8000/merges.txt");
         candidates_.emplace_back("../../bpe_python/models/bpe_10000/vocab.json", 
-                                 "../../bpe_python/models/bpe_10000/merges.txt");
+                                "../../bpe_python/models/bpe_10000/merges.txt");
         candidates_.emplace_back("../../bpe_python/models/bpe_12000/vocab.json", 
-                                 "../../bpe_python/models/bpe_12000/merges.txt");
+                                "../../bpe_python/models/bpe_12000/merges.txt");
     }
     
     /**
      * @brief Найти файлы модели для BPETokenizer
+     * 
+     * @param tokenizer Ссылка на токенизатор для загрузки
+     * @param vocab_path [out] Путь к найденному vocab.json
+     * @param merges_path [out] Путь к найденному merges.txt
+     * @return true если модель найдена и загружена
      */
     bool find_for_bpe(BPETokenizer& tokenizer, std::string& vocab_path, std::string& merges_path) {
         std::cout << "Поиск файлов модели для BPETokenizer..." << std::endl;
         
         for (const auto& [vpath, mpath] : candidates_) {
-            std::cout << "  Проверка: " << vpath << std::endl;
+            std::cout << "Проверка: " << vpath << std::endl;
             
             if (fs::exists(vpath) && fs::exists(mpath)) {
                 vocab_path = vpath;
                 merges_path = mpath;
                 
-                std::cout << GREEN << "  ✓ Найдены: " << vpath << RESET << std::endl;
+                std::cout << GREEN << "Найдены: " << vpath << RESET << std::endl;
                 
                 tokenizer.set_byte_level(true);
                 tokenizer.set_unknown_token("<UNK>");
@@ -210,24 +237,29 @@ public:
             }
         }
         
-        std::cout << RED << "  ✗ Файлы не найдены!" << RESET << std::endl;
+        std::cout << RED << "Файлы не найдены!" << RESET << std::endl;
         return false;
     }
     
     /**
      * @brief Найти файлы модели для FastTokenizer
+     * 
+     * @param tokenizer Ссылка на токенизатор для загрузки
+     * @param vocab_path [out] Путь к найденному vocab.json
+     * @param merges_path [out] Путь к найденному merges.txt
+     * @return true если модель найдена и загружена
      */
     bool find_for_fast(FastBPETokenizer& tokenizer, std::string& vocab_path, std::string& merges_path) {
         std::cout << "Поиск файлов модели для FastTokenizer..." << std::endl;
         
         for (const auto& [vpath, mpath] : candidates_) {
-            std::cout << "  Проверка: " << vpath << std::endl;
+            std::cout << "Проверка: " << vpath << std::endl;
             
             if (fs::exists(vpath) && fs::exists(mpath)) {
                 vocab_path = vpath;
                 merges_path = mpath;
                 
-                std::cout << GREEN << "  ✓ Найдены: " << vpath << RESET << std::endl;
+                std::cout << GREEN << "Найдены: " << vpath << RESET << std::endl;
                 
                 if (tokenizer.load(vpath, mpath)) {
                     return true;
@@ -235,41 +267,52 @@ public:
             }
         }
         
-        std::cout << RED << "  ✗ Файлы не найдены!" << RESET << std::endl;
+        std::cout << RED << "Файлы не найдены!" << RESET << std::endl;
         return false;
     }
 };
 
-// ======================================================================
+// ============================================================================
 // Тестовые данные
-// ======================================================================
+// ============================================================================
 
 /**
  * @brief Возвращает набор тестовых примеров C++ кода разной сложности
  * 
  * @return std::vector<std::pair<std::string, std::string>> 
  *         Вектор пар (описание, код) для тестирования
+ * 
+ * Содержит 8 примеров разной сложности:
+ * 1. Простое выражение
+ * 2. Шаблон функции
+ * 3. Класс
+ * 4. Include директива
+ * 5. Функция факториала
+ * 6. Сложный шаблон Pair
+ * 7. Лямбда и алгоритмы
+ * 8. Сложный класс с методами
  */
 std::vector<std::pair<std::string, std::string>> get_test_examples() {
     return {
-        {"Простое выражение", "int x = 42;"},
-        {"Русский комментарий", "// это комментарий на русском языке"},
-        {"Смешанный текст", "std::cout << \"Привет, мир!\" << std::endl;"},
-        {"Шаблон функции", "template<typename T> T max(T a, T b) { return a > b ? a : b; }"},
-        {"Класс", "class MyClass { public: MyClass() = default; };"},
-        {"Include директива", "#include <iostream>"},
-        {"Эмодзи", "// 🔥 C++ code with emoji 😊"},
+        {"1. Простое выражение", "int x = 42;"},
         
-        // Функция факториала - без отступов в начале строк
-        {"Функция факториала",
-         "// Функция для вычисления факториала\n"
+        {"2. Шаблон функции", 
+         "template<typename T> T max(T a, T b) { return a > b ? a : b; }"},
+        
+        {"3. Класс", 
+         "class MyClass { public: MyClass() = default; };"},
+        
+        {"4. Include директива", 
+         "#include <iostream>"},
+        
+        {"5. Функция факториала",
+         "// Function to calculate factorial\n"
          "int factorial(int n) {\n"
          "    if (n <= 1) return 1;\n"
          "    return n * factorial(n - 1);\n"
          "}"},
         
-        // Сложный шаблон - без отступов в начале строк
-        {"Сложный шаблон",
+        {"6. Сложный шаблон Pair",
          "template<typename T, typename U>\n"
          "struct Pair {\n"
          "    T first;\n"
@@ -282,21 +325,50 @@ std::vector<std::pair<std::string, std::string>> get_test_examples() {
          "    }\n"
          "};"},
         
-        // Лямбда и алгоритмы - без отступов в начале строк
-        {"Лямбда и алгоритмы",
+        {"7. Лямбда и алгоритмы",
          "std::vector<int> vec = {1, 2, 3, 4, 5};\n"
          "std::transform(vec.begin(), vec.end(), vec.begin(),\n"
          "              [](int x) { return x * x; });\n"
          "auto it = std::find_if(vec.begin(), vec.end(),\n"
-         "                       [](int x) { return x > 10; });"}
+         "                       [](int x) { return x > 10; });"},
+        
+        {"8. Сложный класс с методами",
+         "class Calculator {\n"
+         "private:\n"
+         "    int value;\n"
+         "public:\n"
+         "    Calculator() : value(0) {}\n"
+         "    explicit Calculator(int v) : value(v) {}\n"
+         "    \n"
+         "    int get() const { return value; }\n"
+         "    void set(int v) { value = v; }\n"
+         "    \n"
+         "    Calculator operator+(const Calculator& other) const {\n"
+         "        return Calculator(value + other.value);\n"
+         "    }\n"
+         "    \n"
+         "    friend std::ostream& operator<<(std::ostream& os, const Calculator& c) {\n"
+         "        return os << \"Calc(\" << c.value << \")\";\n"
+         "    }\n"
+         "};"}
     };
 }
 
+// ============================================================================
+// Функции для вывода статистики по токенам
+// ============================================================================
+
 /**
- * @brief Вывести статистику по токенам для BPETokenizer
+ * @brief Вывести детальную статистику по токенам для BPETokenizer
  * 
  * @param tokens Вектор токенов
  * @param vocab Словарь для преобразования ID в строки
+ * 
+ * Выводит:
+ * - Общее количество токенов
+ * - Количество уникальных токенов
+ * - Среднюю повторяемость
+ * - Распределение токенов по длинам
  */
 void print_bpe_token_stats(const std::vector<token_id_t>& tokens, const Vocabulary& vocab) {
     std::map<size_t, int> length_distribution;
@@ -309,40 +381,45 @@ void print_bpe_token_stats(const std::vector<token_id_t>& tokens, const Vocabula
     }
     
     std::cout << "\n" << CYAN << "Детальная статистика токенов:" << RESET << "\n";
-    std::cout << "  • всего токенов: " << tokens.size() << "\n";
-    std::cout << "  • уникальных токенов: " << unique_tokens.size() << "\n";
-    std::cout << "  • повторяемость: " << std::fixed << std::setprecision(2)
+    std::cout << "- Всего токенов:      " << tokens.size() << "\n";
+    std::cout << "- Уникальных токенов: " << unique_tokens.size() << "\n";
+    std::cout << "- Повторяемость:      " << std::fixed << std::setprecision(2)
               << (static_cast<double>(tokens.size()) / unique_tokens.size()) << " раз/токен\n";
     
     // Показываем распределение длин
-    std::cout << "  • распределение по длинам:\n";
+    std::cout << "- Распределение по длинам:\n";
     for (const auto& [len, count] : length_distribution) {
-        std::cout << "      " << std::setw(2) << len << " симв.: " 
+        std::cout << "    " << std::setw(2) << len << " симв.: " 
                   << std::setw(3) << count << " токенов\n";
     }
 }
 
 /**
- * @brief Вывести статистику по токенам для FastTokenizer
+ * @brief Вывести детальную статистику по токенам для FastTokenizer
  * 
  * @param tokens Вектор токенов
+ * 
+ * FastTokenizer не хранит строки токенов, поэтому показывает только
+ * базовую статистику.
  */
 void print_fast_token_stats(const std::vector<uint32_t>& tokens) {
     std::set<uint32_t> unique_tokens(tokens.begin(), tokens.end());
     
     std::cout << "\n" << CYAN << "Детальная статистика токенов:" << RESET << "\n";
-    std::cout << "  • всего токенов: " << tokens.size() << "\n";
-    std::cout << "  • уникальных токенов: " << unique_tokens.size() << "\n";
-    std::cout << "  • повторяемость: " << std::fixed << std::setprecision(2)
+    std::cout << "- Всего токенов:      " << tokens.size() << "\n";
+    std::cout << "- Уникальных токенов: " << unique_tokens.size() << "\n";
+    std::cout << "- Повторяемость:      " << std::fixed << std::setprecision(2)
               << (static_cast<double>(tokens.size()) / unique_tokens.size()) << " раз/токен\n";
 }
 
-// ======================================================================
+// ============================================================================
 // Классы-обертки для унифицированного интерфейса
-// ======================================================================
+// ============================================================================
 
 /**
  * @brief Обертка для BPETokenizer с единообразным интерфейсом
+ * 
+ * Позволяет использовать BPETokenizer и FastTokenizer в одном шаблоне run_tests
  */
 class BPETokenizerWrapper {
 public:
@@ -403,13 +480,15 @@ public:
     BPETokenizer& get_tokenizer() { return tokenizer; }
     
     /**
-     * @brief Вывести статистику (для совместимости)
+     * @brief Вывести статистику (заглушка для совместимости)
      */
     void print_stats() const {}
 };
 
 /**
  * @brief Обертка для FastTokenizer с дополнительной статистикой
+ * 
+ * Добавляет сбор статистики кэширования к базовому функционалу
  */
 class FastTokenizerWrapper {
 public:
@@ -471,9 +550,9 @@ public:
      * @brief Вывести статистику кэширования
      */
     void print_stats() const {
-        std::cout << "  • cache hits: " << stats.cache_hits << "\n";
-        std::cout << "  • cache misses: " << stats.cache_misses << "\n";
-        std::cout << "  • hit rate: " << std::fixed << std::setprecision(1)
+        std::cout << "- cache hits:   " << stats.cache_hits << "\n";
+        std::cout << "- cache misses: " << stats.cache_misses << "\n";
+        std::cout << "- hit rate:     " << std::fixed << std::setprecision(1)
                   << (stats.cache_hit_rate() * 100) << "%\n";
     }
     
@@ -483,17 +562,23 @@ public:
     FastBPETokenizer& get_tokenizer() { return tokenizer; }
 };
 
-// ======================================================================
+// ============================================================================
 // Функция для тестирования одного токенизатора
-// ======================================================================
+// ============================================================================
 
 /**
  * @brief Тестирование токенизатора на наборе примеров
  * 
- * @tparam TokenizerWrapper Тип обертки токенизатора
+ * @tparam Wrapper Тип обертки токенизатора
  * @param wrapper Указатель на обертку токенизатора
  * @param test_examples Вектор тестовых примеров
- * @param verbose Подробный вывод
+ * @param verbose Подробный вывод (показывать полный код)
+ * 
+ * Для каждого примера:
+ * 1. Кодирует текст в токены (с измерением времени)
+ * 2. Декодирует обратно (с измерением времени)
+ * 3. Проверяет roundtrip (декодированный == исходный)
+ * 4. Выводит статистику
  */
 template<typename Wrapper>
 void run_tests(Wrapper* wrapper, 
@@ -505,7 +590,7 @@ void run_tests(Wrapper* wrapper,
     for (size_t idx = 0; idx < test_examples.size(); ++idx) {
         const auto& [desc, code] = test_examples[idx];
         
-        // Верхняя линия
+        // Разделитель
         std::cout << "\n";
         for (int i = 0; i < WIDTH; ++i) std::cout << '-';
         std::cout << "\n";
@@ -513,7 +598,6 @@ void run_tests(Wrapper* wrapper,
         std::cout << BOLD << "Пример " << (idx + 1) << "/" << test_examples.size() 
                 << ": " << desc << RESET << "\n";
 
-        // Нижняя линия
         for (int i = 0; i < WIDTH; ++i) std::cout << '-';
         std::cout << "\n";
 
@@ -543,14 +627,14 @@ void run_tests(Wrapper* wrapper,
         
         // Вывод результатов
         std::cout << "\nРезультаты:\n";
-        std::cout << "  • токенов: " << tokens.size() << "\n";
-        std::cout << "  • время encode: " << std::fixed << std::setprecision(3) 
+        std::cout << "- Токенов:         " << tokens.size() << "\n";
+        std::cout << "- Время encode:    " << std::fixed << std::setprecision(3) 
                   << encode_time * 1000 << " мс\n";
-        std::cout << "  • время decode: " << decode_time * 1000 << " мс\n";
-        std::cout << "  • скорость encode: " 
+        std::cout << "- Время decode:    " << decode_time * 1000 << " мс\n";
+        std::cout << "- Скорость encode: " 
                   << std::fixed << std::setprecision(2)
                   << (code.size() / 1024.0 / encode_time) << " КБ/с\n";
-        std::cout << "  • Roundtrip: " << (success ? GREEN + "✓ УСПЕХ" : RED + "✗ НЕУДАЧА") 
+        std::cout << "- Roundtrip:       " << (success ? GREEN + "УСПЕХ" : RED + "НЕУДАЧА") 
                   << RESET << "\n";
         
         // Детальная статистика если нужно
@@ -584,10 +668,10 @@ void run_tests(Wrapper* wrapper,
     for (int i = 0; i < WIDTH; ++i) std::cout << '=';
     std::cout << "\n";
     
-    std::cout << "  • токенизатор: " << wrapper->name() << "\n";
-    std::cout << "  • размер словаря: " << wrapper->vocab_size() << " токенов\n";
-    std::cout << "  • протестировано примеров: " << test_examples.size() << "\n";
-    std::cout << "  • успешных Roundtrip: " << success_count << "/" 
+    std::cout << "- Токенизатор:             " << wrapper->name() << "\n";
+    std::cout << "- Размер словаря:          " << wrapper->vocab_size() << " токенов\n";
+    std::cout << "- Протестировано примеров: " << test_examples.size() << "\n";
+    std::cout << "- Успешных Roundtrip:      " << success_count << "/" 
               << test_examples.size() << " ("
               << std::fixed << std::setprecision(1)
               << (100.0 * success_count / test_examples.size()) << "%)\n";
@@ -595,9 +679,9 @@ void run_tests(Wrapper* wrapper,
     wrapper->print_stats();
 }
 
-// ======================================================================
+// ============================================================================
 // Основная функция
-// ======================================================================
+// ============================================================================
 
 /**
  * @brief Точка входа в программу
@@ -607,16 +691,16 @@ void run_tests(Wrapper* wrapper,
  * @return int 0 при успехе, 1 при ошибке
  */
 int main(int argc, char* argv[]) {
-    // ======================================================================
+    // ============================================================================
     // Приветствие
-    // ======================================================================
+    // ============================================================================
     
     print_header("BPE TOKENIZER - ПРОСТОЙ ПРИМЕР");
     std::cout << "Демонстрация базовых операций кодирования/декодирования\n\n";
     
-    // ======================================================================
+    // ============================================================================
     // Парсинг аргументов командной строки
-    // ======================================================================
+    // ============================================================================
     
     bool verbose = false;
     bool test_all = false;
@@ -632,18 +716,18 @@ int main(int argc, char* argv[]) {
             use_fast = true;
         } else if (arg == "--help" || arg == "-h") {
             std::cout << "Использование: " << argv[0] << " [options]\n";
-            std::cout << "  --verbose, -v    Подробный вывод\n";
-            std::cout << "  --all, -a        Тестировать все примеры\n";
-            std::cout << "  --fast, -f       Использовать FastTokenizer\n";
-            std::cout << "  --help, -h       Показать справку\n";
+            std::cout << "--verbose, -v - Подробный вывод\n";
+            std::cout << "--all, -a     - Тестировать все примеры\n";
+            std::cout << "--fast, -f    - Использовать FastTokenizer\n";
+            std::cout << "--help, -h    - Показать справку\n";
             return 0;
         }
     }
     
     try {
-        // ======================================================================
+        // ============================================================================
         // 1. ВЫБОР ТЕКСТА ДЛЯ ТЕСТИРОВАНИЯ
-        // ======================================================================
+        // ============================================================================
         
         std::vector<std::pair<std::string, std::string>> test_examples;
         
@@ -654,7 +738,7 @@ int main(int argc, char* argv[]) {
         } else {
             test_examples = {
                 {"Функция факториала (C++)", R"(
-// Функция для вычисления факториала
+// Function to calculate factorial
 int factorial(int n) {
     if (n <= 1) return 1;
     return n * factorial(n - 1);
@@ -665,11 +749,12 @@ int factorial(int n) {
                       << "(используйте --all для всех)\n";
         }
         
-        // ======================================================================
+        // ============================================================================
         // 2. СОЗДАНИЕ И ЗАГРУЗКА ТОКЕНИЗАТОРА
-        // ======================================================================
+        // ============================================================================
         
         ModelFinder finder;
+         
         std::string vocab_path, merges_path;
         bool loaded = false;
         
@@ -682,10 +767,10 @@ int factorial(int n) {
             loaded = finder.find_for_fast(fast->get_tokenizer(), vocab_path, merges_path);
             
             if (loaded) {
-                std::cout << "\n" << GREEN << "✓ Модель загружена успешно!" << RESET << "\n";
-                std::cout << "  • словарь: " << vocab_path << "\n";
-                std::cout << "  • слияния: " << merges_path << "\n";
-                std::cout << "  • размер словаря: " << fast->vocab_size() << " токенов\n";
+                std::cout << "\n" << GREEN << "Модель загружена успешно!" << RESET << "\n";
+                std::cout << "- Словарь:        " << vocab_path << "\n";
+                std::cout << "- Слияния:        " << merges_path << "\n";
+                std::cout << "- Размер словаря: " << fast->vocab_size() << " токенов\n";
                 
                 // Запуск тестов
                 run_tests(fast.get(), test_examples, verbose);
@@ -700,45 +785,45 @@ int factorial(int n) {
             loaded = finder.find_for_bpe(bpe->get_tokenizer(), vocab_path, merges_path);
             
             if (loaded) {
-                std::cout << "\n" << GREEN << "✓ Модель загружена успешно!" << RESET << "\n";
-                std::cout << "  • словарь: " << vocab_path << "\n";
-                std::cout << "  • слияния: " << merges_path << "\n";
-                std::cout << "  • размер словаря: " << bpe->vocab_size() << " токенов\n";
-                std::cout << "  • правил слияния: " << bpe->get_tokenizer().merges_count() << "\n";
+                std::cout << "\n" << GREEN << "Модель загружена успешно!" << RESET << "\n";
+                std::cout << "- Словарь:        " << vocab_path << "\n";
+                std::cout << "- Слияния:        " << merges_path << "\n";
+                std::cout << "- Размер словаря: " << bpe->vocab_size() << " токенов\n";
+                std::cout << "- Правил слияния: " << bpe->get_tokenizer().merges_count() << "\n";
                 
                 // Запуск тестов
                 run_tests(bpe.get(), test_examples, verbose);
             }
         }
         
-        // ======================================================================
+        // ============================================================================
         // 3. ОБРАБОТКА ОШИБКИ ЗАГРУЗКИ
-        // ======================================================================
+        // ============================================================================
         
         if (!loaded) {
-            std::cerr << RED << "\n❌ НЕ УДАЛОСЬ ЗАГРУЗИТЬ МОДЕЛЬ!" << RESET << "\n";
+            std::cerr << RED << "\nНЕ УДАЛОСЬ ЗАГРУЗИТЬ МОДЕЛЬ!" << RESET << "\n";
             std::cerr << "\nУбедитесь, что файлы существуют в одном из путей:\n";
-            std::cerr << "  • ../models/bpe_8000/cpp_vocab.json\n";
-            std::cerr << "  • models/bpe_8000/cpp_vocab.json\n";
-            std::cerr << "  • ../../bpe_python/models/bpe_8000/vocab.json\n";
+            std::cerr << "../models/bpe_10000/cpp_vocab.json\n";
+            std::cerr << "models/bpe_10000/cpp_vocab.json\n";
+            std::cerr << "../../bpe_python/models/bpe_10000/vocab.json\n";
             std::cerr << "\nЧтобы конвертировать Python модели в C++ формат:\n";
-            std::cerr << YELLOW << "  cd ../tools/ && python convert_vocab.py --model-size 8000" 
+            std::cerr << YELLOW << "cd ../tools/ && python convert_vocab.py --model-size 10000" 
                       << RESET << std::endl;
             return 1;
         }
         
-        // ======================================================================
+        // ============================================================================
         // 4. УСПЕШНОЕ ЗАВЕРШЕНИЕ
-        // ======================================================================
+        // ============================================================================
         
-        std::cout << "\n" << GREEN << BOLD << "✓ Пример успешно завершен!" << RESET << "\n";
+        std::cout << "\n" << GREEN << BOLD << "Пример успешно завершен!" << RESET << "\n";
         std::cout << "Используйте --help для просмотра дополнительных опций.\n";
         
     } catch (const std::exception& e) {
-        std::cerr << RED << "\n❌ Ошибка выполнения: " << e.what() << RESET << std::endl;
+        std::cerr << RED << "\nОшибка выполнения: " << e.what() << RESET << std::endl;
         return 1;
     } catch (...) {
-        std::cerr << RED << "\n❌ Неизвестная ошибка" << RESET << std::endl;
+        std::cerr << RED << "\nНеизвестная ошибка!" << RESET << std::endl;
         return 1;
     }
     

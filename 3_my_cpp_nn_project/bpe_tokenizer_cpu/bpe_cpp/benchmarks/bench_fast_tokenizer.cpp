@@ -45,13 +45,16 @@
 #include <unordered_map>
 #include <memory>
 #include <atomic>
+#include <array>
+#include <algorithm>
+#include <numeric>
 
 #ifdef _WIN32
 #include <windows.h>
 #include <psapi.h>
-#elif __APPLE__
+#elif defined(__APPLE__)
 #include <mach/mach.h>
-#elif __linux__
+#elif defined(__linux__)
 #include <unistd.h>
 #endif
 
@@ -62,9 +65,9 @@ using namespace bpe;
 // ======================================================================
 
 namespace {
-    // Размеры для бенчмарков
-    constexpr size_t MIN_TEXT_SIZE = 1 << 10;    // 1 KB
-    constexpr size_t MAX_TEXT_SIZE = 1 << 18;    // 256 KB
+    /** Размеры для бенчмарков */
+    constexpr size_t MIN_TEXT_SIZE = 1 << 10;    // 1 КБ
+    constexpr size_t MAX_TEXT_SIZE = 1 << 18;    // 256 КБ
     constexpr size_t MIN_TOKENS = 1 << 8;        // 256 токенов
     constexpr size_t MAX_TOKENS = 1 << 16;       // 65536 токенов
     constexpr size_t MIN_BATCH_SIZE = 1;
@@ -73,23 +76,37 @@ namespace {
     constexpr size_t MAX_CACHE_SIZE = 10000;
     constexpr size_t MAX_THREADS = 8;
     
-    // Размеры словарей из проекта
+    /** Размеры словарей из проекта */
     constexpr std::array<size_t, 3> VOCAB_SIZES = {8000, 10000, 12000};
-    constexpr size_t DEFAULT_VOCAB_SIZE = 8000;
+    constexpr size_t DEFAULT_VOCAB_SIZE = 10000;
     
-    // Параметры кэша
+    /** Параметры кэша */
     constexpr size_t DEFAULT_CACHE_SIZE = 10000;
     constexpr bool DEFAULT_BYTE_LEVEL = true;
     constexpr bool DEFAULT_ENABLE_CACHE = true;
     
-    // Размер для сравнения (100 KB)
+    /** Размер для сравнения (100 КБ) */
     constexpr size_t COMPARISON_TEXT_SIZE = 100000;
     
-    // Количество текстов для тестов кэша
+    /** Количество текстов для тестов кэша */
     constexpr size_t CACHE_TEST_TEXTS = 1000;
     
-    // Задержка для стабилизации (мс)
+    /** Количество итераций для теста памяти */
+    constexpr int MEMORY_ITERATIONS = 100;
+    
+    /** Количество итераций для decode бенчмарков */
+    constexpr int DECODE_ITERATIONS = 1000;
+    
+    /** Задержка для стабилизации (мс) */
     constexpr auto STABILIZATION_DELAY = std::chrono::milliseconds(10);
+    
+    /** Пути для поиска тестового корпуса */
+    static constexpr std::array<const char*, 4> CORPUS_SEARCH_PATHS = {
+        "../benchmarks/bench_data/sample_code.txt",
+        "benchmarks/bench_data/sample_code.txt",
+        "./bench_data/sample_code.txt",
+        "../../benchmarks/bench_data/sample_code.txt"
+    };
 }
 
 // ======================================================================
@@ -98,6 +115,9 @@ namespace {
 
 /**
  * @brief Класс для кэширования тестового корпуса
+ * 
+ * Обеспечивает единый доступ к тестовым данным с кэшированием
+ * и автоматическим поиском файлов.
  */
 class TestCorpus {
 private:
@@ -108,6 +128,9 @@ public:
     /**
      * @brief Загружает тестовый корпус C++ кода из файла или возвращает встроенный пример
      * 
+     * Функция кэширует результат после первого вызова.
+     * При ошибках не выводит сообщения, просто возвращает встроенный пример.
+     * 
      * @return const std::string& Ссылка на строку с тестовым кодом
      */
     const std::string& get() {
@@ -116,29 +139,18 @@ public:
         }
         
         // Пробуем разные пути к файлу
-        std::vector<std::string> paths = {
-            "../benchmarks/bench_data/sample_code.txt",
-            "benchmarks/bench_data/sample_code.txt",
-            "./bench_data/sample_code.txt",
-            "../../benchmarks/bench_data/sample_code.txt"
-        };
-        
-        for (const auto& path : paths) {
+        for (const auto& path : CORPUS_SEARCH_PATHS) {
             std::ifstream file(path);
             if (file.is_open()) {
                 std::stringstream buffer;
                 buffer << file.rdbuf();
                 cached_corpus_ = buffer.str();
                 loaded_ = true;
-                std::cout << "Загружен тестовый корпус из: " << path 
-                          << " (" << cached_corpus_.size() << " байт)" << std::endl;
                 return cached_corpus_;
             }
         }
         
         // Если файл не найден, используем встроенный пример
-        std::cout << "Файл sample_code.txt не найден, использую встроенный пример" << std::endl;
-        
         cached_corpus_ = R"(
 #include <iostream>
 #include <vector>
@@ -178,7 +190,7 @@ int main() {
     return 0;
 }
 
-} // namespace example
+}    // namespace example
 )";
         
         loaded_ = true;
@@ -198,11 +210,14 @@ int main() {
 // Глобальные объекты
 // ======================================================================
 
-// Глобальный экземпляр тестового корпуса для использования в бенчмарках
+/** Глобальный экземпляр тестового корпуса для использования в бенчмарках */
 TestCorpus g_testCorpus;
 
 /**
  * @brief Класс для генерации тестовых корпусов с контролем разнообразия
+ * 
+ * Позволяет создавать наборы текстов с заданным уровнем разнообразия
+ * для тестирования кэширования.
  */
 class CorpusGenerator {
 private:
@@ -240,7 +255,7 @@ private:
         result.reserve(count);
         
         std::uniform_real_distribution<> dist(0.0, 1.0);
-        std::uniform_int_distribution<> temp_idx(0, templates_.size() - 1);
+        std::uniform_int_distribution<> temp_idx(0, static_cast<int>(templates_.size() - 1));
         
         for (size_t i = 0; i < count; ++i) {
             std::string text;
@@ -261,13 +276,20 @@ private:
 
 /**
  * @brief Класс для поиска и кэширования путей к файлам моделей
+ * 
+ * Автоматически ищет модели в стандартных расположениях и кэширует результаты.
+ * При ошибках возвращает пустой результат, не выводя сообщения.
  */
 class ModelPathFinder {
-private:
+public:
     struct PathCache {
         std::string vocab;
         std::string merges;
         
+        /**
+         * @brief Проверяет существование обоих файлов
+         * @return true если оба файла существуют
+         */
         bool exists() const {
             return !vocab.empty() && !merges.empty() &&
                    std::filesystem::exists(vocab) && 
@@ -275,7 +297,20 @@ private:
         }
     };
     
+private:
     std::unordered_map<size_t, PathCache> cache_;
+    
+    /** Возможные пути для поиска моделей */
+    static constexpr std::array<const char*, 2> MODEL_LOCATIONS = {
+        "../models/bpe_",
+        "../../bpe_python/models/bpe_"
+    };
+    
+    /** Имена файлов для разных версий */
+    static constexpr std::array<const char*, 2> VOCAB_FILENAMES = {
+        "/cpp_vocab.json",
+        "/vocab.json"
+    };
     
 public:
     /**
@@ -292,38 +327,47 @@ public:
         
         PathCache result;
         
-        // Приоритет 1: C++ модели в bpe_cpp/models/
-        std::string cpp_base = "../models/bpe_" + std::to_string(size);
-        result.vocab = cpp_base + "/cpp_vocab.json";
-        result.merges = cpp_base + "/cpp_merges.txt";
-        
-        if (result.exists()) {
-            cache_[size] = result;
-            std::cout << "Найдена C++ модель " << size << ": " << result.vocab << std::endl;
-            return result;
+        // Проверяем все комбинации путей и имен файлов
+        for (const auto& location : MODEL_LOCATIONS) {
+            std::string base = std::string(location) + std::to_string(size);
+            
+            for (const auto& vocab_name : VOCAB_FILENAMES) {
+                result.vocab = base + vocab_name;
+                
+                // Формируем имя для merges.txt
+                size_t pos = result.vocab.find("vocab.json");
+                if (pos != std::string::npos) {
+                    result.merges = result.vocab;
+                    result.merges.replace(pos, 10, "merges.txt");
+                } else {
+                    pos = result.vocab.find("cpp_vocab.json");
+                    if (pos != std::string::npos) {
+                        result.merges = result.vocab;
+                        result.merges.replace(pos, 14, "cpp_merges.txt");
+                    }
+                }
+                
+                if (result.exists()) {
+                    cache_[size] = result;
+                    return result;
+                }
+            }
         }
         
-        // Приоритет 2: Python модели в bpe_python/models/
-        std::string py_base = "../../bpe_python/models/bpe_" + std::to_string(size);
-        result.vocab = py_base + "/vocab.json";
-        result.merges = py_base + "/merges.txt";
-        
-        if (result.exists()) {
-            cache_[size] = result;
-            std::cout << "Найдена Python модель " << size << ": " << result.vocab << std::endl;
-            return result;
-        }
-        
-        std::cerr << "Не удалось найти модель размером " << size << std::endl;
         return PathCache{};
     }
 };
 
-// Глобальный экземпляр для использования в бенчмарках
+/** Глобальный экземпляр для использования в бенчмарках */
 ModelPathFinder g_pathFinder;
 
 /**
  * @brief Измеряет текущее использование памяти (RSS)
+ * 
+ * Реализация для разных платформ:
+ * - Windows: GetProcessMemoryInfo
+ * - macOS:   task_info
+ * - Linux:   чтение /proc/self/statm
  * 
  * @return size_t Размер памяти в байтах, 0 при ошибке
  */
@@ -334,7 +378,7 @@ size_t getCurrentRSS() {
         return info.WorkingSetSize;
     }
     return 0;
-#elif __APPLE__
+#elif defined(__APPLE__)
     struct mach_task_basic_info info;
     mach_msg_type_number_t infoCount = MACH_TASK_BASIC_INFO_COUNT;
     if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO,
@@ -342,12 +386,12 @@ size_t getCurrentRSS() {
         return info.resident_size;
     }
     return 0;
-#elif __linux__
+#elif defined(__linux__)
     long rss_pages = 0;
     std::ifstream statm_file("/proc/self/statm");
     
     if (statm_file.is_open()) {
-        long total_pages;  // Первое значение (пропускаем)
+        long total_pages;    // Первое значение (пропускаем)
         if (statm_file >> total_pages >> rss_pages) {
             // Определяем размер страницы в зависимости от платформы
             long page_size = 0;
@@ -361,12 +405,11 @@ size_t getCurrentRSS() {
                 page_size = 4096;
             #endif
             
-            return static_cast<size_t>(rss_pages * page_size);
+            return static_cast<size_t>(rss_pages) * static_cast<size_t>(page_size);
         }
     }
     return 0;
 #else
-    #warning "getCurrentRSS не реализована для этой платформы"
     return 0;
 #endif
 }
@@ -398,7 +441,12 @@ bool load_model_by_size(Tokenizer& tokenizer, size_t size, benchmark::State& sta
 }
 
 /**
- * @brief Загружает модель размером 8000 (по умолчанию)
+ * @brief Загружает модель размером 10000 (по умолчанию)
+ * 
+ * @tparam Tokenizer Тип токенизатора
+ * @param tokenizer Ссылка на токенизатор
+ * @param state Состояние бенчмарка
+ * @return true если модель успешно загружена
  */
 template<typename Tokenizer>
 bool load_default_model(Tokenizer& tokenizer, benchmark::State& state) {
@@ -407,6 +455,9 @@ bool load_default_model(Tokenizer& tokenizer, benchmark::State& state) {
 
 /**
  * @brief Создает текст заданного размера из тестового корпуса
+ * 
+ * @param target_size Желаемый размер в байтах
+ * @return std::string Текст указанного размера
  */
 std::string create_text_of_size(size_t target_size) {
     const std::string& base = g_testCorpus.get();
@@ -432,6 +483,12 @@ std::string create_text_of_size(size_t target_size) {
 
 /**
  * @brief Тест производительности encode с разными размерами входного текста
+ * 
+ * Измеряет скорость кодирования текстов от 1 КБ до 256 КБ.
+ * Собирает статистику:
+ * - Среднее время encode
+ * - Пропускная способность (токены/сек)
+ * - Cache hit rate
  */
 static void BM_FastTokenizer_Encode(benchmark::State& state) {
     TokenizerConfig config;
@@ -446,14 +503,14 @@ static void BM_FastTokenizer_Encode(benchmark::State& state) {
         return;
     }
     
-    auto vocab_size = tokenizer.vocab_size();
+    const auto vocab_size = tokenizer.vocab_size();
     state.counters["VocabSize"] = vocab_size;
     
-    size_t target_size = static_cast<size_t>(state.range(0));
-    std::string text = create_text_of_size(target_size);
+    const size_t target_size = static_cast<size_t>(state.range(0));
+    const std::string text = create_text_of_size(target_size);
     
     if (text.empty()) {
-        state.SkipWithError("Тестовый текст пуст");
+        state.SkipWithError("Тестовый текст пуст!");
         return;
     }
     
@@ -466,9 +523,9 @@ static void BM_FastTokenizer_Encode(benchmark::State& state) {
     state.SetBytesProcessed(state.iterations() * target_size);
     state.SetLabel("FastTokenizer encode");
     
-    auto stats = tokenizer.stats();
-    state.counters["AvgEncodeTime_us"] = stats.avg_encode_time_ms() * 1000;
-    state.counters["TokensPerSec"] = target_size / (stats.avg_encode_time_ms() / 1000);
+    const auto stats = tokenizer.stats();
+    state.counters["AvgEncodeTime_us"] = stats.avg_encode_time_ms() * 1000.0;
+    state.counters["TokensPerSec"] = static_cast<double>(target_size) / (stats.avg_encode_time_ms() / 1000.0);
     state.counters["CacheHitRate_%"] = stats.cache_hit_rate();
 }
 
@@ -479,50 +536,109 @@ BENCHMARK(BM_FastTokenizer_Encode)
 
 /**
  * @brief Тест производительности decode с разным количеством токенов
+ * 
+ * Измеряет скорость декодирования для разного количества токенов.
  */
 static void BM_FastTokenizer_Decode(benchmark::State& state) {
-    TokenizerConfig config;
-    config.byte_level = DEFAULT_BYTE_LEVEL;
-    config.enable_cache = DEFAULT_ENABLE_CACHE;
-    config.cache_size = DEFAULT_CACHE_SIZE;
+    static std::unique_ptr<FastBPETokenizer> tokenizer;
+    static std::vector<uint32_t> tokens;
     
+    if (!tokenizer) {
+        tokenizer = std::make_unique<FastBPETokenizer>(
+            TokenizerConfig{8000, 10000, true}
+        );
+        
+        // Загружаем модель
+        auto paths = g_pathFinder.find_for_size(10000);
+        
+        if (!paths.exists()) {
+            state.SkipWithError("Не удалось найти модель для decode бенчмарка!");
+            return;
+        }
+        
+        if (!tokenizer->load(paths.vocab, paths.merges)) {
+            state.SkipWithError("Не удалось загрузить модель для decode бенчмарка!");
+            return;
+        }
+        
+        // Загружаем тестовый текст и кодируем его
+        tokens = tokenizer->encode(g_testCorpus.get());
+    }
+    
+    size_t total_chars = 0;
+    
+    for (auto _ : state) {
+        std::string decoded = tokenizer->decode(tokens);
+        total_chars += decoded.size();
+        benchmark::DoNotOptimize(decoded);
+    }
+    
+    state.SetBytesProcessed(total_chars);
+    state.SetItemsProcessed(state.iterations());
+    
+    state.counters["TokensPerText"] = static_cast<double>(tokens.size());
+    state.counters["VocabSize"] = static_cast<double>(tokenizer->vocab_size());
+    state.counters["DecodeSpeed_MB_s"] = benchmark::Counter(
+        static_cast<double>(total_chars) / (1024.0 * 1024.0),
+        benchmark::Counter::kIsRate
+    );
+}
+
+BENCHMARK(BM_FastTokenizer_Decode)
+    ->Name("BM_FastTokenizer_Decode")
+    ->Unit(benchmark::kMicrosecond)
+    ->Iterations(DECODE_ITERATIONS);
+
+/**
+ * @brief Тест производительности decode с разными размерами токенов
+ * 
+ * Измеряет скорость декодирования для различных количеств токенов.
+ */
+static void BM_FastTokenizer_Decode_Sizes(benchmark::State& state) {
+    const size_t num_tokens = static_cast<size_t>(state.range(0));
+    
+    // Создаем тестовые токены нужного размера
+    std::vector<uint32_t> test_tokens;
+    test_tokens.reserve(num_tokens);
+    for (size_t i = 0; i < num_tokens; ++i) {
+        test_tokens.push_back(static_cast<uint32_t>(i % DEFAULT_VOCAB_SIZE));
+    }
+    
+    TokenizerConfig config{DEFAULT_VOCAB_SIZE, DEFAULT_CACHE_SIZE, DEFAULT_BYTE_LEVEL};
     FastBPETokenizer tokenizer(config);
     
     if (!load_default_model(tokenizer, state)) {
         return;
     }
     
-    auto vocab_size = tokenizer.vocab_size();
-    state.counters["VocabSize"] = vocab_size;
-    
-    const std::string& text = g_testCorpus.get();
-    auto tokens = tokenizer.encode(text);
-    
-    size_t target_tokens = static_cast<size_t>(state.range(0));
-    
-    while (tokens.size() < target_tokens) {
-        tokens.insert(tokens.end(), tokens.begin(), tokens.end());
-    }
-    tokens.resize(target_tokens);
+    size_t total_chars = 0;
     
     for (auto _ : state) {
-        auto decoded = tokenizer.decode(tokens);
-        benchmark::DoNotOptimize(decoded.data());
-        benchmark::ClobberMemory();
+        auto decoded = tokenizer.decode(test_tokens);
+        total_chars += decoded.size();
+        benchmark::DoNotOptimize(decoded);
     }
     
-    state.SetBytesProcessed(state.iterations() * text.size());
-    state.SetItemsProcessed(state.iterations() * target_tokens);
-    state.SetLabel("FastTokenizer decode");
+    state.SetBytesProcessed(total_chars);
+    state.SetItemsProcessed(state.iterations());
+    state.counters["TokensPerText"] = static_cast<double>(num_tokens);
+    state.counters["TokensPerSec"] = benchmark::Counter(
+        static_cast<double>(state.iterations() * num_tokens),
+        benchmark::Counter::kIsRate
+    );
 }
 
-BENCHMARK(BM_FastTokenizer_Decode)
+BENCHMARK(BM_FastTokenizer_Decode_Sizes)
+    ->Name("BM_FastTokenizer_Decode_Sizes")
+    ->Unit(benchmark::kMicrosecond)
     ->RangeMultiplier(2)
-    ->Range(MIN_TOKENS, MAX_TOKENS)
-    ->Unit(benchmark::kMicrosecond);
+    ->Range(16, 4096)
+    ->Iterations(500);
 
 /**
  * @brief Тест производительности пакетной обработки
+ * 
+ * Измеряет эффективность encode_batch для разных размеров батча.
  */
 static void BM_FastTokenizer_EncodeBatch(benchmark::State& state) {
     TokenizerConfig config;
@@ -536,10 +652,10 @@ static void BM_FastTokenizer_EncodeBatch(benchmark::State& state) {
         return;
     }
     
-    auto vocab_size = tokenizer.vocab_size();
+    const auto vocab_size = tokenizer.vocab_size();
     state.counters["VocabSize"] = vocab_size;
     
-    size_t batch_size = static_cast<size_t>(state.range(0));
+    const size_t batch_size = static_cast<size_t>(state.range(0));
     std::vector<std::string_view> text_views;
     std::vector<std::string> text_storage;
     
@@ -569,9 +685,11 @@ BENCHMARK(BM_FastTokenizer_EncodeBatch)
 
 /**
  * @brief Тест эффективности кэширования
+ * 
+ * Измеряет cache hit rate при разных размерах кэша.
  */
 static void BM_FastTokenizer_CacheEfficiency(benchmark::State& state) {
-    size_t cache_size = static_cast<size_t>(state.range(0));
+    const size_t cache_size = static_cast<size_t>(state.range(0));
     
     TokenizerConfig config;
     config.byte_level = DEFAULT_BYTE_LEVEL;
@@ -585,7 +703,7 @@ static void BM_FastTokenizer_CacheEfficiency(benchmark::State& state) {
         return;
     }
     
-    auto vocab_size = tokenizer.vocab_size();
+    const auto vocab_size = tokenizer.vocab_size();
     state.counters["VocabSize"] = vocab_size;
     
     CorpusGenerator generator;
@@ -598,10 +716,10 @@ static void BM_FastTokenizer_CacheEfficiency(benchmark::State& state) {
         }
     }
     
-    auto stats = tokenizer.stats();
+    const auto stats = tokenizer.stats();
     state.counters["CacheHitRate_%"] = stats.cache_hit_rate();
-    state.counters["CacheHits"] = stats.cache_hits;
-    state.counters["CacheMisses"] = stats.cache_misses;
+    state.counters["CacheHits"] = static_cast<double>(stats.cache_hits);
+    state.counters["CacheMisses"] = static_cast<double>(stats.cache_misses);
     state.SetLabel("Cache efficiency");
 }
 
@@ -612,6 +730,8 @@ BENCHMARK(BM_FastTokenizer_CacheEfficiency)
 
 /**
  * @brief Базовый многопоточный тест
+ * 
+ * Измеряет производительность при параллельном encode из нескольких потоков.
  */
 static void BM_FastTokenizer_Multithreaded(benchmark::State& state) {
     TokenizerConfig config;
@@ -625,11 +745,11 @@ static void BM_FastTokenizer_Multithreaded(benchmark::State& state) {
         return;
     }
     
-    auto vocab_size = tokenizer.vocab_size();
+    const auto vocab_size = tokenizer.vocab_size();
     state.counters["VocabSize"] = vocab_size;
     
     const std::string& text = g_testCorpus.get();
-    size_t num_threads = static_cast<size_t>(state.range(0));
+    const size_t num_threads = static_cast<size_t>(state.range(0));
     
     for (auto _ : state) {
         state.PauseTiming();
@@ -660,6 +780,8 @@ BENCHMARK(BM_FastTokenizer_Multithreaded)
 
 /**
  * @brief Расширенный многопоточный тест
+ * 
+ * Более сложный сценарий: каждый поток обрабатывает несколько текстов.
  */
 static void BM_FastTokenizer_Multithreaded_Advanced(benchmark::State& state) {
     TokenizerConfig config;
@@ -673,15 +795,11 @@ static void BM_FastTokenizer_Multithreaded_Advanced(benchmark::State& state) {
         return;
     }
     
-    size_t num_threads = static_cast<size_t>(state.range(0));
-    size_t texts_per_thread = static_cast<size_t>(state.range(1));
-    
-    std::vector<std::string> texts;
-    texts.reserve(num_threads * texts_per_thread);
+    const size_t num_threads = static_cast<size_t>(state.range(0));
+    const size_t texts_per_thread = static_cast<size_t>(state.range(1));
     
     CorpusGenerator generator;
-    auto generated = generator.generate(num_threads * texts_per_thread, 0.5);
-    texts = std::move(generated);
+    auto texts = generator.generate(num_threads * texts_per_thread, 0.5);
     
     for (auto _ : state) {
         state.PauseTiming();
@@ -691,7 +809,7 @@ static void BM_FastTokenizer_Multithreaded_Advanced(benchmark::State& state) {
         
         for (size_t t = 0; t < num_threads; ++t) {
             threads.emplace_back([&tokenizer, &texts, t, texts_per_thread]() {
-                size_t start_idx = t * texts_per_thread;
+                const size_t start_idx = t * texts_per_thread;
                 for (size_t i = 0; i < texts_per_thread; ++i) {
                     auto tokens = tokenizer.encode(texts[start_idx + i]);
                     benchmark::DoNotOptimize(tokens.data());
@@ -718,9 +836,11 @@ BENCHMARK(BM_FastTokenizer_Multithreaded_Advanced)
 
 /**
  * @brief Сравнение производительности на моделях разных размеров
+ * 
+ * Измеряет время encode для моделей с разным размером словаря.
  */
 static void BM_FastTokenizer_CompareSizes(benchmark::State& state) {
-    size_t model_size = static_cast<size_t>(state.range(0));
+    const size_t model_size = static_cast<size_t>(state.range(0));
     
     TokenizerConfig config;
     config.byte_level = DEFAULT_BYTE_LEVEL;
@@ -734,9 +854,9 @@ static void BM_FastTokenizer_CompareSizes(benchmark::State& state) {
         return;
     }
     
-    auto actual_size = tokenizer.vocab_size();
-    state.counters["ModelSize"] = model_size;
-    state.counters["ActualVocabSize"] = actual_size;
+    const auto actual_size = tokenizer.vocab_size();
+    state.counters["ModelSize"] = static_cast<double>(model_size);
+    state.counters["ActualVocabSize"] = static_cast<double>(actual_size);
     
     const std::string& text = g_testCorpus.get();
     
@@ -748,8 +868,8 @@ static void BM_FastTokenizer_CompareSizes(benchmark::State& state) {
     
     state.SetLabel("Модель " + std::to_string(model_size));
     
-    auto stats = tokenizer.stats();
-    state.counters["AvgEncodeTime_us"] = stats.avg_encode_time_ms() * 1000;
+    const auto stats = tokenizer.stats();
+    state.counters["AvgEncodeTime_us"] = stats.avg_encode_time_ms() * 1000.0;
     state.counters["CacheHitRate_%"] = stats.cache_hit_rate();
 }
 
@@ -761,6 +881,8 @@ BENCHMARK(BM_FastTokenizer_CompareSizes)
 
 /**
  * @brief Тест на утечки памяти
+ * 
+ * Многократно создает и уничтожает токенизаторы, отслеживая изменение RSS.
  */
 static void BM_FastTokenizer_MemoryLeak(benchmark::State& state) {
     TokenizerConfig config;
@@ -769,33 +891,32 @@ static void BM_FastTokenizer_MemoryLeak(benchmark::State& state) {
     config.cache_size = DEFAULT_CACHE_SIZE;
     
     const std::string& text = g_testCorpus.get();
-    size_t memory_before = getCurrentRSS();
+    const size_t memory_before = getCurrentRSS();
     size_t operations = 0;
     
     for (auto _ : state) {
-        FastBPETokenizer* tokenizer = new FastBPETokenizer(config);
+        auto tokenizer = std::make_unique<FastBPETokenizer>(config);
         
         if (!load_default_model(*tokenizer, state)) {
-            delete tokenizer;
             return;
         }
         
         auto tokens = tokenizer->encode(text);
         benchmark::DoNotOptimize(tokens.data());
         
-        delete tokenizer;
+        tokenizer.reset();
         operations++;
     }
     
     std::this_thread::sleep_for(STABILIZATION_DELAY);
-    size_t memory_after = getCurrentRSS();
+    const size_t memory_after = getCurrentRSS();
     
     state.counters["MemoryDelta_KB"] = static_cast<double>(memory_after - memory_before) / 1024.0;
-    state.counters["Operations"] = operations;
+    state.counters["Operations"] = static_cast<double>(operations);
     state.SetLabel("Memory leak test");
 }
 
-BENCHMARK(BM_FastTokenizer_MemoryLeak)->Iterations(100)->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_FastTokenizer_MemoryLeak)->Iterations(MEMORY_ITERATIONS)->Unit(benchmark::kMillisecond);
 
 // ======================================================================
 // Бенчмарки для оригинального токенизатора
@@ -803,6 +924,8 @@ BENCHMARK(BM_FastTokenizer_MemoryLeak)->Iterations(100)->Unit(benchmark::kMillis
 
 /**
  * @brief Бенчмарк оригинального токенизатора
+ * 
+ * Используется как baseline для сравнения с оптимизированной версией.
  */
 static void BM_Original_Encode(benchmark::State& state) {
     BPETokenizer tokenizer;
@@ -812,16 +935,16 @@ static void BM_Original_Encode(benchmark::State& state) {
     auto paths = g_pathFinder.find_for_size(DEFAULT_VOCAB_SIZE);
     
     if (!paths.exists()) {
-        state.SkipWithError("Не удалось найти модель");
+        state.SkipWithError("Не удалось найти модель!");
         return;
     }
     
     if (!tokenizer.load_from_files(paths.vocab, paths.merges)) {
-        state.SkipWithError("Не удалось загрузить токенизатор");
+        state.SkipWithError("Не удалось загрузить токенизатор!");
         return;
     }
     
-    auto vocab_size = tokenizer.vocab_size();
+    const auto vocab_size = tokenizer.vocab_size();
     state.counters["VocabSize"] = vocab_size;
     
     std::string text = create_text_of_size(COMPARISON_TEXT_SIZE);
@@ -840,6 +963,8 @@ BENCHMARK(BM_Original_Encode)->Unit(benchmark::kMillisecond);
 
 /**
  * @brief Бенчмарк быстрого токенизатора для сравнения
+ * 
+ * Используется вместе с BM_Original_Encode для расчета ускорения.
  */
 static void BM_Fast_Encode(benchmark::State& state) {
     TokenizerConfig config;
@@ -853,7 +978,7 @@ static void BM_Fast_Encode(benchmark::State& state) {
         return;
     }
     
-    auto vocab_size = tokenizer.vocab_size();
+    const auto vocab_size = tokenizer.vocab_size();
     state.counters["VocabSize"] = vocab_size;
     
     std::string text = create_text_of_size(COMPARISON_TEXT_SIZE);
@@ -875,37 +1000,41 @@ BENCHMARK(BM_Fast_Encode)->Unit(benchmark::kMillisecond);
 // ======================================================================
 
 /**
- * @brief Кастомный репортер для вывода детальной статистики
+ * @brief Расширенный репортер для Google Benchmark
+ * 
+ * Добавляет сводную статистику:
+ * - Средний cache hit rate
+ * - Ускорение относительно оригинальной версии
  */
 class FastTokenizerReporter : public benchmark::ConsoleReporter {
 public:
     bool ReportContext(const Context& context) override {
         std::cout << "\n============================================================\n";
         std::cout << "ТЕСТИРОВАНИЕ ПРОИЗВОДИТЕЛЬНОСТИ FAST BPE TOKENIZER";
-        std::cout << "\n============================================================\n";
+        std::cout << "\n============================================================\n\n";
         return ConsoleReporter::ReportContext(context);
     }
     
     void ReportRuns(const std::vector<Run>& reports) override {
         ConsoleReporter::ReportRuns(reports);
         
-        std::cout << "\n------------------------------------------------------------\n";
-        std::cout << "ДЕТАЛЬНАЯ СТАТИСТИКА:";
-        std::cout << "\n------------------------------------------------------------\n";
+        std::cout << "\nДЕТАЛЬНАЯ СТАТИСТИКА:\n";
         
         double total_cache_hits = 0;
         int cache_count = 0;
         
         for (const auto& run : reports) {
-            if (run.counters.find("CacheHitRate_%") != run.counters.end()) {
-                total_cache_hits += run.counters.at("CacheHitRate_%");
+            auto it = run.counters.find("CacheHitRate_%");
+            if (it != run.counters.end()) {
+                total_cache_hits += it->second;
                 cache_count++;
             }
         }
         
         if (cache_count > 0) {
             std::cout << "Средний Cache Hit Rate: " 
-                      << total_cache_hits / cache_count << "%\n";
+                      << std::fixed << std::setprecision(2)
+                      << (total_cache_hits / cache_count) << "%\n";
         }
         
         // Вычисляем ускорение
@@ -923,10 +1052,9 @@ public:
         
         if (original_time > 0 && fast_time > 0) {
             double speedup = original_time / fast_time;
-            std::cout << "УСКОРЕНИЕ ОТНОСИТЕЛЬНО ОРИГИНАЛА: " << speedup << "x\n";
+            std::cout << "УСКОРЕНИЕ ОТНОСИТЕЛЬНО ОРИГИНАЛА: " 
+                      << std::fixed << std::setprecision(2) << speedup << "x\n";
         }
-        
-        std::cout << "\n==============================================================\n" << "\n";
     }
 };
 
@@ -936,20 +1064,22 @@ public:
 
 /**
  * @brief Главная функция бенчмарка
+ * 
+ * Инициализирует Google Benchmark, прогревает кэш и запускает тесты.
+ * 
+ * @param argc Количество аргументов командной строки
+ * @param argv Массив аргументов командной строки
+ * @return int Код возврата (0 при успехе)
  */
 int main(int argc, char** argv) {
-    std::cout << "\nFAST BPE TOKENIZER PERFORMANCE BENCHMARK\n";
-    std::cout << "==============================================================\n\n";
-    
-    // Прогреваем кэш
+    // Прогреваем кэш перед запуском бенчмарков
     g_testCorpus.get();
     
     ::benchmark::Initialize(&argc, argv);
     
+    // Используем кастомный репортер для расширенной статистики
     FastTokenizerReporter reporter;
     ::benchmark::RunSpecifiedBenchmarks(&reporter);
-    
-    std::cout << "\nБенчмарк завершен.\n";
     
     return 0;
 }

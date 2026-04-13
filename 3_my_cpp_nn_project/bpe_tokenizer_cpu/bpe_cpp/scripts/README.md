@@ -133,8 +133,8 @@
 # Базовое сравнение
 ./compare_performance.py --size 1000 --iterations 20
 
-# Сравнение с моделью 8000 и построение графика
-./compare_performance.py --model-size 8000 --plot --output results.json
+# Сравнение с моделью 10000 и построение графика
+./compare_performance.py --model-size 10000 --plot --output results.json
 
 # Детальное тестирование с большим текстом
 ./compare_performance.py --size 10000 --iterations 5 --verbose
@@ -144,8 +144,8 @@
 # Базовое сравнение
 ./compare_performance.py --size 1000 --iterations 20
 
-# Сравнение с моделью 8000 и построение графика
-./compare_performance.py --model-size 8000 --plot --output results.json
+# Сравнение с моделью 10000 и построение графика
+./compare_performance.py --model-size 10000 --plot --output results.json
 
 # Детальное тестирование с большим текстом
 ./compare_performance.py --size 10000 --iterations 5 --verbose
@@ -307,7 +307,12 @@ scripts/
 ├── build.sh                  # Сборка проекта
 ├── compare_performance.py    # Сравнение Python vs C++
 ├── rofile.sh                 # Профилирование
-├── README.md                 # Этот файлp
+├── README.md                 # Этот файл
 ├── run_benchmarks.sh         # Запуск бенчмарков
 └── run_tests.sh              # Запуск тестов
 ```
+---
+
+**Автор:** Евгений П.  
+**Лицензия:** MIT  
+**Дата:** 2026

@@ -164,7 +164,7 @@
 cd bpe_cpp
 mkdir build && cd build
 cmake .. -DBUILD_TESTING=ON
-make
+make -j$(nproc)
 ```
 ### **Запуск всех тестов**
 ```bash
@@ -247,16 +247,16 @@ genhtml coverage.info --output-directory coverage_report
 
 ## 📈 Сводная таблица
 
-| Файл | Компонент | Тестов | Описание |
-|------|-----------|--------|----------|
-| test_vocabulary.cpp | Vocabulary | 15 | Добавление, поиск, сериализация |
-| test_tokenizer.cpp | BPETokenizer | 20 | Encode/decode, мерджи |
-| test_fast_tokenizer.cpp | FastTokenizer | 25 | Производительность, кэш, SIMD |
-| test_parallel.cpp | ParallelTrainer | 15 | Многопоточность, прогресс |
-| test_memory_pool.cpp | MemoryPool | 20 | Аллокации, переиспользование |
-| test_utils.cpp | utils | 25 | Файлы, UTF-8, таймер |
-| test_compatibility.cpp | Совместимость | 10 | Python сравнение |
-| test_trained_model.cpp | Модель | 5 | Интеграция |
+| Файл | Компонент | Описание |
+|------|-----------|----------|
+| test_vocabulary.cpp | Vocabulary | Добавление, поиск, сериализация |
+| test_tokenizer.cpp | BPETokenizer | Encode/decode, мерджи |
+| test_fast_tokenizer.cpp | FastTokenizer | Производительность, кэш, SIMD |
+| test_parallel.cpp | ParallelTrainer | Многопоточность, прогресс |
+| test_memory_pool.cpp | MemoryPool | Аллокации, переиспользование |
+| test_utils.cpp | utils | Файлы, UTF-8, таймер |
+| test_compatibility.cpp | Совместимость | Python сравнение |
+| test_trained_model.cpp | Модель | Интеграция |
 
 ## 🔍 Что тестируется
 
@@ -331,12 +331,18 @@ genhtml coverage.info --output-directory coverage_report
 tests/
 ├── CMakeLists.txt             # Конфигурация сборки тестов
 ├── README.md                  # Этот файл
-├── test_vocabulary.cpp        # Тесты управления словарём
-├── test_tokenizer.cpp         # Тесты базового токенизатора
-├── test_fast_tokenizer.cpp    # Тесты оптимизированной версии
-├── test_parallel.cpp          # Тесты параллельного обучения
-├── test_memory_pool.cpp       # Тесты пула памяти
-├── test_utils.cpp             # Тесты вспомогательных утилит
 ├── test_compatibility.cpp     # Тесты совместимости с Python
-└── test_trained_model.cpp     # Тестирование обученной модели
+├── test_fast_tokenizer.cpp    # Тесты оптимизированной версии
+├── test_helpers.hpp           # Вспомогательные функции
+├── test_memory_pool.cpp       # Тесты пула памяти
+├── test_parallel.cpp          # Тесты параллельного обучения
+├── test_tokenizer.cpp         # Тесты базового токенизатора
+├── test_trained_model.cpp     # Тестирование обученной модели
+├── test_utils.cpp             # Тесты вспомогательных утилит
+└── test_vocabulary.cpp        # Тесты управления словарём
 ```
+---
+
+**Автор:** Евгений П.  
+**Лицензия:** MIT  
+**Дата:** 2026

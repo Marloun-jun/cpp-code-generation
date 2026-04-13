@@ -1,24 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ======================================================================
-# convert_vocab.py - Конвертация словаря BPE токенизатора из Python в C++ формат
-# ======================================================================
-#
 # @file convert_vocab.py
-# @brief Конвертирует словарь из Python формата в формат, оптимизированный для C++
-#
+# @brief Конвертация словаря BPE токенизатора из Python в C++ формат
 # @author Евгений П.
 # @date 2026
-# @version 3.3.0
-#
+# @version 3.4.0
+# 
 # @details Этот скрипт преобразует словари токенизатора из Python-формата
-#          в формат, удобный для использования в C++ реализации.
-#
+#          в формат, оптимизированный для использования в C++ реализации.
+# 
 #          **Поддерживаемые входные форматы:**
 #          - **ID -> Токен**    - {"0": "<PAD>", "1": "<UNK>", ...}
 #          - **Токен -> ID**    - {"<PAD>": 0, "<UNK>": 1, ...}
 #          - **Массив токенов** - ["<PAD>", "<UNK>", ...]
-#
+# 
 #          **Выходной формат (C++):**
 #          ```json
 #          {
@@ -26,36 +22,37 @@
 #            "tokens": ["<PAD>", "<UNK>", "int", "main", ...]
 #          }
 #          ```
-#
+# 
 #          **Дополнительные возможности:**
 #          - Автоматическое определение формата входных данных
 #          - Добавление недостающих специальных символов (пробел, табуляция и т.д.)
+#          - **Сохранение русских байтов для корректной работы UTF-8**
 #          - Сжатие словаря (удаление пропусков в ID)
 #          - Валидация UTF-8 и анализ статистики
 #          - Копирование файла слияний (merges.txt)
 #          - Проверка непрерывности индексов
 #          - Приведение к нужному размеру модели
-#
+# 
 # @usage python tools/convert_vocab.py [options]
-#
+# 
 # @options
-#   --no-fill            Не заполнять пропуски, а переиндексировать (сжать ID)
-#   --inspect-only       Только проанализировать словарь без конвертации
-#   --format FORMAT      Принудительный формат (auto|id_to_token|token_to_id|array)
-#   --model-size SIZE    Размер модели (8000, 10000, 12000) - по умолч. 8000
-#   --input-dir DIR      Входная директория с Python моделями
-#   --output-dir DIR     Выходная директория для C++ моделей
-#   --verbose (-v)       Подробный вывод
-#   --validate           Проверить токены на корректность
-#   --strict             Строгий режим - прерывать при ошибках
-#
+#   --no-fill         - Не заполнять пропуски, а переиндексировать (сжать ID)
+#   --inspect-only    - Только проанализировать словарь без конвертации
+#   --format FORMAT   - Принудительный формат (auto|id_to_token|token_to_id|array)
+#   --model-size SIZE - Размер модели (8000, 10000, 12000) - по умолч. 8000
+#   --input-dir DIR   - Входная директория с Python моделями
+#   --output-dir DIR  - Выходная директория для C++ моделей
+#   --verbose (-v)    - Подробный вывод
+#   --validate        - Проверить токены на корректность
+#   --strict          - Строгий режим - прерывать при ошибках
+# 
 # @example
-#   python tools/convert_vocab.py                       # обычная конвертация
-#   python tools/convert_vocab.py --no-fill             # сжатие словаря
-#   python tools/convert_vocab.py --inspect-only        # только анализ
-#   python tools/convert_vocab.py --model-size 8000     # модель 8000
+#   python tools/convert_vocab.py                      # Обычная конвертация
+#   python tools/convert_vocab.py --no-fill            # Сжатие словаря
+#   python tools/convert_vocab.py --inspect-only       # Только анализ
+#   python tools/convert_vocab.py --model-size 8000    # Модель 8000
 #   python tools/convert_vocab.py --input-dir ../bpe_python/models
-#
+# 
 # ======================================================================
 
 import json
@@ -65,7 +62,7 @@ import argparse
 
 from pathlib import Path
 from collections import Counter
-from typing import Dict, List, Tuple, Optional, Any, Set
+from typing import Dict, List, Tuple, Optional, Any
 
 # ======================================================================
 # Конфигурация
@@ -73,24 +70,24 @@ from typing import Dict, List, Tuple, Optional, Any, Set
 
 # Специальные токены с описанием их назначения
 SPECIAL_TOKENS = {
-    "<PAD>": "Токен для выравнивания последовательностей",
-    "<UNK>": "Токен для неизвестных символов",
-    "<BOS>": "Токен начала последовательности",
-    "<EOS>": "Токен конца последовательности",
+    "<PAD>":  "Токен для выравнивания последовательностей",
+    "<UNK>":  "Токен для неизвестных символов",
+    "<BOS>":  "Токен начала последовательности",
+    "<EOS>":  "Токен конца последовательности",
     "<MASK>": "Токен для маскирования (опционально)",
-    "<CPP>": "Токен для обозначения C++ кода",
+    "<CPP>":  "Токен для обозначения C++ кода",
     "<CODE>": "Токен для обозначения блока кода"
 }
 
 # Специальные символы, которые должны быть в словаре для корректной работы
 SPECIAL_CHARS = [
-    ' ',     # пробел (ASCII 32)          - разделитель слов
-    '\n',    # перевод строки (ASCII 10)  - конец строки
-    '\t',    # табуляция (ASCII 9)        - отступы
-    '\r',    # возврат каретки (ASCII 13) - Windows-совместимость
-    '\\',    # обратный слеш              - escape-последовательности
-    '\"',    # двойная кавычка            - строковые литералы
-    '\'',    # одинарная кавычка          - символьные литералы
+    ' ',     # Пробел (ASCII 32)          - Разделитель слов
+    '\n',    # Перевод строки (ASCII 10)  - Конец строки
+    '\t',    # Табуляция (ASCII 9)        - Отступы
+    '\r',    # Возврат каретки (ASCII 13) - Windows-совместимость
+    '\\',    # Обратный слеш              - Escape-последовательности
+    '\"',    # Двойная кавычка            - Строковые литералы
+    '\'',    # Одинарная кавычка          - Символьные литералы
 ]
 
 # Допустимые размеры моделей
@@ -113,8 +110,8 @@ def detect_format(data: Any) -> str:
     **Алгоритм определения:**
     1. Если данные - список -> "array"
     2. Если данные - словарь:
-       - Проверяем ключи:    все ли они числа (строковые или int) -> "id_to_token"
-       - Проверяем значения: все ли они числа (строковые или int) -> "token_to_id"
+    - Проверяем ключи:    Все ли они числа (строковые или int) -> "id_to_token"
+    - Проверяем значения: Все ли они числа (строковые или int) -> "token_to_id"
     3. Иначе -> "unknown"
     """
     if isinstance(data, list):
@@ -226,8 +223,8 @@ def validate_vocab_size(tokens: List[str], expected_size: int, strict: bool = Fa
         bool: True если размер соответствует или был успешно скорректирован
     
     **Действия:**
-    - Если токенов меньше - добавляет заглушки <EXTRA_N>
-    - Если токенов больше - обрезает до нужного размера
+    - Если токенов меньше - Добавляет заглушки <EXTRA_N>
+    - Если токенов больше - Обрезает до нужного размера
     """
     actual_size = len(tokens)
     
@@ -235,27 +232,27 @@ def validate_vocab_size(tokens: List[str], expected_size: int, strict: bool = Fa
         return True
     
     print(f"\nНЕСООТВЕТСТВИЕ РАЗМЕРА СЛОВАРЯ!")
-    print(f"   Ожидалось: {expected_size} токенов")
-    print(f"   Получено:  {actual_size} токенов")
+    print(f"Ожидалось: {expected_size} токенов")
+    print(f"Получено:  {actual_size} токенов")
     
     if strict:
-        print("   Строгий режим: прерывание выполнения")
+        print("Строгий режим: прерывание выполнения!")
         return False
     
     if actual_size < expected_size:
         # Добавляем заглушки до нужного размера
         needed = expected_size - actual_size
-        print(f"   Добавляется {needed} заглушек <EXTRA_N>")
+        print(f"Добавляется {needed} заглушек <EXTRA_N>")
         for i in range(actual_size, expected_size):
             tokens.append(f"<EXTRA_{i}>")
-        print(f"   Новый размер: {len(tokens)}")
+        print(f"Новый размер: {len(tokens)}")
         return True
     else:
         # Обрезаем до нужного размера
         extra = actual_size - expected_size
-        print(f"   Удаляется {extra} лишних токенов (с конца)")
+        print(f"Удаляется {extra} лишних токенов (с конца)")
         del tokens[expected_size:]
-        print(f"   Новый размер: {len(tokens)}")
+        print(f"Новый размер: {len(tokens)}")
         return True
 
 # ======================================================================
@@ -271,8 +268,7 @@ def convert_id_to_token_format(data: Dict, verbose: bool = False) -> Tuple[Dict,
         verbose: Подробный вывод
     
     Returns:
-        Tuple[Dict, List[int]]:
-           (конвертированные данные, список пропущенных ID)
+        Tuple[Dict, List[int]]: (конвертированные данные, список пропущенных ID)
     
     **Процесс:**
     1. Извлекаем все пары ID -> токен
@@ -281,7 +277,7 @@ def convert_id_to_token_format(data: Dict, verbose: bool = False) -> Tuple[Dict,
     4. Заполняем массив по индексам
     5. Отмечаем пропущенные позиции
     """
-    print("Обнаружен формат: ID -> ТОКЕН")
+    print("\nОбнаружен формат: ID -> ТОКЕН")
     
     # Находим максимальный ID
     max_id = -1
@@ -336,8 +332,7 @@ def convert_token_to_id_format(data: Dict, verbose: bool = False) -> Tuple[Dict,
         verbose: Подробный вывод
     
     Returns:
-        Tuple[Dict, List[int]]:
-            (конвертированные данные, список пропущенных ID)
+        Tuple[Dict, List[int]]: (конвертированные данные, список пропущенных ID)
     
     **Процесс:**
     1. Извлекаем все пары токен -> ID
@@ -346,7 +341,7 @@ def convert_token_to_id_format(data: Dict, verbose: bool = False) -> Tuple[Dict,
     4. Заполняем массив по индексам
     5. Отмечаем пропущенные позиции
     """
-    print("Обнаружен формат: ТОКЕН -> ID")
+    print("\nОбнаружен формат: ТОКЕН -> ID")
     
     token_to_id = {}
     max_id = -1
@@ -406,7 +401,7 @@ def convert_array_format(data: List, verbose: bool = False) -> Dict:
     - Индекс в массиве становится ID токена
     - Специальные токены должны быть в начале
     """
-    print("Обнаружен формат: МАССИВ токенов")
+    print("\nОбнаружен формат:   МАССИВ токенов")
     print(f"Количество токенов: {len(data)}")
     
     # Проверяем, есть ли специальные токены в начале
@@ -426,6 +421,64 @@ def convert_array_format(data: List, verbose: bool = False) -> Dict:
 # ======================================================================
 # Функции пост-обработки
 # ======================================================================
+
+def preserve_russian_bytes(tokens: List[str], verbose: bool = False) -> List[str]:
+    """
+    Гарантирует сохранение всех русских символов в байтовом представлении.
+    
+    Args:
+        tokens:  Исходный список токенов
+        verbose: Подробный вывод
+    
+    Returns:
+        List[str]: Обновленный список токенов с русскими байтами
+    """
+    print("\nПроверка сохранения русских байтов...")
+    
+    # Все возможные байты для русских букв (первые байты UTF-8)
+    russian_first_bytes = [0xD0, 0xD1]    # Для кириллицы
+    russian_second_bytes = list(range(0x80, 0xC0))
+    
+    existing_tokens = set(tokens)
+    added = 0
+    shown = 0
+    
+    # Добавляем все возможные байты русских символов
+    for first in russian_first_bytes:
+        # Добавляем первый байт
+        byte_str = bytes([first]).decode('latin1')
+        if byte_str not in existing_tokens:
+            tokens.append(byte_str)
+            added += 1
+            if verbose and shown < 10:
+                print(f"Добавлен байт: {first:02x} -> '{byte_str}'")
+                shown += 1
+        
+        # Добавляем пары байтов (готовые русские буквы)
+        for second in russian_second_bytes:
+            full_bytes = bytes([first, second])
+            try:
+                # Пробуем декодировать как UTF-8
+                russian_char = full_bytes.decode('utf-8')
+                # Сохраняем как байтовую строку
+                byte_str = full_bytes.decode('latin1')
+                if byte_str not in existing_tokens:
+                    tokens.append(byte_str)
+                    added += 1
+                    if verbose and shown < 20:
+                        print(f"Добавлена русская буква: {russian_char} -> '{byte_str}' (байты: {first:02x} {second:02x})")
+                        shown += 1
+            except:
+                pass
+    
+    if added > 0:
+        print(f"Добавлено байтовых токенов: {added}")
+        if added > shown:
+            print(f"... и еще {added - shown} токенов")
+    else:
+        print("Все необходимые русские байты уже присутствуют!")
+    
+    return tokens
 
 def add_special_chars(tokens: List[str], verbose: bool = False) -> List[str]:
     """
@@ -486,7 +539,7 @@ def compress_tokens(tokens: List[str], missing: List[int], verbose: bool = False
     
     new_idx = 0
     for old_idx, token in enumerate(tokens):
-        if token:    # если токен не пустой
+        if token:    # Если токен не пустой
             real_tokens.append(token)
             old_to_new[old_idx] = new_idx
             new_idx += 1
@@ -496,18 +549,19 @@ def compress_tokens(tokens: List[str], missing: List[int], verbose: bool = False
     print(f"Удалено пропусков:           {len(tokens) - len(real_tokens)}")
     
     if len(tokens) > 0:
-        print(f"Экономия места:              {(1 - len(real_tokens)/len(tokens))*100:.1f}%")
+        saved = (1 - len(real_tokens)/len(tokens)) * 100
+        print(f"Экономия места:              {saved:.1f}%")
     
     # Показываем примеры переиндексации
     if verbose:
         print("\nПримеры переиндексации (старый ID -> новый ID):")
         examples_shown = 0
         for old_idx in sorted(old_to_new.keys())[:10]:
-            print(f"  {old_idx:4d} -> {old_to_new[old_idx]:4d}")
+            print(f"    {old_idx:4d} -> {old_to_new[old_idx]:4d}")
             examples_shown += 1
         
         if len(old_to_new) > 10:
-            print(f"  ... и еще {len(old_to_new) - 10}")
+            print(f"    ... и еще {len(old_to_new) - 10}")
     
     return {
         "size": len(real_tokens),
@@ -568,7 +622,7 @@ def validate_tokens(tokens: List[str]) -> List[str]:
         
         # Проверяем на дубликаты
         if token in seen_tokens:
-            issues.append(f"ID {i}: дубликат токена '{token}'!")
+            issues.append(f"ID {i}: дубликат токена '{token[:50]}'!")
         else:
             seen_tokens.add(token)
         
@@ -586,7 +640,7 @@ def validate_tokens(tokens: List[str]) -> List[str]:
         if len(token) == 1:
             c = token[0]
             if ord(c) < 32 and c not in SPECIAL_CHARS:
-                issues.append(f"ID {i}: неразрешенный управляющий символ ASCII {ord(c)}")
+                issues.append(f"ID {i}: неразрешенный управляющий символ ASCII {ord(c)}!")
     
     return issues
 
@@ -629,41 +683,41 @@ def inspect_vocab_file(file_path: Path, verbose: bool = False) -> Optional[Any]:
             data = json.load(f)
         
         print(f"\nСтруктура данных:")
-        print(f"- тип: {type(data).__name__}")
+        print(f"- Тип:                  {type(data).__name__}")
         
         if isinstance(data, dict):
-            print(f"- количество записей: {len(data)}")
+            print(f"- Количество записей:   {len(data)}")
             
             # Показываем примеры первых 5 записей
             items = list(data.items())[:5]
             for k, v in items:
                 k_type = type(k).__name__
                 v_type = type(v).__name__
-                print(f"  '{k}' ({k_type}) -> '{v}' ({v_type})")
+                print(f"    '{k}' ({k_type}) -> '{v}' ({v_type})")
             
             # Определяем формат
             format_type = detect_format(data)
-            print(f"- формат: {format_type}")
+            print(f"- Формат:               {format_type}")
             
             # Анализируем типы ключей
             key_types = Counter(type(k).__name__ for k in data.keys())
-            print(f"- типы ключей: {dict(key_types)}")
+            print(f"- Типы ключей:          {dict(key_types)}")
             
             # Проверяем непрерывность индексов
             has_gaps, missing, max_idx = check_index_continuity(data, format_type)
             if has_gaps:
-                print(f"- пропуски в индексах: {len(missing)}")
+                print(f"- Пропуски в индексах:  {len(missing)}")
                 if verbose:
-                    print(f"    отсутствуют: {missing[:20]}")
+                    print(f"Отсутствуют: {missing[:20]}")
             
         elif isinstance(data, list):
-            print(f"- количество элементов: {len(data)}")
-            print(f"- первые 5: {data[:5]}")
+            print(f"- Количество элементов: {len(data)}")
+            print(f"- Первые 5:             {data[:5]}")
         
         return data
         
     except Exception as e:
-        print(f"Ошибка анализа: {e}")
+        print(f"Ошибка анализа: {e}!")
         return None
 
 
@@ -682,14 +736,14 @@ def print_statistics(tokens: List[str], title: str = "Статистика"):
     - Количество специальных токенов и символов
     """
     print(f"\n{title}:")
-    print(f"Всего токенов: {len(tokens)}")
+    print(f"- Всего токенов: {len(tokens)}")
     
     # Статистика по длинам
     lengths = [len(t) for t in tokens if t]
     if lengths:
-        print(f"Средняя длина: {sum(lengths)/len(lengths):.1f} символов")
-        print(f"Макс. длина:   {max(lengths)} символов")
-        print(f"Мин. длина:    {min(lengths)} символов")
+        print(f"- Средняя длина:        {sum(lengths)/len(lengths):.1f} символов")
+        print(f"- Максимальная длина:   {max(lengths)} символов")
+        print(f"- Минимальная длина:    {min(lengths)} символов")
     
     # Статистика по типам
     single_char = sum(1 for t in tokens if len(t) == 1)
@@ -697,15 +751,15 @@ def print_statistics(tokens: List[str], title: str = "Статистика"):
     special_tokens = sum(1 for t in tokens if t in SPECIAL_TOKENS)
     special_chars = sum(1 for t in tokens if t in SPECIAL_CHARS)
     
-    print(f"Односимвольных:       {single_char}")
-    print(f"Многосимвольных:      {multi_char}")
-    print(f"Специальных токенов:  {special_tokens}")
-    print(f"Специальных символов: {special_chars}")
+    print(f"- Односимвольных:       {single_char}")
+    print(f"- Многосимвольных:      {multi_char}")
+    print(f"- Специальных токенов:  {special_tokens}")
+    print(f"- Специальных символов: {special_chars}")
     
     # Проверяем наличие базовых символов
     missing_chars = [c for c in SPECIAL_CHARS if c not in tokens]
     if missing_chars:
-        print(f"Отсутствуют символы: {[repr(c) for c in missing_chars]}!")
+        print(f"- Отсутствуют символы:  {[repr(c) for c in missing_chars]}!")
 
 
 def save_mapping_file(mapping: Dict[int, int], output_dir: Path, model_size: int) -> None:
@@ -739,10 +793,10 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Примеры:
-  python tools/convert_vocab.py                      # обычная конвертация
-  python tools/convert_vocab.py --no-fill            # сжатие словаря
-  python tools/convert_vocab.py --inspect-only       # только анализ
-  python tools/convert_vocab.py --model-size 8000    # модель 8000
+  python tools/convert_vocab.py                      # Обычная конвертация
+  python tools/convert_vocab.py --no-fill            # Сжатие словаря
+  python tools/convert_vocab.py --inspect-only       # Только анализ
+  python tools/convert_vocab.py --model-size 8000    # Модель 8000
   python tools/convert_vocab.py --input-dir ../bpe_python/models
         """
     )
@@ -795,7 +849,7 @@ def main() -> int:
     print(f"\nПути к файлам:")
     print(f"- python словарь: {python_vocab}")
     print(f"- python слияния: {python_merges}")
-    print(f"- выходная папка: {output_dir}")
+    print(f"- Выходная папка: {output_dir}")
     
     if not python_vocab.exists():
         print(f"\nФайл не найден: {python_vocab}!")
@@ -833,11 +887,11 @@ def main() -> int:
     has_gaps, missing_indices, max_idx = check_index_continuity(data, format_type)
     if has_gaps:
         print(f"\nОБНАРУЖЕНЫ ПРОПУСКИ В ИНДЕКСАХ!")
-        print(f"   Отсутствуют индексы: {missing_indices[:20]}")
+        print(f"Отсутствуют индексы: {missing_indices[:20]}")
         if len(missing_indices) > 20:
-            print(f"   ... и еще {len(missing_indices) - 20}")
-        print(f"   Максимальный ID: {max_idx}")
-        print(f"   Это может вызвать смещение токенов в C++ версии!")
+            print(f"... и еще {len(missing_indices) - 20}")
+        print(f"Максимальный ID: {max_idx}")
+        print(f"Это может вызвать смещение токенов в C++ версии!")
     
     # Конвертируем в зависимости от формата
     if format_type == "id_to_token":
@@ -853,6 +907,9 @@ def main() -> int:
     
     # Извлекаем токены
     tokens = cpp_data["tokens"]
+    
+    # Добавляем сохранение русских байтов
+    tokens = preserve_russian_bytes(tokens, args.verbose)
     
     # Добавляем специальные символы
     tokens = add_special_chars(tokens, args.verbose)
@@ -870,7 +927,7 @@ def main() -> int:
     
     # Проверяем и корректируем размер
     if not validate_vocab_size(tokens, args.model_size, args.strict):
-        print("Ошибка валидации размера словаря")
+        print("Ошибка валидации размера словаря!")
         return 1
     
     # Валидация токенов
@@ -882,9 +939,9 @@ def main() -> int:
         if issues:
             print(f"Найдено проблем: {len(issues)}")
             for issue in issues[:20]:
-                print(f"  - {issue}")
+                print(f"- {issue}")
             if len(issues) > 20:
-                print(f"  ... и еще {len(issues) - 20}")
+                print(f"... и еще {len(issues) - 20}")
             
             if args.strict:
                 print("Строгий режим: прерывание из-за ошибок валидации")
@@ -925,20 +982,20 @@ def main() -> int:
     for i in range(min(20, len(tokens))):
         token = tokens[i]
         if token.startswith('<MISSING_'):
-            print(f"{i:4d}: [ПРОПУСК] {token}")
+            print(f"    {i:4d}: [ПРОПУСК] {token}")
         elif token.startswith('<EXTRA_'):
-            print(f"{i:4d}: [ДОБАВЛЕН] {token}")
+            print(f"    {i:4d}: [ДОБАВЛЕН] {token}")
         elif token in SPECIAL_TOKENS:
-            print(f"{i:4d}: [СПЕЦ] '{token}'")
+            print(f"    {i:4d}: [СПЕЦ] '{token}'")
         elif len(token) == 1:
             if token.isprintable():
-                print(f"{i:4d}: '{token}' (ASCII: {ord(token)})")
+                print(f"    {i:4d}: '{token}' (ASCII: {ord(token)})")
             else:
                 display = repr(token).strip("'")
-                print(f"{i:4d}: {display} (ASCII: {ord(token)})")
+                print(f"    {i:4d}: {display} (ASCII: {ord(token)})")
         else:
             display = token if len(token) < 40 else token[:37] + "..."
-            print(f"{i:4d}: '{display}'")
+            print(f"    {i:4d}: '{display}'")
     
     # Итоговые рекомендации
     print("\n" + "============================================================")
@@ -948,13 +1005,13 @@ def main() -> int:
     if has_gaps and not args.no_fill:
         print("\nРЕКОМЕНДАЦИЯ: В словаре есть пропуски!")
         print("Используйте --no-fill для сжатия словаря и удаления пропусков:")
-        print(f"   python {sys.argv[0]} --no-fill --model-size {args.model_size}")
+        print(f"python {sys.argv[0]} --no-fill --model-size {args.model_size}")
     elif args.no_fill and mapping:
         print("\nСловарь сжат, пропуски удалены.")
         print("Индексы токенов изменены. Маппинг сохранен в id_mapping.json")
     
     if len(tokens) != args.model_size:
-        print(f"\nРазмер словаря ({len(tokens)}) не соответствует ожидаемому ({args.model_size})")
+        print(f"\nРазмер словаря ({len(tokens)}) не соответствует ожидаемому ({args.model_size})!")
         print("Проверьте исходные данные или используйте другой --model-size")
     
     print("\nКонвертация завершена успешно!")

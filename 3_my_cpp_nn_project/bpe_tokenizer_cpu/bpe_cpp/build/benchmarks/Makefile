@@ -257,6 +257,34 @@ run_bench_comparison/fast:
 .PHONY : run_bench_comparison/fast
 
 # Convenience name for target.
+benchmarks/CMakeFiles/run_benchmarks_silent.dir/rule:
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 benchmarks/CMakeFiles/run_benchmarks_silent.dir/rule
+.PHONY : benchmarks/CMakeFiles/run_benchmarks_silent.dir/rule
+
+# Convenience name for target.
+run_benchmarks_silent: benchmarks/CMakeFiles/run_benchmarks_silent.dir/rule
+.PHONY : run_benchmarks_silent
+
+# fast build rule for target.
+run_benchmarks_silent/fast:
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f benchmarks/CMakeFiles/run_benchmarks_silent.dir/build.make benchmarks/CMakeFiles/run_benchmarks_silent.dir/build
+.PHONY : run_benchmarks_silent/fast
+
+# Convenience name for target.
+benchmarks/CMakeFiles/run_benchmarks_verbose.dir/rule:
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 benchmarks/CMakeFiles/run_benchmarks_verbose.dir/rule
+.PHONY : benchmarks/CMakeFiles/run_benchmarks_verbose.dir/rule
+
+# Convenience name for target.
+run_benchmarks_verbose: benchmarks/CMakeFiles/run_benchmarks_verbose.dir/rule
+.PHONY : run_benchmarks_verbose
+
+# fast build rule for target.
+run_benchmarks_verbose/fast:
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f benchmarks/CMakeFiles/run_benchmarks_verbose.dir/build.make benchmarks/CMakeFiles/run_benchmarks_verbose.dir/build
+.PHONY : run_benchmarks_verbose/fast
+
+# Convenience name for target.
 benchmarks/CMakeFiles/run_benchmarks.dir/rule:
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 benchmarks/CMakeFiles/run_benchmarks.dir/rule
 .PHONY : benchmarks/CMakeFiles/run_benchmarks.dir/rule
@@ -269,6 +297,76 @@ run_benchmarks: benchmarks/CMakeFiles/run_benchmarks.dir/rule
 run_benchmarks/fast:
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f benchmarks/CMakeFiles/run_benchmarks.dir/build.make benchmarks/CMakeFiles/run_benchmarks.dir/build
 .PHONY : run_benchmarks/fast
+
+# Convenience name for target.
+benchmarks/CMakeFiles/show_last_results.dir/rule:
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 benchmarks/CMakeFiles/show_last_results.dir/rule
+.PHONY : benchmarks/CMakeFiles/show_last_results.dir/rule
+
+# Convenience name for target.
+show_last_results: benchmarks/CMakeFiles/show_last_results.dir/rule
+.PHONY : show_last_results
+
+# fast build rule for target.
+show_last_results/fast:
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f benchmarks/CMakeFiles/show_last_results.dir/build.make benchmarks/CMakeFiles/show_last_results.dir/build
+.PHONY : show_last_results/fast
+
+# Convenience name for target.
+benchmarks/CMakeFiles/view_last_results.dir/rule:
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 benchmarks/CMakeFiles/view_last_results.dir/rule
+.PHONY : benchmarks/CMakeFiles/view_last_results.dir/rule
+
+# Convenience name for target.
+view_last_results: benchmarks/CMakeFiles/view_last_results.dir/rule
+.PHONY : view_last_results
+
+# fast build rule for target.
+view_last_results/fast:
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f benchmarks/CMakeFiles/view_last_results.dir/build.make benchmarks/CMakeFiles/view_last_results.dir/build
+.PHONY : view_last_results/fast
+
+# Convenience name for target.
+benchmarks/CMakeFiles/check_models.dir/rule:
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 benchmarks/CMakeFiles/check_models.dir/rule
+.PHONY : benchmarks/CMakeFiles/check_models.dir/rule
+
+# Convenience name for target.
+check_models: benchmarks/CMakeFiles/check_models.dir/rule
+.PHONY : check_models
+
+# fast build rule for target.
+check_models/fast:
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f benchmarks/CMakeFiles/check_models.dir/build.make benchmarks/CMakeFiles/check_models.dir/build
+.PHONY : check_models/fast
+
+# Convenience name for target.
+benchmarks/CMakeFiles/clean_benchmark_results.dir/rule:
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 benchmarks/CMakeFiles/clean_benchmark_results.dir/rule
+.PHONY : benchmarks/CMakeFiles/clean_benchmark_results.dir/rule
+
+# Convenience name for target.
+clean_benchmark_results: benchmarks/CMakeFiles/clean_benchmark_results.dir/rule
+.PHONY : clean_benchmark_results
+
+# fast build rule for target.
+clean_benchmark_results/fast:
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f benchmarks/CMakeFiles/clean_benchmark_results.dir/build.make benchmarks/CMakeFiles/clean_benchmark_results.dir/build
+.PHONY : clean_benchmark_results/fast
+
+# Convenience name for target.
+benchmarks/CMakeFiles/benchmarks_help.dir/rule:
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 benchmarks/CMakeFiles/benchmarks_help.dir/rule
+.PHONY : benchmarks/CMakeFiles/benchmarks_help.dir/rule
+
+# Convenience name for target.
+benchmarks_help: benchmarks/CMakeFiles/benchmarks_help.dir/rule
+.PHONY : benchmarks_help
+
+# fast build rule for target.
+benchmarks_help/fast:
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build && $(MAKE) $(MAKESILENT) -f benchmarks/CMakeFiles/benchmarks_help.dir/build.make benchmarks/CMakeFiles/benchmarks_help.dir/build
+.PHONY : benchmarks_help/fast
 
 bench_comparison.o: bench_comparison.cpp.o
 .PHONY : bench_comparison.o
@@ -355,10 +453,17 @@ help:
 	@echo "... list_install_components"
 	@echo "... rebuild_cache"
 	@echo "... test"
+	@echo "... benchmarks_help"
+	@echo "... check_models"
+	@echo "... clean_benchmark_results"
 	@echo "... run_bench_comparison"
 	@echo "... run_bench_fast_tokenizer"
 	@echo "... run_bench_tokenizer"
 	@echo "... run_benchmarks"
+	@echo "... run_benchmarks_silent"
+	@echo "... run_benchmarks_verbose"
+	@echo "... show_last_results"
+	@echo "... view_last_results"
 	@echo "... bench_comparison"
 	@echo "... bench_fast_tokenizer"
 	@echo "... bench_tokenizer"

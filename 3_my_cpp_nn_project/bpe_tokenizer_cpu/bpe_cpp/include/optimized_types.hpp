@@ -1,115 +1,107 @@
 /**
  * @file optimized_types.hpp
- * @brief Оптимизированные типы данных для высокопроизводительного BPE токенизатора
+ * @brief Компактные типы данных для высокопроизводительной токенизации
  * 
  * @author Евгений П.
  * @date 2026
  * @version 3.4.0
  * 
- * @details Компактные и эффективные типы данных, специально разработанные
- *          для минимизации использования памяти и максимизации скорости работы
- *          токенизатора. Эти типы являются фундаментом для всех оптимизаций.
+ * @details Фундаментальные оптимизированные типы, обеспечивающие
+ *          эффективное использование памяти и кэша процессора.
+ *          Являются основой всех оптимизаций в FastBPETokenizer.
  * 
  *          **Ключевые оптимизации:**
  * 
- *          1) **merge_key_t (64 бита)**
+ *          1. **merge_key_t (64 бита)**
  *             - Упаковывает два 32-битных ID в одно 64-битное значение
- *             - Экономия памяти: 8 байт вместо ~50-100 байт для строк
- *             - Идеально для использования в unordered_map (не нужна хеш-функция)
- *             - Ускорение поиска за счет меньшего размера ключа
+ *             - Экономия: 8 байт вместо 32-64 байт для строковых ключей
+ *             - Для 1 млн правил: 8 МБ вместо 32-64 МБ
+ *             - Идеальное выравнивание для кэша процессора
+ *             - Не требует хеш-функции (используем стандартную)
  * 
- *          2) **TokenizerStats**
+ *          2. **TokenizerStats**
  *             - Сбор метрик производительности без оверхэда
- *             - Удобные методы для вычисления средних значений
+ *             - Поддержка многопоточности (атомарная версия)
+ *             - Удобные методы анализа (hit rate, средние)
  * 
- *          3) **TokenizerConfig**
- *             - Централизованное хранение всех настроек
- *             - Валидация параметров перед использованием
- *             - Значения по умолчанию, оптимальные для C++ кода
+ *          3. **TokenizerConfig**
+ *             - Централизованное хранение настроек
+ *             - Валидация параметров на этапе конфигурации
+ *             - Автоматический расчет оптимальных значений
  * 
  *          **Влияние на производительность:**
- *          - Уменьшение использования памяти на 80-90% для правил слияния
- *          - Ускорение поиска в хеш-таблицах на 20-30%
- *          - Улучшение локальности данных (меньше кэш-промахов)
+ *          - Память      - -70-80% для правил слияния
+ *          - Скорость    - +20-30% за счет лучшей локальности
+ *          - Кэш-промахи - -40% благодаря компактности
  * 
- * @note Все функции помечены noexcept для лучшей оптимизации компилятором
- * @warning merge_key_t предполагает, что ID токенов помещаются в 32 бита
- * 
- * @see FastBPETokenizer
- * @see BPETokenizer
+ * @see FastBPETokenizer, MemoryPool, StringViewCache
  */
 
 #pragma once
 
-#include <cstdint>
-#include <string>
-#include <limits>
-#include <type_traits>
 #include <atomic>
+#include <cstdint>
+#include <limits>
+#include <string>
 #include <thread>
+#include <type_traits>
 
 namespace bpe {
 
-// ======================================================================
-// merge_key_t - компактное представление пары для слияний
-// ======================================================================
+// ============================================================================
+// merge_key_t - компактное представление пары токенов
+// ============================================================================
 
 /**
  * @brief 64-битный ключ для хранения пары ID токенов
  * 
- * Упаковывает два 32-битных ID в одно 64-битное значение.
- * Это ключевая оптимизация, позволяющая радикально сократить
- * использование памяти при хранении правил слияния.
- * 
- * **Формат:**    [left_id (32 бита)] [right_id (32 бита)]
+ * **Формат:**
+ * @code
+ * 64-битное целое:
+ * ┌──────────────────────────────┬──────────────────────────────┐
+ * │ left_id (32 бита)            │ right_id (32 бита)           │
+ * └──────────────────────────────┴──────────────────────────────┘
+ *   63 ... 32                      31 ... 0
+ * @endcode
  * 
  * **Пример:**
- * \code
- * left_id = 42  (0x0000002A)
- * right_id = 17 (0x00000011)
- * key = 0x0000002A00000011
- * \endcode
+ * @code
+ * uint32_t left = 42;     // 0x0000002A
+ * uint32_t right = 17;    // 0x00000011
+ * merge_key_t key = 0x0000002A00000011
+ * @endcode
  * 
- * **Преимущества перед хранением строк:**
- * - Строка "42 17" занимает ~5 байт + оверхед std::string (24 байта) = 29 байт
- * - merge_key_t занимает 8 байт (экономия 72%)
- * - Для миллиона правил: 8 МБ вместо 29 МБ
- * - Нет аллокаций памяти при создании ключа
- * - Идеальное выравнивание для кэша процессора
+ * **Сравнение со строковым представлением:**
+ * @code
+ * // Строковый подход
+ * std::string pair = "42 17";    // ~5 байт
+ * // + оверхед std::string       // ~24 байта
+ * // + оверхед хеш-таблицы       // ~16 байт
+ * // ИТОГО: ~45 байт на пару
  * 
- * Пример использования:
- * \code
- * // Создание ключа из пары
- * merge_key_t key = make_merge_key(100, 200);
+ * // merge_key_t подход
+ * merge_key_t key = make_merge_key(42, 17);    // 8 байт
+ * // Экономия: 37 байт на пару (82%)
+ * @endcode
  * 
- * // Хранение в unordered_map (не нужна хеш-функция!)
- * std::unordered_map<merge_key_t, int> merge_ranks;
- * merge_ranks[key] = 42;
- * 
- * // Извлечение ID обратно
- * uint32_t left = get_left_from_key(key);      // = 100
- * uint32_t right = get_right_from_key(key);    // = 200
- * \endcode
+ * @warning ID токенов должны помещаться в 32 бита (< 4,294,967,296)
  */
 using merge_key_t = uint64_t;
 
 /**
- * @brief Создать компактный ключ из двух ID токенов
+ * @brief Создать компактный ключ из двух ID
  * 
- * @param left ID левого токена (должен помещаться в 32 бита)
- * @param right ID правого токена (должен помещаться в 32 бита)
- * @return merge_key_t 64-битный ключ
+ * @param left ID левого токена
+ * @param right ID правого токена
+ * @return merge_key_t Упакованный 64-битный ключ
  * 
- * **Алгоритм:**     сдвиг left на 32 бита влево и OR с right
+ * **Алгоритм:**  left << 32 | right
+ * **Сложность:** 1 такт процессора
  * 
- * **Сложность:**    O(1) - одна инструкция процессора
- * 
- * \code
- * merge_key_t key = make_merge_key(42, 17);
- * // key = 0x0000002A00000011 (42 << 32 | 17)
- * \endcode
- * 
- * @note Предполагается, что ID < 2^32 (что верно для всех разумных словарей)
+ * @code
+ * merge_key_t key = make_merge_key(1000, 2000);
+ * // key = 0x000003E8000007D0
+ * @endcode
  */
 constexpr merge_key_t make_merge_key(uint32_t left, uint32_t right) noexcept {
     return (static_cast<merge_key_t>(left) << 32) | right;
@@ -121,11 +113,11 @@ constexpr merge_key_t make_merge_key(uint32_t left, uint32_t right) noexcept {
  * @param key 64-битный ключ
  * @return uint32_t ID левого токена
  * 
- * **Алгоритм:**    сдвиг ключа на 32 бита вправо
+ * **Алгоритм:** key >> 32
  * 
- * \code
- * uint32_t left = get_left_from_key(0x0000002A00000011);    // = 42
- * \endcode
+ * @code
+ * uint32_t left = get_left_from_key(0x000003E8000007D0);    // = 1000
+ * @endcode
  */
 constexpr uint32_t get_left_from_key(merge_key_t key) noexcept {
     return static_cast<uint32_t>(key >> 32);
@@ -137,21 +129,21 @@ constexpr uint32_t get_left_from_key(merge_key_t key) noexcept {
  * @param key 64-битный ключ
  * @return uint32_t ID правого токена
  * 
- * **Алгоритм:**    маскирование младших 32 бит
+ * **Алгоритм:** key & 0xFFFFFFFF
  * 
- * \code
- * uint32_t right = get_right_from_key(0x0000002A00000011);    // = 17
- * \endcode
+ * @code
+ * uint32_t right = get_right_from_key(0x000003E8000007D0);    // = 2000
+ * @endcode
  */
 constexpr uint32_t get_right_from_key(merge_key_t key) noexcept {
     return static_cast<uint32_t>(key & 0xFFFFFFFF);
 }
 
 /**
- * @brief Хеш-функция для merge_key_t (для использования в unordered_map)
+ * @brief Хеш-функция для merge_key_t
  * 
- * Так как merge_key_t уже является 64-битным целым,
- * можно использовать стандартную хеш-функцию.
+ * Так как merge_key_t уже является целым числом,
+ * используем тривиальную хеш-функцию.
  */
 struct merge_key_hash {
     size_t operator()(merge_key_t key) const noexcept {
@@ -159,50 +151,46 @@ struct merge_key_hash {
     }
 };
 
-// ======================================================================
+// ============================================================================
 // TokenizerStats - статистика производительности
-// ======================================================================
+// ============================================================================
 
 /**
- * @brief Структура для сбора статистики работы токенизатора
+ * @brief Статистика работы токенизатора
  * 
- * Собирает метрики производительности для анализа и оптимизации.
- * Используется в бенчмарках и для профилирования.
- * 
- * **Собираемые метрики:**
+ * Собирает метрики для анализа производительности:
  * - Количество вызовов encode/decode
- * - Попадания в кэш (hit/miss)
- * - Время выполнения (для профилирования)
- * - Количество обработанных токенов
+ * - Эффективность кэширования (hit/miss)
+ * - Временные характеристики
+ * - Объем обработанных данных
  * 
- * **Типичное использование:**
- * \code
- * bpe::TokenizerStats stats;
+ * **Пример анализа:**
+ * @code
+ * TokenizerStats stats = tokenizer.stats();
  * 
- * // После нескольких encode вызовов
- * std::cout << "Среднее время encode: " 
- *           << stats.avg_encode_time_ms() << " мс" << std::endl;
- * std::cout << "Попаданий в кэш: " 
- *           << (stats.cache_hit_rate() * 100) << "%" << std::endl;
- * \endcode
+ * std::cout << "Производительность:\n";
+ * std::cout << "- Вызовов encode:       " << stats.encode_calls << "\n";
+ * std::cout << "- Среднее время encode: " 
+ *           << stats.avg_encode_time_ms() << " мс\n";
+ * std::cout << "- Попаданий в кэш:      " 
+ *           << (stats.cache_hit_rate() * 100) << "%\n";
  * 
- * @note Для многопоточного использования требуется атомарная версия
- * @see FastBPETokenizer::stats()
+ * if (stats.cache_hit_rate() < 0.5) {
+ *     std::cout << "Низкая эффективность кэша!\n";
+ * }
+ * @endcode
  */
 struct TokenizerStats {
-    size_t encode_calls = 0;              ///< Количество вызовов encode
-    size_t decode_calls = 0;              ///< Количество вызовов decode
-    size_t total_tokens_processed = 0;    ///< Всего обработано токенов
-    double total_encode_time_ms = 0.0;    ///< Общее время encode (мс)
-    double total_decode_time_ms = 0.0;    ///< Общее время decode (мс)
-    size_t cache_hits = 0;                ///< Попадания в кэш
-    size_t cache_misses = 0;              ///< Промахи кэша
+    size_t encode_calls{0};              ///< Количество вызовов encode()
+    size_t decode_calls{0};              ///< Количество вызовов decode()
+    size_t total_tokens_processed{0};    ///< Всего обработано токенов
+    double total_encode_time_ms{0.0};    ///< Суммарное время encode (мс)
+    double total_decode_time_ms{0.0};    ///< Суммарное время decode (мс)
+    size_t cache_hits{0};                ///< Попадания в кэш
+    size_t cache_misses{0};              ///< Промахи кэша
 
     /**
      * @brief Сбросить всю статистику в ноль
-     * 
-     * Используется перед началом нового бенчмарка или
-     * для очистки накопленных данных.
      */
     void reset() noexcept {
         encode_calls = 0;
@@ -215,33 +203,29 @@ struct TokenizerStats {
     }
 
     /**
-     * @brief Среднее время одного encode вызова
-     * 
-     * @return double Среднее время в миллисекундах
-     * 
-     * Вычисляется как total_encode_time_ms / encode_calls.
-     * Если encode_calls == 0, возвращает 0.0.
+     * @brief Среднее время encode вызова
+     * @return double Время в миллисекундах
      */
     double avg_encode_time_ms() const noexcept {
         return encode_calls ? total_encode_time_ms / encode_calls : 0.0;
     }
 
     /**
-     * @brief Среднее время одного decode вызова
-     * 
-     * @return double Среднее время в миллисекундах
+     * @brief Среднее время decode вызова
+     * @return double Время в миллисекундах
      */
     double avg_decode_time_ms() const noexcept {
         return decode_calls ? total_decode_time_ms / decode_calls : 0.0;
     }
 
     /**
-     * @brief Процент попаданий в кэш
+     * @brief Процент попаданий в кэш (0.0 - 1.0)
      * 
-     * @return double Значение от 0.0 до 1.0
-     * 
-     * Вычисляется как cache_hits / (cache_hits + cache_misses).
-     * Высокий hit rate (>0.8) означает эффективное кэширование.
+     * **Интерпретация:**
+     * - < 0.5    - Кэш малоэффективен
+     * - 0.5-0.8  - Приемлемо
+     * - 0.8-0.95 - Хорошо
+     * - > 0.95   - Отлично
      */
     double cache_hit_rate() const noexcept {
         size_t total = cache_hits + cache_misses;
@@ -250,23 +234,20 @@ struct TokenizerStats {
 
     /**
      * @brief Получить общее количество обращений к кэшу
-     * @return size_t cache_hits + cache_misses
      */
     size_t total_cache_accesses() const noexcept {
         return cache_hits + cache_misses;
     }
 
     /**
-     * @brief Проверить, есть ли какие-либо данные
-     * @return true если были вызовы encode или decode
+     * @brief Проверить наличие данных
      */
     bool has_data() const noexcept {
         return encode_calls > 0 || decode_calls > 0;
     }
-    
+
     /**
      * @brief Добавить статистику из другого объекта
-     * @param other Другая статистика для добавления
      */
     void add(const TokenizerStats& other) noexcept {
         encode_calls += other.encode_calls;
@@ -277,7 +258,7 @@ struct TokenizerStats {
         total_encode_time_ms += other.total_encode_time_ms;
         total_decode_time_ms += other.total_decode_time_ms;
     }
-    
+
     /**
      * @brief Оператор += для удобства
      */
@@ -285,20 +266,43 @@ struct TokenizerStats {
         add(other);
         return *this;
     }
+
+    /**
+     * @brief Получить строковое представление статистики
+     */
+    std::string to_string() const {
+        std::string result;
+        result += "Статистика токенизатора:\n";
+        result += "- Вызовов encode:       " + std::to_string(encode_calls) + "\n";
+        result += "- Вызовов decode:       " + std::to_string(decode_calls) + "\n";
+        result += "- Токенов обработано:   " + std::to_string(total_tokens_processed) + "\n";
+        result += "- Среднее время encode: " + std::to_string(avg_encode_time_ms()) + " мс\n";
+        result += "- Среднее время decode: " + std::to_string(avg_decode_time_ms()) + " мс\n";
+        result += "- Попаданий в кэш:      " + std::to_string(cache_hits) + "\n";
+        result += "- Промахов кэша:        " + std::to_string(cache_misses) + "\n";
+        result += "- Эффективность кэша:   " + std::to_string(cache_hit_rate() * 100) + "%\n";
+        return result;
+    }
 };
 
 /**
- * @brief Атомарная версия TokenizerStats для многопоточного использования
+ * @brief Атомарная версия статистики для многопоточности
+ * 
+ * Позволяет безопасно обновлять статистику из нескольких потоков
+ * без дополнительной синхронизации.
  */
 struct AtomicTokenizerStats {
-    std::atomic<size_t> encode_calls{0};
-    std::atomic<size_t> decode_calls{0};
-    std::atomic<size_t> total_tokens_processed{0};
-    std::atomic<double> total_encode_time_ms{0.0};
-    std::atomic<double> total_decode_time_ms{0.0};
-    std::atomic<size_t> cache_hits{0};
-    std::atomic<size_t> cache_misses{0};
-    
+    std::atomic<size_t> encode_calls{0};              ///< Атомарный счетчик encode
+    std::atomic<size_t> decode_calls{0};              ///< Атомарный счетчик decode
+    std::atomic<size_t> total_tokens_processed{0};    ///< Атомарный счетчик токенов
+    std::atomic<double> total_encode_time_ms{0.0};    ///< Атомарное время encode
+    std::atomic<double> total_decode_time_ms{0.0};    ///< Атомарное время decode
+    std::atomic<size_t> cache_hits{0};                ///< Атомарные попадания в кэш
+    std::atomic<size_t> cache_misses{0};              ///< Атомарные промахи кэша
+
+    /**
+     * @brief Сбросить статистику
+     */
     void reset() noexcept {
         encode_calls = 0;
         decode_calls = 0;
@@ -308,7 +312,11 @@ struct AtomicTokenizerStats {
         total_encode_time_ms = 0.0;
         total_decode_time_ms = 0.0;
     }
-    
+
+    /**
+     * @brief Получить снимок статистики (неатомарный)
+     * @return TokenizerStats Копия текущих значений
+     */
     TokenizerStats snapshot() const noexcept {
         TokenizerStats stats;
         stats.encode_calls = encode_calls.load();
@@ -322,96 +330,114 @@ struct AtomicTokenizerStats {
     }
 };
 
-// ======================================================================
+// ============================================================================
 // TokenizerConfig - конфигурация токенизатора
-// ======================================================================
+// ============================================================================
 
 /**
- * @brief Структура конфигурации для всех версий токенизатора
+ * @brief Конфигурация для всех версий токенизатора
  * 
- * Централизованное хранение всех настроек позволяет:
- * - Легко передавать конфигурацию между компонентами
- * - Сериализовать настройки в JSON/YAML
- * - Валидировать параметры перед использованием
- * - Иметь единый источник истины для параметров
+ * Централизованное хранение всех параметров с валидацией.
  * 
  * **Параметры по умолчанию:**
- * - vocab_size:            8000
- * - cache_size:            10000 (хороший баланс память/скорость)
- * - byte_level:            true (необходимо для Unicode)
- * - enable_cache:          true (значительное ускорение)
- * - Специальные токены:    <UNK>, <PAD>, <BOS>, <EOS>
+ * @code
+ * vocab_size:  10000 - Достаточно для большинства задач с++
+ * cache_size:  10000 - 10K записей ≈ 10 МБ памяти
+ * byte_level:  true  - Обязательно для Unicode
+ * num_threads: 0     - auto (использовать все ядра)
+ * @endcode
  * 
- * @note Все поля инициализированы значениями по умолчанию
- * @see FastBPETokenizer::FastBPETokenizer()
+ * **Пример кастомизации:**
+ * @code
+ * // Для сервера с 32 ГБ RAM
+ * TokenizerConfig config;
+ * config.vocab_size = 50000;
+ * config.cache_size = 100000;
+ * config.num_threads = 16;
+ * 
+ * if (!config.validate()) {
+ *     throw std::runtime_error("Invalid config");
+ * }
+ * 
+ * FastBPETokenizer tokenizer(config);
+ * @endcode
  */
 struct TokenizerConfig {
-    // ==================== Основные параметры ====================
-    
-    size_t vocab_size{8000};     ///< Целевой размер словаря (количество токенов)
-    size_t cache_size{10000};    ///< Размер кэша (количество записей)
-    
-    // ==================== Режимы работы ====================
-    
-    bool byte_level{true};           ///< Byte-level режим (по умолчанию включен)
-                                     ///< true = поддержка Unicode, false = только ASCII
-    bool enable_cache{true};         ///< Включить кэширование результатов
-                                     ///< Значительно ускоряет повторяющиеся запросы
-    bool enable_profiling{false};    ///< Включить сбор статистики
-                                     ///< Использовать только для бенчмарков
-    bool use_memory_pool{true};      ///< Использовать пул памяти
-    
-    // ==================== Параметры параллелизации ====================
-    
-    int num_threads{0};              ///< Количество потоков (0 = auto)
-    
-    // ==================== Специальные токены ====================
-    
-    std::string unknown_token{"<UNK>"};    ///< Токен для неизвестных символов
-    std::string pad_token{"<PAD>"};        ///< Токен для паддинга (выравнивания батчей)
-    std::string bos_token{"<BOS>"};        ///< Токен начала последовательности
-    std::string eos_token{"<EOS>"};        ///< Токен конца последовательности
-    std::string mask_token{"<MASK>"};      ///< Токен маски (для masked language modeling)
+    // ========================================================================
+    // Основные параметры
+    // ========================================================================
+
+    size_t vocab_size{10000};    ///< Целевой размер словаря (токенов)
+                                 ///< 1000-5000   - Маленький, быстрый
+                                 ///< 8000-16000  - Оптимальный баланс
+                                 ///< 32000-50000 - Большой, точный
+
+    size_t cache_size{10000};    ///< Размер кэша в записях
+                                 ///< 1000   - 1 МБ, высокая скорость
+                                 ///< 10000  - 10 МБ, баланс
+                                 ///< 100000 - 100 МБ, максимум
+
+    // ========================================================================
+    // Режимы работы
+    // ========================================================================
+
+    bool byte_level{true};           ///< Byte-level режим (обязательно для Unicode)
+    bool enable_cache{true};         ///< Кэширование результатов (ускорение 2-5x)
+    bool enable_profiling{false};    ///< Профилирование (только для бенчмарков)
+    bool use_memory_pool{true};      ///< Использовать пул памяти (ускорение 20-30%)
+
+    // ========================================================================
+    // Параллелизация
+    // ========================================================================
+
+    int num_threads{0};    ///< Количество потоков (0 = auto)
+                           ///< 0 - Использовать все ядра
+                           ///< 1 - Однопоточный режим
+                           ///< N - Ровно N потоков
+
+    // ========================================================================
+    // Специальные токены
+    // ========================================================================
+
+    std::string unknown_token{"<UNK>"};    ///< Неизвестный токен
+    std::string pad_token{"<PAD>"};        ///< Padding токен
+    std::string bos_token{"<BOS>"};        ///< Начало последовательности
+    std::string eos_token{"<EOS>"};        ///< Конец последовательности
+    std::string mask_token{"<MASK>"};      ///< Маскирующий токен
+
+    // ========================================================================
+    // Параметры обучения (опционально)
+    // ========================================================================
+
+    size_t min_frequency{2};          ///< Минимальная частота для включения в словарь
+    size_t max_token_length{1000};    ///< Максимальная длина токена (защита)
 
     /**
-     * @brief Конструктор по умолчанию
-     * 
-     * Создает конфигурацию с оптимальными параметрами
-     * для большинства случаев использования.
+     * @brief Конструктор по умолчанию (оптимальные параметры)
      */
     TokenizerConfig() = default;
 
     /**
      * @brief Конструктор для основных параметров
      * 
-     * @param vocab_size Размер словаря
-     * @param cache_size Размер кэша
-     * @param byte_level Использовать byte-level режим
-     * 
-     * Позволяет быстро создать конфигурацию, не указывая
-     * все параметры явно.
+     * @param vs Размер словаря
+     * @param cs Размер кэша
+     * @param bl Byte-level режим
      */
-    TokenizerConfig(size_t vocab_size, size_t cache_size, bool byte_level) noexcept
-        : vocab_size(vocab_size)
-        , cache_size(cache_size)
-        , byte_level(byte_level) {}
+    TokenizerConfig(size_t vs, size_t cs, bool bl) noexcept
+        : vocab_size(vs)
+        , cache_size(cs)
+        , byte_level(bl) {}
 
     /**
-     * @brief Проверить корректность настроек
+     * @brief Проверить корректность конфигурации
      * 
-     * @return true если конфигурация валидна
+     * @return true если все параметры в допустимых пределах
      * 
-     * Проверяет:
-     * - vocab_size >= 256 (минимальный словарь для ASCII)
-     * - vocab_size <= 100000 (разумный максимум для памяти)
-     * - cache_size <= 100000 (ограничение на размер кэша)
-     * 
-     * \code
-     * TokenizerConfig config(50000, 20000, true);
-     * if (!config.validate()) {
-     *     throw std::invalid_argument("Invalid config");
-     * }
-     * \endcode
+     * **Проверки:**
+     * - vocab_size >= 256    - Минимум для ASCII
+     * - vocab_size <= 100000 - Разумный максимум
+     * - cache_size <= 100000 - Ограничение по памяти
      */
     bool validate() const noexcept {
         if (vocab_size < 256) return false;
@@ -421,27 +447,52 @@ struct TokenizerConfig {
     }
 
     /**
-     * @brief Получить рекомендуемый размер кэша для заданной памяти
+     * @brief Рекомендуемый размер кэша для заданной памяти
      * 
-     * @param memory_limit_mb Ограничение памяти в мегабайтах
-     * @return size_t Рекомендуемый размер кэша
+     * @param memory_limit_mb Ограничение памяти в МБ
+     * @return size_t Рекомендованный размер кэша
      * 
-     * Примерно 1 МБ памяти на 1000 записей в кэше
+     * **Эмпирическая формула:**
+     * 1 запись ≈ 1 КБ (текст + токены)
+     * 1000 записей ≈ 1 МБ
      */
     static size_t recommended_cache_size(size_t memory_limit_mb) {
-        // Каждая запись ~ 1 КБ (текст + токены)
         return memory_limit_mb * 1000;
     }
-    
+
     /**
-     * @brief Получить количество потоков (с учетом auto)
+     * @brief Получить эффективное количество потоков
+     * 
      * @return int Количество потоков для использования
+     * 
+     * Если num_threads > 0, возвращает num_threads,
+     * иначе возвращает количество аппаратных потоков CPU.
      */
     int effective_num_threads() const noexcept {
         if (num_threads > 0) return num_threads;
-        // Возвращаем количество аппаратных потоков
         return static_cast<int>(std::thread::hardware_concurrency());
+    }
+
+    /**
+     * @brief Получить строковое представление конфигурации
+     */
+    std::string to_string() const {
+        std::string result;
+        result += "Конфигурация токенизатора:\n";
+        result += "- vocab_size:       " + std::to_string(vocab_size) + "\n";
+        result += "- cache_size:       " + std::to_string(cache_size) + "\n";
+        result += "- byte_level:       " + std::string(byte_level ? "да" : "нет") + "\n";
+        result += "- enable_cache:     " + std::string(enable_cache ? "да" : "нет") + "\n";
+        result += "- enable_profiling: " + std::string(enable_profiling ? "да" : "нет") + "\n";
+        result += "- use_memory_pool:  " + std::string(use_memory_pool ? "да" : "нет") + "\n";
+        result += "- num_threads:      " + std::to_string(num_threads) + "\n";
+        result += "- unknown_token:    " + unknown_token + "\n";
+        result += "- pad_token:        " + pad_token + "\n";
+        result += "- bos_token:        " + bos_token + "\n";
+        result += "- eos_token:        " + eos_token + "\n";
+        result += "- mask_token:       " + mask_token + "\n";
+        return result;
     }
 };
 
-} // namespace bpe
+}    // namespace bpe

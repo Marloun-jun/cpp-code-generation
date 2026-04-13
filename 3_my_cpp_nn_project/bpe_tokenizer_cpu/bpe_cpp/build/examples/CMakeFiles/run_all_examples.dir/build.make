@@ -69,29 +69,34 @@ include examples/CMakeFiles/run_all_examples.dir/progress.make
 examples/CMakeFiles/run_all_examples:
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Запуск всех доступных примеров"
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ═══════════════════════════════════════════
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo "1. simple_example - базовый пример"
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ═══════════════════════════════════════════
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ============================================================
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo "simple_example - базовый пример"
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ============================================================
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples/simple_example
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ═══════════════════════════════════════════
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo "2. batch_example - пакетная обработка"
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ═══════════════════════════════════════════
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ============================================================
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo "batch_example - пакетная обработка"
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ============================================================
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples/batch_example
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ═══════════════════════════════════════════
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo "3. fast_tokenizer_demo - демо оптимизированной версии"
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ═══════════════════════════════════════════
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ============================================================
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo "fast_tokenizer_demo - демо оптимизированной версии"
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ============================================================
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples/fast_tokenizer_demo
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ═══════════════════════════════════════════
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo "4. train_example - обучение токенизатора"
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ═══════════════════════════════════════════
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ============================================================
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo "train_example - обучение токенизатора"
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ============================================================
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples/train_example
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ═══════════════════════════════════════════
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ============================================================
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo "compare_with_python - сравнение с Python"
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ============================================================
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples/compare_with_python --quiet
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ============================================================
 	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo "Все примеры выполнены!"
-	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ═══════════════════════════════════════════
+	cd /home/john/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/examples && /usr/bin/cmake -E echo ============================================================
 
 run_all_examples: examples/CMakeFiles/run_all_examples
 run_all_examples: examples/CMakeFiles/run_all_examples.dir/build.make

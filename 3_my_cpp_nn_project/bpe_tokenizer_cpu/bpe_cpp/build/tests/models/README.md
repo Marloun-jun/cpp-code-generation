@@ -19,15 +19,15 @@
 
 | Модель | Папка | Описание | Статус |
 |--------|-------|----------|--------|
-| **8000** | `bpe_8000/` | **Основная модель для повседневного использования** | ✅ Рекомендуется |
+| **10000** | `bpe_10000/` | **Основная модель для повседневного использования** | ✅ Рекомендуется |
 
-Модель с размером словаря **8000 токенов** выбрана как основная, по результатам сравнения моделей Python-реализации токенизатора
+Модель с размером словаря **10000 токенов** выбрана как основная, по результатам сравнения моделей Python-реализации токенизатора
 
 ## 📊 Модели для сравнения и бенчмарков
 
 | Размер | Папка | Назначение |
 |--------|-------|------------|
-| **10000** | `bpe_10000/` | Для бенчмарков и сравнения производительности |
+| **8000** | `bpe_8000/` | Для бенчмарков и сравнения производительности |
 | **12000** | `bpe_12000/` | Для бенчмарков и сравнения производительности |
 
 Эти модели **не предназначены для повседневного использования**, а служат для:
@@ -46,9 +46,9 @@
 bpe::BPETokenizer tokenizer;
 tokenizer.set_byte_level(true);
 
-// Загрузка основной модели 8000
-if (tokenizer.load_from_files("models/bpe_8000/cpp_vocab.json", 
-                              "models/bpe_8000/cpp_merges.txt")) {
+// Загрузка основной модели 10000
+if (tokenizer.load_from_files("models/bpe_10000/cpp_vocab.json", 
+                              "models/bpe_10000/cpp_merges.txt")) {
     std::cout << "Основная модель загружена!" << std::endl;
 }
 
@@ -57,9 +57,9 @@ auto tokens = tokenizer.encode("int main() { return 0; }");
 ```
 **Для бенчмарков (сравнение размеров):**
 ```cpp
-// Модель 10000 для сравнения
-tokenizer.load_from_files("models/bpe_10000/cpp_vocab.json", 
-                          "models/bpe_10000/cpp_merges.txt");
+// Модель 8000 для сравнения
+tokenizer.load_from_files("models/bpe_8000/cpp_vocab.json", 
+                          "models/bpe_8000/cpp_merges.txt");
 
 // Модель 12000 для сравнения
 tokenizer.load_from_files("models/bpe_12000/cpp_vocab.json", 
@@ -71,9 +71,9 @@ tokenizer.load_from_files("models/bpe_12000/cpp_vocab.json",
 
 bpe::FastBPETokenizer tokenizer;
 
-// Загрузка основной модели 8000
-if (tokenizer.load("models/bpe_8000/cpp_vocab.json", 
-                   "models/bpe_8000/cpp_merges.txt")) {
+// Загрузка основной модели 10000
+if (tokenizer.load("models/bpe_10000/cpp_vocab.json", 
+                   "models/bpe_10000/cpp_merges.txt")) {
     std::cout << "Fast модель загружена!" << std::endl;
 }
 
@@ -100,8 +100,8 @@ python tools/convert_vocab.py --input ../bpe_python/models/bpe_12000 --output mo
 ```text
 models/    # обученные модели для C++
 ├── bpe_8000/
-│   ├── cpp_merges.txt    # копируемый словарь для модели 8000
-│   └── cpp_vocab.json    # конвертируемый файл операций слияния для модели 8000
+│   ├── cpp_merges.txt    # копируемый файл операций слияния для модели 8000
+│   └── cpp_vocab.json    # конвертируемый словарь для модели 8000
 ├── bpe_10000/
 │   ├── cpp_merges.txt    # копируемый файл операций слияния для модели 10000
 │   └── cpp_vocab.json    # конвертируемый словарь для модели 10000

@@ -3,7 +3,6 @@ file(REMOVE_RECURSE
   "CMakeFiles/test_parallel.dir/test_parallel.cpp.o.d"
   "bin/test_parallel"
   "bin/test_parallel.pdb"
-  "test_parallel[1]_tests.cmake"
 )
 
 # Per-language clean rules from dependency scanning.

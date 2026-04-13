@@ -166,11 +166,11 @@
 #endif
 
 #ifndef DEFAULT_POOL_SIZE
-    #define DEFAULT_POOL_SIZE 1048576  // 1 MB
+    #define DEFAULT_POOL_SIZE 1048576    // 1 МБ
 #endif
 
 #ifndef DEFAULT_CACHE_SIZE
     #define DEFAULT_CACHE_SIZE 10000
 #endif
 
-#endif // BPE_TOKENIZER_CONFIG_H
+#endif    // BPE_TOKENIZER_CONFIG_H

@@ -1,0 +1,86 @@
+# ============================================================================
+# .dockerignore - исключения для Docker
+# ============================================================================
+
+# Git
+.git/
+.gitignore
+.gitattributes
+.gitmodules
+
+# Версионирование (ваша папка)
+_versions/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Временные файлы
+*.log
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Модели (кроме финальных)
+cpp_code_model/checkpoints/tiny/
+cpp_code_model/checkpoints/small/
+cpp_code_model/checkpoints/lora_medium/lora_weights_epoch_[1-4].pt
+
+# C++ сборка (будет пересобрана в контейнере)
+bpe_tokenizer_cpu/bpe_cpp/build/
+bpe_tokenizer_cpu/bpe_cpp/CMakeFiles/
+bpe_tokenizer_cpu/bpe_cpp/*.cmake
+bpe_tokenizer_cpu/bpe_cpp/CMakeCache.txt
+bpe_tokenizer_cpu/bpe_cpp/Makefile
+
+# Отчёты и тесты
+cpp_code_model/reports/
+bpe_tokenizer_cpu/reports/
+check_dataset/reports/
+
+# Датасеты (большие файлы)
+*.csv
+*.jsonl
+data/raw/
+data/corpus/
+check_dataset/*.csv
+
+# Документация (оставляем только README)
+docs/
+*.md
+!README.md
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+Jenkinsfile
+
+# Jupyter
+*.ipynb
+.ipynb_checkpoints/
+
+# Кэш
+.cache/
+.pytest_cache/
+.mypy_cache/

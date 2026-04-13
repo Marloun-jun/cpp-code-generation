@@ -17,17 +17,17 @@
 #
 #          **Определяемые форматы:**
 #
-#          1) **Формат 1: {token: id}** (Python формат обучения)
-#             - Ключи: строки (токены)
-#             - Значения: числа (ID)
+#          1) **Формат 1 - {token: id}** (Python формат обучения)
+#             - Ключи    - Cтроки (токены)
+#             - Значения - Числа (ID)
 #             - Используется при обучении в Python
 #
-#          2) **Формат 2: {id: token}** (Python формат сохранения)
-#             - Ключи: числа (ID)
-#             - Значения: строки (токены)
+#          2) **Формат 2 - {id: token}** (Python формат сохранения)
+#             - Ключи    - Числа (ID)   
+#             - Значения - Строки (токены)
 #             - Используется при сохранении модели через tokenizer.save()
 #
-#          3) **Формат 3: {"tokens": [...]}** (C++ формат)
+#          3) **Формат 3                - {"tokens": [...]}** (C++ формат)
 #             - Объект с полем "tokens" - массив строк
 #             - ID соответствуют индексам в массиве
 #             - Используется в C++ реализации
@@ -42,7 +42,7 @@
 # @usage python inspect_vocab.py [путь_к_vocab.json]
 #
 # @example
-#   python inspect_vocab.py                          # автоматический поиск
+#   python inspect_vocab.py    # Автоматический поиск
 #   python inspect_vocab.py ../bpe_python/models/bpe_8000/vocab.json
 #   python inspect_vocab.py ../../bpe_cpp/models/bpe_8000/cpp_vocab.json
 #
@@ -50,7 +50,6 @@
 
 import json
 import sys
-
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Union
 
@@ -132,7 +131,7 @@ def inspect_vocab(file_path: Union[str, Path]) -> Optional[Union[Dict, List]]:
     print(f"Полный путь: {file_path.absolute()}")
     
     if not file_path.exists():
-        print(f"x Файл не найден!")
+        print(f"Файл не найден!")
         return None
     
     try:
@@ -141,7 +140,7 @@ def inspect_vocab(file_path: Union[str, Path]) -> Optional[Union[Dict, List]]:
             content = f.read()
         
         file_size_kb = len(content) / 1024
-        print(f"Размер файла: {len(content)} байт ({file_size_kb:.2f} KB)")
+        print(f"Размер файла: {len(content)} байт ({file_size_kb:.2f} КБ)")
         
         # Показываем начало файла для отладки
         print(f"\nПервые 200 символов:")
@@ -153,25 +152,25 @@ def inspect_vocab(file_path: Union[str, Path]) -> Optional[Union[Dict, List]]:
         data = json.loads(content)
         
         print(f"\nСТРУКТУРА ДАННЫХ:")
-        print(f"   Тип: {type(data).__name__}")
+        print(f"- Тип: {type(data).__name__}")
         
         if isinstance(data, dict):
-            print(f"   Количество записей: {len(data)}")
+            print(f"- Количество записей: {len(data)}")
             
             # Проверяем типы ключей и значений
             key_types = set(type(k).__name__ for k in data.keys())
             value_types = set(type(v).__name__ for v in data.values())
             
-            print(f"   Типы ключей: {', '.join(key_types)}")
-            print(f"   Типы значений: {', '.join(value_types)}")
+            print(f"- Типы ключей:        {', '.join(key_types)}")
+            print(f"- Типы значений:      {', '.join(value_types)}")
             
             # Показываем примеры
             print(f"\nПРИМЕРЫ (первые 10 записей):")
             print("-" * 40)
             items = list(data.items())[:10]
             for i, (key, value) in enumerate(items):
-                print(f"   {i:2d}. Ключ: '{key}' ({type(key).__name__})")
-                print(f"      Знач: '{value}' ({type(value).__name__})")
+                print(f"{i:2d}. Ключ: '{key}' ({type(key).__name__})")
+                print(f"    Знач: '{value}' ({type(value).__name__})")
             print("-" * 40)
             
             # Определяем формат словаря
@@ -184,8 +183,8 @@ def inspect_vocab(file_path: Union[str, Path]) -> Optional[Union[Dict, List]]:
                all(isinstance(k, str) for k in data.keys()):
                 sample_token = next(iter(data.keys()))
                 sample_id = data[sample_token]
-                print(f"   Формат: {{'токен': ID}} (Python формат обучения)")
-                print(f"   Пример: '{sample_token}' -> {sample_id}")
+                print(f"Формат: {{'токен': ID}} (Python формат обучения)")
+                print(f"Пример: '{sample_token}' -> {sample_id}")
                 
                 # ID берутся из ЗНАЧЕНИЙ
                 ids = []
@@ -201,16 +200,16 @@ def inspect_vocab(file_path: Union[str, Path]) -> Optional[Union[Dict, List]]:
                     unique_count = len(ids)
                     
                     print(f"\nСТАТИСТИКА ID (из значений):")
-                    print(f"   - Min ID: {min_id}")
-                    print(f"   - Max ID: {max_id}")
-                    print(f"   - Уникальных ID: {unique_count}")
-                    print(f"   - Диапазон: {max_id - min_id + 1}")
-                    print(f"   - Пропусков: {(max_id - min_id + 1) - unique_count}")
+                    print(f"- Min ID:        {min_id}")
+                    print(f"- Max ID:        {max_id}")
+                    print(f"- Уникальных ID: {unique_count}")
+                    print(f"- Диапазон:      {max_id - min_id + 1}")
+                    print(f"- Пропусков:     {(max_id - min_id + 1) - unique_count}")
                     
                     if unique_count == max_id + 1:
                         print(f"\nID непрерывны от 0 до {max_id}")
                     else:
-                        print(f"\n !!! Есть пропуски в ID")
+                        print(f"\nЕсть пропуски в ID!")
                         if max_id - min_id + 1 - unique_count > 0:
                             missing = []
                             for i in range(min_id, max_id + 1):
@@ -225,8 +224,8 @@ def inspect_vocab(file_path: Union[str, Path]) -> Optional[Union[Dict, List]]:
                  all(isinstance(v, str) for v in data.values()):
                 sample_id = next(iter(data.keys()))
                 sample_token = data[sample_id]
-                print(f"   Формат: {{ID: 'токен'}} (Python формат сохранения)")
-                print(f"   Пример: {sample_id} -> '{sample_token}'")
+                print(f"Формат: {{ID: 'токен'}} (Python формат сохранения)")
+                print(f"Пример: {sample_id} -> '{sample_token}'")
                 
                 # ID берутся из КЛЮЧЕЙ
                 ids = []
@@ -242,64 +241,88 @@ def inspect_vocab(file_path: Union[str, Path]) -> Optional[Union[Dict, List]]:
                     unique_count = len(ids)
                     
                     print(f"\nСТАТИСТИКА ID (из ключей):")
-                    print(f"   - Min ID: {min_id}")
-                    print(f"   - Max ID: {max_id}")
-                    print(f"   - Уникальных ID: {unique_count}")
-                    print(f"   - Диапазон: {max_id - min_id + 1}")
-                    print(f"   - Пропусков: {(max_id - min_id + 1) - unique_count}")
+                    print(f"- Min ID:        {min_id}")
+                    print(f"- Max ID:        {max_id}")
+                    print(f"- Уникальных ID: {unique_count}")
+                    print(f"- Диапазон:      {max_id - min_id + 1}")
+                    print(f"- Пропусков:     {(max_id - min_id + 1) - unique_count}")
                     
                     if unique_count == max_id + 1:
                         print(f"\nID непрерывны от 0 до {max_id}")
                     else:
-                        print(f"\n !!! Есть пропуски в ID")
+                        print(f"\nЕсть пропуски в ID!")
                         if max_id - min_id + 1 - unique_count > 0:
                             missing = []
                             for i in range(min_id, max_id + 1):
                                 if i not in ids:
                                     missing.append(i)
-                            print(f"   Пропущенные ID: {missing[:10]}{'...' if len(missing) > 10 else ''}")
+                            print(f"Пропущенные ID: {missing[:10]}{'...' if len(missing) > 10 else ''}")
             
             # ======================================================================
             # ФОРМАТ 3: {"tokens": [...]} (C++ формат)
             # ======================================================================
             elif "tokens" in data and isinstance(data["tokens"], list):
-                print(f"   Формат: {{\"tokens\": [...]}} (C++ формат)")
-                print(f"   Количество токенов: {len(data['tokens'])}")
+                print(f"Формат:             {{\"tokens\": [...]}} (C++ формат)")
+                print(f"Количество токенов: {len(data['tokens'])}")
                 if len(data['tokens']) > 0:
-                    print(f"   Первый токен: '{data['tokens'][0]}'")
+                    print(f"Первый токен:       '{data['tokens'][0]}'")
+                    print(f"Последний токен:    '{data['tokens'][-1]}'")
                 
                 # Для C++ формата ID соответствуют индексам в массиве
                 tokens = data['tokens']
                 print(f"\nСТАТИСТИКА ТОКЕНОВ:")
-                print(f"   Всего токенов: {len(tokens)}")
+                print(f"- Всего токенов:      {len(tokens)}")
+                
+                # Длины токенов
+                lengths = [len(t) for t in tokens]
+                avg_len = sum(lengths) / len(lengths)
+                max_len = max(lengths)
+                min_len = min(lengths)
+                
+                print(f"- Мин. длина токена:  {min_len}")
+                print(f"- Макс. длина токена: {max_len}")
+                print(f"- Средняя длина:      {avg_len:.2f}")
                 
                 # Проверяем наличие специальных символов
-                special_chars = [' ', '\n', '\t', '\r']
+                special_chars = [' ', '\n', '\t', '\r', '<', '>', '/', '\\', '(', ')', '{', '}', '[', ']']
                 found_chars = []
-                for i, token in enumerate(tokens):
-                    if token in special_chars:
-                        found_chars.append((i, repr(token)))
+                for i, token in enumerate(tokens[:1000]):    # Проверяем первые 1000
+                    for char in special_chars:
+                        if char in token:
+                            found_chars.append((i, repr(token)))
+                            break
                 
                 if found_chars:
-                    print(f"\nНайдены специальные символы:")
-                    for idx, char_repr in found_chars:
-                        print(f"   ID {idx}: {char_repr}")
+                    print(f"\nНайдены специальные символы (первые 10):")
+                    for idx, char_repr in found_chars[:10]:
+                        print(f"    ID {idx}: {char_repr}")
                 else:
-                    print(f"\n !!! Специальные символы не найдены!")
+                    print(f"\nСпециальные символы не найдены в первых 1000 токенах!")
             
             else:
-                print(f"x Не удалось определить формат")
+                print(f"Не удалось определить формат!")
         
         elif isinstance(data, list):
-            print(f"   Длина массива: {len(data)}")
+            print(f"Длина массива: {len(data)}")
             
             print(f"\nПРИМЕРЫ (первые 10 токенов):")
             print("-" * 40)
             for i, token in enumerate(data[:10]):
-                print(f"   {i:2d}. '{token}'")
+                print(f"{i:2d}. '{token}'")
             print("-" * 40)
             
             print(f"\nЭто простой массив токенов")
+            
+            # Длины токенов для списка
+            lengths = [len(t) for t in data]
+            avg_len = sum(lengths) / len(lengths)
+            max_len = max(lengths)
+            min_len = min(lengths)
+            
+            print(f"\nСТАТИСТИКА ТОКЕНОВ:")
+            print(f"- Мин. длина:    {min_len}")
+            print(f"- Макс. длина:   {max_len}")
+            print(f"- Средняя длина: {avg_len:.2f}")
         
         else:
             print(f"Содержимое: {data}")
@@ -307,13 +330,13 @@ def inspect_vocab(file_path: Union[str, Path]) -> Optional[Union[Dict, List]]:
         return data
         
     except json.JSONDecodeError as e:
-        print(f"\nx ОШИБКА ПАРСИНГА JSON:")
-        print(f"   {e}")
-        print(f"\n   Позиция ошибки: строка {e.lineno}, колонка {e.colno}")
-        print(f"   Текст ошибки: {e.msg}")
+        print(f"\nОШИБКА ПАРСИНГА JSON:")
+        print(f"{e}")
+        print(f"\nПозиция ошибки: строка {e.lineno}, колонка {e.colno}")
+        print(f"Текст ошибки: {e.msg}")
         return None
     except Exception as e:
-        print(f"\nx ОШИБКА: {e}")
+        print(f"\nОШИБКА: {e}!")
         return None
 
 
@@ -325,9 +348,8 @@ def find_vocab_file() -> Optional[Path]:
         Optional[Path]: Путь к файлу или None
     
     **Поиск осуществляется в:**
-    - C++ модели: bpe_cpp/models/models/bpe_8000/cpp_vocab.json, bpe_10000/cpp_vocab.json, pe_12000/cpp_vocab.json
-    - C++ модели разных размеров: bpe_cpp/models/cpp_vocab.json
-    - Python модели: bpe_python/models/bpe_8000/vocab.json
+    - C++ модели: bpe_cpp/models/bpe_8000/cpp_vocab.json, bpe_10000/cpp_vocab.json, bpe_12000/cpp_vocab.json
+    - Python модели: bpe_python/models/bpe_8000/vocab.json, bpe_10000/vocab.json, bpe_12000/vocab.json
     """
     # Пути относительно текущей директории (scripts/)
     script_path = Path(__file__).resolve()
@@ -335,23 +357,34 @@ def find_vocab_file() -> Optional[Path]:
     project_root = scripts_dir.parent
     
     possible_paths = [
-        # C++ модели (относительные пути)
+        # Текущая директория
         scripts_dir / "cpp_vocab.json",
-        scripts_dir.parent / "bpe_cpp" / "models" /  "bpe_8000" / "cpp_vocab.json",
         
-        project_root / "bpe_cpp" / "models" /  "bpe_8000" / "cpp_vocab.json",
-        project_root / "bpe_cpp" / "models" /  "bpe_10000" / "cpp_vocab.json",
-        project_root / "bpe_cpp" / "models" /  "bpe_12000" / "cpp_vocab.json",
+        # C++ модели (bpe_8000, bpe_10000, bpe_12000)
+        project_root / "bpe_cpp" / "models" / "bpe_8000" / "cpp_vocab.json",
+        project_root / "bpe_cpp" / "models" / "bpe_10000" / "cpp_vocab.json",
+        project_root / "bpe_cpp" / "models" / "bpe_12000" / "cpp_vocab.json",
         
         # Python модели
         project_root / "bpe_python" / "models" / "bpe_8000" / "vocab.json",
         project_root / "bpe_python" / "models" / "bpe_10000" / "vocab.json",
         project_root / "bpe_python" / "models" / "bpe_12000" / "vocab.json",
         
-        # Общие пути
-        project_root / "models" / "cpp_vocab.json",
-        Path("cpp_vocab.json"),
-        Path("../cpp_vocab.json"),
+        # Относительные пути для запуска из разных мест
+        Path("bpe_cpp/models/bpe_8000/cpp_vocab.json"),
+        Path("bpe_cpp/models/bpe_10000/cpp_vocab.json"),
+        Path("bpe_cpp/models/bpe_12000/cpp_vocab.json"),
+        Path("bpe_python/models/bpe_8000/vocab.json"),
+        Path("bpe_python/models/bpe_10000/vocab.json"),
+        Path("bpe_python/models/bpe_12000/vocab.json"),
+        
+        # Пути для запуска из корня проекта
+        Path("bpe_tokenizer_cpu/bpe_cpp/models/bpe_8000/cpp_vocab.json"),
+        Path("bpe_tokenizer_cpu/bpe_cpp/models/bpe_10000/cpp_vocab.json"),
+        Path("bpe_tokenizer_cpu/bpe_cpp/models/bpe_12000/cpp_vocab.json"),
+        Path("bpe_tokenizer_cpu/bpe_python/models/bpe_8000/vocab.json"),
+        Path("bpe_tokenizer_cpu/bpe_python/models/bpe_10000/vocab.json"),
+        Path("bpe_tokenizer_cpu/bpe_python/models/bpe_12000/vocab.json"),
     ]
     
     for path in possible_paths:
@@ -383,12 +416,13 @@ def main() -> int:
             print(f"Найден файл по пути: {file_path}")
         else:
             print_header("ИНСПЕКТОР СЛОВАРЯ VOCAB.JSON")
-            print("\n   Файл vocab.json не найден в стандартных местах!")
-            print("\n   Укажите путь к файлу:")
-            print("   python inspect_vocab.py <path_to_vocab.json>")
-            print("\n   Примеры:")
-            print("   python inspect_vocab.py ../bpe_python/models/bpe_8000/vocab.json")
-            print("   python inspect_vocab.py ../../bpe_cpp/models/bpe_8000/cpp_vocab.json")
+            print("\nФайл vocab.json не найден в стандартных местах!")
+            print("\nУкажите путь к файлу:")
+            print("python inspect_vocab.py <path_to_vocab.json>")
+            print("\nПримеры:")
+            print("python inspect_vocab.py ../bpe_python/models/bpe_8000/vocab.json")
+            print("python inspect_vocab.py ../../bpe_cpp/models/bpe_8000/cpp_vocab.json")
+            print("python inspect_vocab.py bpe_tokenizer_cpu/bpe_cpp/models/bpe_8000/cpp_vocab.json")
             return 1
     
     # Анализируем файл
@@ -397,7 +431,7 @@ def main() -> int:
     if data is None:
         return 1
     
-    print_header("v АНАЛИЗ ЗАВЕРШЕН")
+    print_header("АНАЛИЗ ЗАВЕРШЕН УСПЕШНО!")
     return 0
 
 

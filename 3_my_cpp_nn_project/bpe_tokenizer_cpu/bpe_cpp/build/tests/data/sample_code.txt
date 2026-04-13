@@ -1,4 +1,4 @@
-// Пример C++ кода для бенчмарков
+// C++ code example for benchmarks
 #include <iostream>
 #include <vector>
 #include <map>
@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <memory>
 
-// Класс для демонстрации
+// Demo class
 class MyClass {
 private:
     std::string name_;
@@ -24,40 +24,40 @@ public:
     const std::string& getName() const { return name_; }
 };
 
-// Шаблонная функция
+// Template function
 template<typename T>
 T max(T a, T b) {
     return (a > b) ? a : b;
 }
 
-// Основная функция
+// Main function
 int main() {
-    // Создаем вектор
+    // Create vector
     std::vector<int> numbers;
     for (int i = 0; i < 100; ++i) {
         numbers.push_back(i * i);
     }
     
-    // Создаем map
+    // Create map
     std::map<std::string, int> scores;
     scores["Alice"] = 95;
     scores["Bob"] = 87;
     scores["Charlie"] = 92;
     
-    // Используем алгоритмы
+    // Use algorithms
     auto it = std::find(numbers.begin(), numbers.end(), 2500);
     if (it != numbers.end()) {
         std::cout << "Found: " << *it << std::endl;
     }
     
-    // Сортируем
+    // Sort
     std::sort(numbers.begin(), numbers.end(), std::greater<int>());
     
-    // Используем умные указатели
+    // Use smart pointers
     auto ptr = std::make_unique<MyClass>("Test", 42);
     ptr->print();
     
-    // Лямбда-выражения
+    // Lambda expressions
     auto sum = [](int a, int b) -> int { return a + b; };
     std::cout << "Sum: " << sum(10, 20) << std::endl;
     

@@ -11,7 +11,7 @@
     - [Быстрый старт](#быстрый-старт)
     - [Запуск всех бенчмарков](#запуск-всех-бенчмарков)
     - [Запуск отдельных бенчмарков](#запуск-отдельных-бенчмарков)
-  - [💾 Сохранение результатов](#-сохранение-ресурсов)
+  - [💾 Сохранение результатов](#-сохранение-результатов)
     - [Пути сохранения](#пути-сохранения)
   - [📊 Описание бенчмарков](#-описание-бенчмарков)
     - [1. bench\_tokenizer (базовая версия)](#1-bench_tokenizer-базовая-версия)
@@ -28,7 +28,7 @@
 
 Перед запуском бенчмарков убедитесь, что у вас есть:
 
-1. **Собранный проект** (см. основную [инструкцию по сборке](../docs/compilation.md))
+1. **Собранный проект** (см. [основной README](../README.md#-быстрый-старт))
 2. **Модели токенизатора** в директории `bpe_cpp/models/`:
    - `bpe_8000/cpp_vocab.json` и `bpe_8000/cpp_merges.txt` (модель 8000)
    - `bpe_10000/cpp_vocab.json` и `bpe_10000/cpp_merges.txt` (модель 10000)
@@ -91,41 +91,28 @@ make run_bench_comparison
 
 ### Пути сохранения
 
-Результаты сохраняются в следующих директориях:
+Результаты сохраняются в директорию `bpe_cpp/reports/benchmarks/`:
+
 | Команда | Формат | Путь сохранения |
 |---------|--------|------------------|
-| `make run_benchmarks_json` | JSON | `build/benchmark_results/` |
-| `make run_benchmarks_csv` | CSV | `build/benchmark_results/` |
-| Ручной запуск | JSON | Текущая директория или указанный путь |
-
-**Полные пути:**
-
-```bash
-# При запуске из build/
-~/Projects/NS/3_my_cpp_nn_project/bpe_tokenizer_cpu/bpe_cpp/build/benchmark_results/
-
-# При ручном указании пути
-./benchmarks/bench_comparison --benchmark_out=../../../../reports/cpp_benchmark.json
-# Сохранится в: ~/Projects/NS/reports/cpp_benchmark.json
-```
+| `make run_benchmarks` | JSON | `../reports/benchmarks/bench_*_YYYYMMDD_HHMMSS.json` |
+| Ручной запуск | JSON/CSV | Указанный путь или текущая директория |
 
 **Примеры команд для сохранения:**
 
 ```bash
-# Сохранить все результаты в JSON
-make run_benchmarks_json
+# Автоматическое сохранение (тихий режим)
+make run_benchmarks
 
-# Сохранить в CSV
-make run_bench_comparison_csv
-
-# Сохранить в указанную директорию
+# Ручное сохранение в JSON
 ./benchmarks/bench_comparison \
-    --benchmark_out=../../../../reports/comparison.json \
+    --benchmark_out=../reports/benchmarks/comparison.json \
     --benchmark_out_format=json
 
-# Сохранить с меткой времени
+# Ручное сохранение в CSV
 ./benchmarks/bench_comparison \
-    --benchmark_out=benchmark_results/comparison_$(date +%Y%m%d_%H%M%S).json
+    --benchmark_out=../reports/benchmarks/comparison.csv \
+    --benchmark_out_format=csv
 ```
 
 ## 📊 Описание бенчмарков
@@ -140,7 +127,7 @@ make run_bench_comparison_csv
 | `BM_Decode` | Декодирование обратно в текст | Скорость обратной операции |
 | `BM_BatchEncode` | Пакетная обработка 10 текстов | Эффективность при батчах |
 | `BM_EncodeVariableLength/64` | Текст 64 байта | Масштабирование с размером |
-| `BM_EncodeVariableLength/65536` | Текст 64KB | Масштабирование с размером |
+| `BM_EncodeVariableLength/65536` | Текст 64 КБ | Масштабирование с размером |
 | `BM_EncodeDifferentVocab/8000` | Словарь 8000 | Влияние размера словаря |
 | `BM_EncodeDifferentVocab/12000` | Словарь 12000 | Влияние размера словаря |
 | `BM_CompareModes/0` | Обычный режим | Сравнение режимов |
@@ -201,13 +188,14 @@ make run_bench_comparison_csv
 ---------------------------------------------------------------------
 Benchmark                           Time             CPU   Iterations
 ---------------------------------------------------------------------
-BM_EncodeShort                    1.23 us         1.23 us       568182
-BM_EncodeLong                      245 us          245 us         2857
-BM_FastTokenizer_Encode/1024      3.45 us         3.45 us       202899
-BM_CompareWithOriginal            15.6 ms         15.6 ms           45
-  Original BPETokenizer           45.2 ms         45.2 ms           15
-  FastBPETokenizer                15.6 ms         15.6 ms           45
+BM_EncodeShort                   1.23 us         1.23 us       568182
+BM_EncodeLong                     245 us          245 us         2857
+BM_FastTokenizer_Encode/1024     3.45 us         3.45 us       202899
+BM_CompareWithOriginal           15.6 ms         15.6 ms           45
+  Original BPETokenizer          45.2 ms         45.2 ms           15
+  FastBPETokenizer               15.6 ms         15.6 ms           45
 ```
+*Примечание: реальные значения зависят от процессора и модели.*
 
 **Интерпретация:**
 - Короткий текст кодируется за 1.23 микросекунды
@@ -231,9 +219,9 @@ python scripts/plot_results.py
 python scripts/validate_cpp_tokenizer.py
 ```
 Результаты сохраняются в:
-
-- ~/Projects/NS/reports/benchmark_results.json
-- ~/Projects/NS/reports/comparison.png
+- `../reports/benchmark_results.json`
+- `../reports/figures/comparison.png`
+- `../reports/figures/comparison.pdf`
 
 
 
@@ -253,6 +241,10 @@ gprof ./benchmarks/bench_comparison gmon.out > analysis.txt
 
 # Использование встроенного профайлера (если включен)
 ./benchmarks/bench_fast_tokenizer --benchmark_enable_profiling=true
+
+# Сохранение профиля в файл
+perf record -o perf_comparison.data ./benchmarks/bench_comparison
+perf report -i perf_comparison.data
 ```
 
 ## 📁 Структура каталога

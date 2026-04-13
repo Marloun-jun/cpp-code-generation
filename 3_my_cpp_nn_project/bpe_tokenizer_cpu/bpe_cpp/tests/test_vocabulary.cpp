@@ -5,44 +5,85 @@
  * @author Евгений П.
  * @date 2026
  * @version 3.4.0
+ * 
+ * @details Набор тестов для проверки функциональности класса Vocabulary,
+ *          который обеспечивает двустороннее отображение между токенами и их ID.
+ * 
+ *          **Проверяемые компоненты:**
+ *          ┌─────────────────────┬─────────────────────────────────────┐
+ *          │ Базовые операции    │ add_token, token_to_id, id_to_token │
+ *          │ Дубликаты           │ Повторное добавление токена         │
+ *          │ Специальные токены  │ <PAD>, <UNK>, <BOS>, <EOS>, <MASK>  │
+ *          │ Граничные случаи    │ Несуществующие токены/ID, пустой    │
+ *          │ Сериализация        │ JSON (массив и ID форматы)          │
+ *          │ Файловый ввод/вывод │ Сохранение и загрузка               │
+ *          │ Бинарный формат     │ save_binary / load_binary           │
+ *          │ Производительность  │ Добавление и поиск многих токенов   │
+ *          │ Константность       │ const-корректность методов          │
+ *          │ Очистка             │ clear(), empty()                    │
+ *          └─────────────────────┴─────────────────────────────────────┘
+ * 
+ * @note Все тесты используют временные файлы, которые удаляются после выполнения
+ * @see Vocabulary
  */
 
 #include <gtest/gtest.h>
 
+#include "test_helpers.hpp"
 #include "vocabulary.hpp"
-#include "test_helpers.hpp"  // Добавлен include для test_helpers
 
-#include <fstream>
-#include <filesystem>
 #include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
-#include <vector>
+#include <set>
 #include <string>
 #include <unordered_map>
-#include <set>
+#include <vector>
 
 namespace fs = std::filesystem;
 using namespace bpe;
 
-// ======================================================================
-// Константы
-// ======================================================================
+// ============================================================================
+// Константы и настройки
+// ============================================================================
 
 namespace {
-    constexpr int NUM_TOKENS_PERFORMANCE = 10000;
-    constexpr int BYTE_LEVEL_SIZE = 256;
-    constexpr size_t MIN_FREQ_TEST = 2;
+    constexpr int NUM_TOKENS_PERFORMANCE = 10000;    ///< Количество токенов для тестов производительности
+    constexpr int BYTE_LEVEL_SIZE = 256;             ///< Количество байт в byte-level режиме
+    constexpr size_t MIN_FREQ_TEST = 2;              ///< Минимальная частота для тестового конструктора
     
+    // Имена временных файлов
     const std::string TEST_VOCAB_JSON = "test_vocab.json";
     const std::string TEST_VOCAB_BIN = "test_vocab.bin";
     const std::string CORRUPTED_BIN = "corrupted.bin";
+    
+#ifdef _WIN32
+    const std::string PROTECTED_PATH = "C:\\Windows\\System32\\test.json";
+#else
     const std::string PROTECTED_PATH = "/root/test.json";
+#endif
+    
+    // Цвета для вывода (опционально)
+    const std::string RESET = "\033[0m";
+    const std::string GREEN = "\033[32m";
+    const std::string CYAN = "\033[36m";
+    const std::string YELLOW = "\033[33m";
 }
 
-// ======================================================================
+// ============================================================================
 // Тесты базовых операций
-// ======================================================================
+// ============================================================================
 
+/**
+ * @test Добавление и поиск токенов
+ * 
+ * Проверяет:
+ * - add_token()                - Возвращает последовательные ID
+ * - token_to_id()              - Находит токены
+ * - id_to_token()              - Возвращает правильные строки
+ * - contains() и contains_id() - Работают корректно
+ */
 TEST(VocabularyTest, AddAndRetrieve) {
     Vocabulary vocab;
     
@@ -69,6 +110,12 @@ TEST(VocabularyTest, AddAndRetrieve) {
     EXPECT_FALSE(vocab.contains_id(999));
 }
 
+/**
+ * @test Добавление дубликатов
+ * 
+ * Проверяет, что повторное добавление того же токена
+ * возвращает существующий ID, а не создает новый.
+ */
 TEST(VocabularyTest, DuplicateToken) {
     Vocabulary vocab;
     
@@ -84,6 +131,12 @@ TEST(VocabularyTest, DuplicateToken) {
     EXPECT_EQ(vocab.id_to_token(id1), "test");
 }
 
+/**
+ * @test Добавление специальных токенов
+ * 
+ * Проверяет, что add_special_tokens() корректно добавляет
+ * стандартные специальные токены и не дублирует их.
+ */
 TEST(VocabularyTest, SpecialTokens) {
     Vocabulary vocab;
     
@@ -106,10 +159,16 @@ TEST(VocabularyTest, SpecialTokens) {
     EXPECT_EQ(vocab.size(), specials.size());
 }
 
-// ======================================================================
+// ============================================================================
 // Тесты граничных случаев
-// ======================================================================
+// ============================================================================
 
+/**
+ * @test Поиск несуществующего токена
+ * 
+ * Проверяет, что token_to_id() возвращает INVALID_TOKEN
+ * для токена, отсутствующего в словаре.
+ */
 TEST(VocabularyTest, InvalidToken) {
     Vocabulary vocab;
     vocab.add_token("existing");
@@ -118,6 +177,12 @@ TEST(VocabularyTest, InvalidToken) {
     EXPECT_FALSE(vocab.contains("nonexistent"));
 }
 
+/**
+ * @test Поиск по несуществующему ID
+ * 
+ * Проверяет, что id_to_token() выбрасывает исключение
+ * для ID вне диапазона.
+ */
 TEST(VocabularyTest, InvalidId) {
     Vocabulary vocab;
     vocab.add_token("token");
@@ -126,6 +191,11 @@ TEST(VocabularyTest, InvalidId) {
     EXPECT_FALSE(vocab.contains_id(999));
 }
 
+/**
+ * @test Пустой словарь
+ * 
+ * Проверяет поведение всех методов для пустого словаря.
+ */
 TEST(VocabularyTest, EmptyVocabulary) {
     Vocabulary vocab;
     
@@ -135,10 +205,16 @@ TEST(VocabularyTest, EmptyVocabulary) {
     EXPECT_THROW(vocab.id_to_token(0), std::out_of_range);
 }
 
-// ======================================================================
+// ============================================================================
 // Тесты сериализации
-// ======================================================================
+// ============================================================================
 
+/**
+ * @test JSON сериализация (формат C++ реализации)
+ * 
+ * Проверяет, что to_json() создает корректный JSON в формате:
+ * {"size": N, "tokens": ["token1", "token2", ...]}
+ */
 TEST(VocabularyTest, JsonSerialization) {
     Vocabulary vocab;
     vocab.add_token("first");
@@ -148,10 +224,18 @@ TEST(VocabularyTest, JsonSerialization) {
     
     auto json = vocab.to_json();
     
-    EXPECT_TRUE(json.contains("0"));
-    EXPECT_TRUE(json.contains("1"));
-    EXPECT_TRUE(json.contains("2"));
-    EXPECT_TRUE(json.contains("3"));
+    // Проверяем структуру JSON в формате C++ реализации
+    EXPECT_TRUE(json.contains("tokens"));
+    EXPECT_TRUE(json["tokens"].is_array());
+    EXPECT_TRUE(json.contains("size"));
+    EXPECT_EQ(json["size"], 4);
+    
+    const auto& tokens = json["tokens"];
+    ASSERT_EQ(tokens.size(), 4);
+    EXPECT_EQ(tokens[0], "first");
+    EXPECT_EQ(tokens[1], "second");
+    EXPECT_EQ(tokens[2], "third");
+    EXPECT_EQ(tokens[3], "<SPECIAL>");
     
     Vocabulary vocab2;
     vocab2.from_json(json);
@@ -161,21 +245,60 @@ TEST(VocabularyTest, JsonSerialization) {
     EXPECT_EQ(vocab.token_to_id("second"), vocab2.token_to_id("second"));
     EXPECT_EQ(vocab.token_to_id("third"), vocab2.token_to_id("third"));
     EXPECT_EQ(vocab.token_to_id("<SPECIAL>"), vocab2.token_to_id("<SPECIAL>"));
+    EXPECT_EQ(vocab.id_to_token(0), vocab2.id_to_token(0));
     EXPECT_EQ(vocab.id_to_token(1), vocab2.id_to_token(1));
+    EXPECT_EQ(vocab.id_to_token(2), vocab2.id_to_token(2));
+    EXPECT_EQ(vocab.id_to_token(3), vocab2.id_to_token(3));
 }
 
+/**
+ * @test JSON сериализация пустого словаря
+ */
 TEST(VocabularyTest, EmptyJsonSerialization) {
     Vocabulary vocab;
     
     auto json = vocab.to_json();
-    EXPECT_TRUE(json.empty());
+    
+    // Пустой словарь может либо не иметь поля tokens, либо иметь пустой массив
+    if (json.contains("tokens")) {
+        EXPECT_TRUE(json["tokens"].empty());
+        EXPECT_EQ(json["size"], 0);
+    } else {
+        EXPECT_TRUE(json.empty());
+    }
     
     Vocabulary vocab2;
     EXPECT_NO_THROW(vocab2.from_json(json));
     EXPECT_TRUE(vocab2.empty());
 }
 
-TEST(VocabularyTest, JsonFromObjectFormat) {
+/**
+ * @test Загрузка из JSON в формате массива
+ * 
+ * Проверяет поддержку формата {"size": N, "tokens": [...]}
+ */
+TEST(VocabularyTest, JsonFromArrayFormat) {
+    // Тест для формата с массивом (ваш формат)
+    nlohmann::json array_json;
+    array_json["size"] = 3;
+    array_json["tokens"] = {"alpha", "beta", "gamma"};
+    
+    Vocabulary vocab_array;
+    vocab_array.from_json(array_json);
+    
+    EXPECT_EQ(vocab_array.size(), 3);
+    EXPECT_EQ(vocab_array.token_to_id("alpha"), 0);
+    EXPECT_EQ(vocab_array.token_to_id("beta"), 1);
+    EXPECT_EQ(vocab_array.token_to_id("gamma"), 2);
+}
+
+/**
+ * @test Загрузка из JSON в формате ID->токен
+ * 
+ * Проверяет обратную совместимость с форматом {"0": "token", "1": "token", ...}
+ */
+TEST(VocabularyTest, JsonFromIdFormat) {
+    // Тест для обратной совместимости с форматом ID->токен
     nlohmann::json id_json;
     id_json["0"] = "alpha";
     id_json["1"] = "beta";
@@ -190,10 +313,41 @@ TEST(VocabularyTest, JsonFromObjectFormat) {
     EXPECT_EQ(vocab_id.token_to_id("gamma"), 2);
 }
 
-// ======================================================================
-// Тесты файлового ввода/вывода
-// ======================================================================
+/**
+ * @test Загрузка и сохранение в формате C++
+ * 
+ * Проверяет полный цикл сериализации в формате C++ реализации.
+ */
+TEST(VocabularyTest, LoadCppFormat) {
+    // Создаем JSON в формате C++ реализации
+    nlohmann::json cpp_format;
+    cpp_format["size"] = 5;
+    cpp_format["tokens"] = {"<PAD>", "<UNK>", "<BOS>", "<EOS>", "<CPP>"};
+    
+    Vocabulary vocab;
+    vocab.from_json(cpp_format);
+    
+    EXPECT_EQ(vocab.size(), 5);
+    EXPECT_EQ(vocab.token_to_id("<PAD>"), 0);
+    EXPECT_EQ(vocab.token_to_id("<UNK>"), 1);
+    EXPECT_EQ(vocab.token_to_id("<BOS>"), 2);
+    EXPECT_EQ(vocab.token_to_id("<EOS>"), 3);
+    EXPECT_EQ(vocab.token_to_id("<CPP>"), 4);
+    
+    // Проверяем обратную конвертацию
+    auto back_to_json = vocab.to_json();
+    EXPECT_EQ(back_to_json["size"], 5);
+    EXPECT_EQ(back_to_json["tokens"].size(), 5);
+    EXPECT_EQ(back_to_json["tokens"][0], "<PAD>");
+}
 
+// ============================================================================
+// Тесты файлового ввода/вывода
+// ============================================================================
+
+/**
+ * @test Сохранение и загрузка из JSON файла
+ */
 TEST(VocabularyTest, FileIO) {
     Vocabulary vocab;
     vocab.add_token("test1");
@@ -223,11 +377,17 @@ TEST(VocabularyTest, FileIO) {
     bpe_test::safe_remove(TEST_VOCAB_JSON);
 }
 
+/**
+ * @test Загрузка несуществующего файла
+ */
 TEST(VocabularyTest, LoadNonExistentFile) {
     Vocabulary vocab;
     EXPECT_FALSE(vocab.load("nonexistent.json"));
 }
 
+/**
+ * @test Сохранение в защищенную директорию
+ */
 TEST(VocabularyTest, SaveToProtectedDir) {
 #ifdef _WIN32
     GTEST_SKIP() << "Тест пропущен на Windows";
@@ -239,28 +399,36 @@ TEST(VocabularyTest, SaveToProtectedDir) {
 #endif
 }
 
-// ======================================================================
+// ============================================================================
 // Тесты бинарного формата
-// ======================================================================
+// ============================================================================
 
+/**
+ * @test Сохранение и загрузка в бинарном формате
+ * 
+ * Проверяет полный цикл бинарной сериализации:
+ * - Сохранение всех 256 байт и специальных токенов
+ * - Загрузка и проверка целостности
+ */
 TEST(VocabularyTest, BinaryIO) {
     Vocabulary vocab;
     
+    // Добавляем все 256 байт
     for (int i = 0; i < BYTE_LEVEL_SIZE; ++i) {
         vocab.add_token(std::string(1, static_cast<char>(i)));
     }
     
     vocab.add_special_tokens({"<PAD>", "<UNK>", "<BOS>", "<EOS>", "<MASK>"});
     
-    std::cout << "Создан словарь с " << vocab.size() << " токенами" << std::endl;
+    std::cout << CYAN << "\nСоздан словарь с " << vocab.size() << " токенами" << RESET << std::endl;
     
     std::cout << "Сохраняем в " << TEST_VOCAB_BIN << "..." << std::endl;
     bool save_result = vocab.save_binary(TEST_VOCAB_BIN);
-    std::cout << "save_binary вернул: " << (save_result ? "true" : "false") << std::endl;
+    std::cout << "save_binary вернул: " << (save_result ? GREEN + "true" : "false") << RESET << std::endl;
     EXPECT_TRUE(save_result);
     
     bool file_exists = fs::exists(TEST_VOCAB_BIN);
-    std::cout << "Файл существует: " << (file_exists ? "да" : "нет") << std::endl;
+    std::cout << "Файл существует: " << (file_exists ? GREEN + "да" : "нет") << RESET << std::endl;
     EXPECT_TRUE(file_exists);
     
     if (file_exists) {
@@ -272,7 +440,7 @@ TEST(VocabularyTest, BinaryIO) {
     std::cout << "Загружаем из " << TEST_VOCAB_BIN << "..." << std::endl;
     Vocabulary vocab2;
     bool load_result = vocab2.load_binary(TEST_VOCAB_BIN);
-    std::cout << "load_binary вернул: " << (load_result ? "true" : "false") << std::endl;
+    std::cout << "load_binary вернул: " << (load_result ? GREEN + "true" : "false") << RESET << std::endl;
     EXPECT_TRUE(load_result);
     
     if (load_result) {
@@ -280,7 +448,7 @@ TEST(VocabularyTest, BinaryIO) {
         
         EXPECT_EQ(vocab.size(), vocab2.size());
         
-        std::cout << "Проверка специальных токенов:" << std::endl;
+        std::cout << CYAN << "Проверка специальных токенов:" << RESET << std::endl;
         std::cout << "- <PAD> ID: " << vocab2.token_to_id("<PAD>") << std::endl;
         std::cout << "- <UNK> ID: " << vocab2.token_to_id("<UNK>") << std::endl;
         std::cout << "- <BOS> ID: " << vocab2.token_to_id("<BOS>") << std::endl;
@@ -293,7 +461,7 @@ TEST(VocabularyTest, BinaryIO) {
             if (!vocab2.contains(byte_str)) {
                 missing++;
                 if (missing <= 10) {
-                    std::cout << "Отсутствует байт " << i << " (0x" << std::hex << i << std::dec << ")" << std::endl;
+                    std::cout << YELLOW << "Отсутствует байт " << i << " (0x" << std::hex << i << std::dec << ")" << RESET << std::endl;
                 }
             }
         }
@@ -304,10 +472,14 @@ TEST(VocabularyTest, BinaryIO) {
     bpe_test::safe_remove(TEST_VOCAB_BIN);
 }
 
+/**
+ * @test Загрузка поврежденного бинарного файла
+ */
 TEST(VocabularyTest, LoadCorruptedBinary) {
     std::ofstream file(CORRUPTED_BIN, std::ios::binary);
     
-    uint32_t bad_size = 1000000;
+    // Записываем некорректные данные
+    uint32_t bad_size = 1000000;    // Слишком большой размер
     file.write(reinterpret_cast<const char*>(&bad_size), sizeof(bad_size));
     file.close();
     
@@ -317,15 +489,21 @@ TEST(VocabularyTest, LoadCorruptedBinary) {
     bpe_test::safe_remove(CORRUPTED_BIN);
 }
 
+/**
+ * @test Загрузка несуществующего бинарного файла
+ */
 TEST(VocabularyTest, LoadNonExistentBinary) {
     Vocabulary vocab;
     EXPECT_FALSE(vocab.load_binary("nonexistent.bin"));
 }
 
-// ======================================================================
+// ============================================================================
 // Тесты производительности
-// ======================================================================
+// ============================================================================
 
+/**
+ * @test Добавление множества токенов
+ */
 TEST(VocabularyTest, AddManyTokens) {
     Vocabulary vocab;
     
@@ -339,10 +517,13 @@ TEST(VocabularyTest, AddManyTokens) {
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     
     EXPECT_EQ(vocab.size(), NUM_TOKENS_PERFORMANCE);
-    std::cout << "Добавление " << NUM_TOKENS_PERFORMANCE << " токенов: " 
-              << duration.count() << " мс" << std::endl;
+    std::cout << CYAN << "\nДобавление " << NUM_TOKENS_PERFORMANCE << " токенов: " 
+              << duration.count() << " мс" << RESET << std::endl;
 }
 
+/**
+ * @test Скорость поиска токенов
+ */
 TEST(VocabularyTest, TokenLookupSpeed) {
     Vocabulary vocab;
     
@@ -360,14 +541,17 @@ TEST(VocabularyTest, TokenLookupSpeed) {
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     
-    std::cout << "Поиск " << NUM_TOKENS_PERFORMANCE << " токенов: " 
-              << duration.count() << " мс" << std::endl;
+    std::cout << CYAN << "Поиск " << NUM_TOKENS_PERFORMANCE << " токенов: " 
+              << duration.count() << " мс" << RESET << std::endl;
 }
 
-// ======================================================================
-// Тесты для get_all_tokens
-// ======================================================================
+// ============================================================================
+// Тесты для вспомогательных методов
+// ============================================================================
 
+/**
+ * @test Получение всех токенов
+ */
 TEST(VocabularyTest, GetAllTokens) {
     Vocabulary vocab;
     
@@ -385,10 +569,9 @@ TEST(VocabularyTest, GetAllTokens) {
     }
 }
 
-// ======================================================================
-// Тесты для next_id и max_id
-// ======================================================================
-
+/**
+ * @test next_id() и max_id()
+ */
 TEST(VocabularyTest, NextAndMaxId) {
     Vocabulary vocab;
     
@@ -404,12 +587,13 @@ TEST(VocabularyTest, NextAndMaxId) {
     EXPECT_EQ(vocab.max_id(), 1);
 }
 
-// ======================================================================
-// Альтернативные тесты для конструкторов (без использования конструкторов)
-// ======================================================================
+// ============================================================================
+// Альтернативные тесты для конструкторов
+// ============================================================================
 
 /**
- * @test Проверка создания словаря с начальными токенами (имитация конструктора с вектором)
+ * @test Проверка создания словаря с начальными токенами
+ * (имитация конструктора с вектором)
  */
 TEST(VocabularyTest, InitializeWithTokens) {
     Vocabulary vocab;
@@ -426,7 +610,8 @@ TEST(VocabularyTest, InitializeWithTokens) {
 }
 
 /**
- * @test Проверка создания словаря с частотной картой (имитация конструктора с freq map)
+ * @test Проверка создания словаря с частотной картой
+ * (имитация конструктора с freq map)
  */
 TEST(VocabularyTest, InitializeWithFreqMap) {
     std::unordered_map<std::string, size_t> freq = {
@@ -441,13 +626,16 @@ TEST(VocabularyTest, InitializeWithFreqMap) {
         }
     }
     
-    EXPECT_EQ(vocab.size(), 3);  // a, b, d (c исключен, freq=1 < 2)
+    EXPECT_EQ(vocab.size(), 3);    // a, b, d (c исключен, freq=1 < 2)
     EXPECT_TRUE(vocab.contains("a"));
     EXPECT_TRUE(vocab.contains("b"));
     EXPECT_FALSE(vocab.contains("c"));
     EXPECT_TRUE(vocab.contains("d"));
 }
 
+/**
+ * @test Добавление токена с перемещением
+ */
 TEST(VocabularyTest, MoveAddToken) {
     Vocabulary vocab;
     
@@ -462,12 +650,15 @@ TEST(VocabularyTest, MoveAddToken) {
     EXPECT_NE(id2, id1);
 }
 
-// ======================================================================
-// Тест с константным словарем
-// ======================================================================
+// ============================================================================
+// Тесты константности
+// ============================================================================
 
+/**
+ * @test Проверка константной корректности
+ */
 TEST(VocabularyTest, ConstCorrectness) {
-    const Vocabulary vocab_const;  // пустой константный словарь
+    const Vocabulary vocab_const;    // Пустой константный словарь
     
     EXPECT_EQ(vocab_const.size(), 0);
     EXPECT_TRUE(vocab_const.empty());
@@ -482,10 +673,13 @@ TEST(VocabularyTest, ConstCorrectness) {
     EXPECT_EQ(vocab_const.max_id(), INVALID_TOKEN);
 }
 
-// ======================================================================
-// Тест на уникальность ID
-// ======================================================================
+// ============================================================================
+// Тесты уникальности и очистки
+// ============================================================================
 
+/**
+ * @test Проверка уникальности ID
+ */
 TEST(VocabularyTest, UniqueIds) {
     Vocabulary vocab;
     std::set<token_id_t> ids;
@@ -499,10 +693,9 @@ TEST(VocabularyTest, UniqueIds) {
     EXPECT_EQ(ids.size(), 100);
 }
 
-// ======================================================================
-// Тест на очистку словаря
-// ======================================================================
-
+/**
+ * @test Очистка словаря
+ */
 TEST(VocabularyTest, Clear) {
     Vocabulary vocab;
     
@@ -520,10 +713,9 @@ TEST(VocabularyTest, Clear) {
     EXPECT_THROW(vocab.id_to_token(0), std::out_of_range);
 }
 
-// ======================================================================
-// Тест на добавление одного и того же токена много раз
-// ======================================================================
-
+/**
+ * @test Многократное добавление одного токена
+ */
 TEST(VocabularyTest, RepeatedAdd) {
     Vocabulary vocab;
     

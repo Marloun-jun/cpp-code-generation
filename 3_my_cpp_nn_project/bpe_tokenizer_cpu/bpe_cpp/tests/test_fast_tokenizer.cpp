@@ -11,42 +11,16 @@
  *          BPE токенизатора.
  * 
  *          **Проверяемые аспекты:**
- * 
- *          1. **Создание и инициализация**
- *             - Конструкторы с разными конфигурациями
- *             - Корректная инициализация специальных токенов
- *             - Проверка размеров словаря
- * 
- *          2. **Загрузка модели**
- *             - Загрузка из существующих файлов
- *             - Обработка отсутствующих файлов
- *             - Автоматический поиск по разным путям
- * 
- *          3. **Кодирование (encode)**
- *             - Простые тексты и символы
- *             - Пробельные символы
- *             - Числа и операторы
- *             - Ключевые слова C++
- *             - UTF-8 символы (русские, китайские, эмодзи)
- *             - Длинные тексты
- * 
- *          4. **Декодирование (decode)**
- *             - Простое декодирование
- *             - Roundtrip тесты (encode + decode)
- *             - Проверка сохранения всех символов
- * 
- *          5. **Пакетная обработка**
- *             - encode_batch для множества текстов
- *             - Сравнение с последовательной обработкой
- * 
- *          6. **Производительность и кэширование**
- *             - Замер скорости encode
- *             - Эффективность кэша (попадания/промахи)
- * 
- *          7. **Граничные случаи**
- *             - Пустой текст
- *             - Очень длинный текст (100 КБ)
- *             - Смешанные символы
+ *          ┌────────────────────┬──────────────────────────────────┐
+ *          │ Создание           │ Конструкторы с разными конфигами │
+ *          │ Загрузка модели    │ Из файлов и обработка ошибок     │
+ *          │ Кодирование        │ Тексты, числа, ключевые слова    │
+ *          │ Декодирование      │ Roundtrip и сохранение символов  │
+ *          │ Пакетная обработка │ encode_batch vs sequential       │
+ *          │ Производительность │ Скорость и кэширование           │
+ *          │ Граничные случаи   │ Пустые/длинные/случайные строки  │
+ *          │ Статистика         │ Сбор и сброс метрик              │
+ *          └────────────────────┴──────────────────────────────────┘
  * 
  * @note Для полных тестов требуются файлы обученной модели
  * @see FastBPETokenizer
@@ -55,45 +29,53 @@
 #include <gtest/gtest.h>
 
 #include "fast_tokenizer.hpp"
-#include "utils.hpp"
 #include "test_helpers.hpp"
+#include "utils.hpp"
 
+#include <algorithm>
+#include <chrono>
+#include <cstdio>
+#include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <random>
-#include <chrono>
-#include <thread>
-#include <filesystem>
-#include <cstdio>
-#include <vector>
-#include <string>
-#include <algorithm>
 #include <set>
-#include <iomanip>
+#include <string>
+#include <thread>
+#include <vector>
 
 namespace fs = std::filesystem;
 using namespace bpe;
 
-// ======================================================================
-// Константы
-// ======================================================================
+// ============================================================================
+// Константы и настройки
+// ============================================================================
 
 namespace {
-    constexpr size_t TEST_VOCAB_SIZE = 8000;
-    constexpr size_t TEST_CACHE_SIZE = 1000;
-    constexpr size_t PERFORMANCE_TEXT_SIZE = 10000;
-    constexpr int PERFORMANCE_ITERATIONS = 1000;
-    constexpr size_t VERY_LONG_TEXT_SIZE = 100000;
-    constexpr double MIN_ROUNDTRIP_RATE = 90.0;
-    constexpr double MIN_BATCH_MATCH_RATE = 90.0;
-    constexpr double MAX_ENCODE_TIME_MS = 1.0;
-    constexpr int MAX_PRINT_TOKENS = 5;
-    constexpr int UNIQUE_STRINGS_COUNT = 10;
+    constexpr size_t TEST_VOCAB_SIZE = 10000;          ///< Размер словаря для тестов
+    constexpr size_t TEST_CACHE_SIZE = 1000;           ///< Размер кэша для тестов
+    constexpr size_t PERFORMANCE_TEXT_SIZE = 10000;    ///< Размер текста для тестов производительности
+    constexpr int PERFORMANCE_ITERATIONS = 1000;       ///< Количество итераций для тестов производительности
+    constexpr size_t VERY_LONG_TEXT_SIZE = 100000;     ///< Очень длинный текст (100 КБ)
+    constexpr double MIN_ROUNDTRIP_RATE = 90.0;        ///< Минимальный процент успешных roundtrip
+    constexpr double MIN_BATCH_MATCH_RATE = 90.0;      ///< Минимальное совпадение batch vs sequential
+    constexpr double MAX_ENCODE_TIME_MS = 1.0;         ///< Максимальное время encode для 10 КБ
+    constexpr int MAX_PRINT_TOKENS = 5;                ///< Максимум токенов для вывода при отладке
+    constexpr int UNIQUE_STRINGS_COUNT = 10;           ///< Количество уникальных строк для теста кэша
+    
+    // Цвета для вывода (опционально)
+    const std::string RESET = "\033[0m";
+    const std::string GREEN = "\033[32m";
+    const std::string YELLOW = "\033[33m";
+    const std::string CYAN = "\033[36m";
+    const std::string RED = "\033[31m";
+    const std::string BOLD = "\033[1m";
 }
 
-// ======================================================================
+// ============================================================================
 // Вспомогательные функции
-// ======================================================================
+// ============================================================================
 
 /**
  * @brief Проверить существование файла модели
@@ -166,23 +148,23 @@ bool load_tokenizer(FastBPETokenizer& tokenizer) {
     std::cout << "Поиск модели токенизатора..." << std::endl;
     
     for (const auto& [vocab_path, merges_path] : paths) {
-        std::cout << "  Проверка: " << vocab_path << std::endl;
+        std::cout << "Проверка: " << vocab_path << std::endl;
         
         if (fs::exists(vocab_path) && fs::exists(merges_path)) {
-            std::cout << "  ✓ Найдены файлы, загрузка..." << std::endl;
+            std::cout << "Найдены файлы, загрузка..." << std::endl;
             
             if (tokenizer.load(vocab_path, merges_path)) {
-                std::cout << "  ✓ Загружена модель: " << vocab_path << std::endl;
-                std::cout << "    Размер словаря: " << tokenizer.vocab_size() << std::endl;
-                std::cout << "    Правил слияния: " << tokenizer.merges_count() << std::endl;
+                std::cout << "Загружена модель: " << vocab_path << std::endl;
+                std::cout << "Размер словаря:   " << tokenizer.vocab_size() << std::endl;
+                std::cout << "Правил слияния:   " << tokenizer.merges_count() << std::endl;
                 return true;
             } else {
-                std::cout << "  ✗ Ошибка загрузки!" << std::endl;
+                std::cout << "Ошибка загрузки!" << std::endl;
             }
         }
     }
     
-    std::cout << "  ✗ Модель не найдена!" << std::endl;
+    std::cout << "Модель не найдена!" << std::endl;
     return false;
 }
 
@@ -218,15 +200,17 @@ void create_test_merges(const std::string& path) {
 
 /**
  * @brief Вспомогательная функция для оптимизации (замена benchmark::DoNotOptimize)
+ * 
+ * Предотвращает оптимизацию компилятором, заставляя считать значение использованным.
  */
 template<typename T>
 void do_not_optimize(T&& value) {
     asm volatile("" : "+r"(value));
 }
 
-// ======================================================================
+// ============================================================================
 // Тестовый класс
-// ======================================================================
+// ============================================================================
 
 /**
  * @brief Тестовый класс для FastBPETokenizer
@@ -295,14 +279,14 @@ protected:
         return result;
     }
     
-    // ==================== Члены класса ====================
+    // Члены класса
     
     TokenizerConfig config_;                         ///< Конфигурация для тестов
     std::unique_ptr<FastBPETokenizer> tokenizer_;    ///< Тестируемый токенизатор
     bool has_model_ = false;                         ///< Наличие файлов модели
     bool model_loaded_ = false;                      ///< Успешная загрузка
     
-    // ==================== Тестовые строки ====================
+    // Тестовые строки
     
     /**
      * @brief Базовые тестовые строки (ключевые слова C++)
@@ -321,9 +305,9 @@ protected:
     };
 };
 
-// ======================================================================
+// ============================================================================
 // Тесты создания и инициализации
-// ======================================================================
+// ============================================================================
 
 /**
  * @test Проверка создания токенизатора с конфигурацией по умолчанию
@@ -344,12 +328,12 @@ TEST_F(FastTokenizerTest, Creation) {
     // <MASK> может отсутствовать в некоторых версиях
     size_t expected_special_tokens = 4;
     
-    std::cout << "Токенизатор создан с конфигурацией:" << std::endl;
-    std::cout << "  vocab_size: " << config.vocab_size << std::endl;
-    std::cout << "  cache_size: " << config.cache_size << std::endl;
-    std::cout << "  byte_level: " << config.byte_level << std::endl;
-    std::cout << "  фактический размер словаря: " << tokenizer.vocab_size() << std::endl;
-    std::cout << "  специальные токены:" << std::endl;
+    std::cout << "\n" << CYAN << "Токенизатор создан с конфигурацией:" << RESET << std::endl;
+    std::cout << "- vocab_size:                 " << config.vocab_size << std::endl;
+    std::cout << "- cache_size:                 " << config.cache_size << std::endl;
+    std::cout << "- byte_level:                 " << config.byte_level << std::endl;
+    std::cout << "- Фактический размер словаря: " << tokenizer.vocab_size() << std::endl;
+    std::cout << "- Специальные токены:         " << std::endl;
     std::cout << "    <UNK> ID: " << tokenizer.unknown_id() << std::endl;
     std::cout << "    <PAD> ID: " << tokenizer.pad_id() << std::endl;
     std::cout << "    <BOS> ID: " << tokenizer.bos_id() << std::endl;
@@ -396,9 +380,9 @@ TEST_F(FastTokenizerTest, CreationWithDifferentConfigs) {
     }
 }
 
-// ======================================================================
+// ============================================================================
 // Тесты загрузки модели
-// ======================================================================
+// ============================================================================
 
 /**
  * @test Загрузка словаря из файлов
@@ -407,15 +391,15 @@ TEST_F(FastTokenizerTest, CreationWithDifferentConfigs) {
  */
 TEST_F(FastTokenizerTest, LoadVocabulary) {
     if (!has_model_) {
-        GTEST_SKIP() << "Файлы модели не найдены. Сначала обучите токенизатор.";
+        GTEST_SKIP() << "Файлы модели не найдены. Сначала обучите токенизатор!";
     }
     
     EXPECT_TRUE(model_loaded_);
     EXPECT_GT(tokenizer_->vocab_size(), 0);
     EXPECT_GT(tokenizer_->merges_count(), 0);
     
-    std::cout << "Загружено токенов:    " << tokenizer_->vocab_size() << std::endl;
-    std::cout << "Правил слияния:       " << tokenizer_->merges_count() << std::endl;
+    std::cout << "Загружено токенов: " << tokenizer_->vocab_size() << std::endl;
+    std::cout << "Правил слияния:    " << tokenizer_->merges_count() << std::endl;
 }
 
 /**
@@ -428,12 +412,12 @@ TEST_F(FastTokenizerTest, LoadNonExistentFile) {
     
     bool loaded = tokenizer.load("nonexistent.json", "nonexistent.txt");
     EXPECT_FALSE(loaded);
-    std::cout << "Корректная обработка отсутствующего файла" << std::endl;
+    std::cout << "Корректная обработка отсутствующего файла!" << std::endl;
 }
 
-// ======================================================================
+// ============================================================================
 // Тесты кодирования
-// ======================================================================
+// ============================================================================
 
 /**
  * @test Простое кодирование одного символа
@@ -450,7 +434,7 @@ TEST_F(FastTokenizerTest, SimpleEncode) {
     std::cout << "'" << text << "' -> " << tokens.size() << " токенов" << std::endl;
     
     for (size_t i = 0; i < std::min<size_t>(MAX_PRINT_TOKENS, tokens.size()); ++i) {
-        std::cout << "  Токен " << i << ": ID " << tokens[i] << std::endl;
+        std::cout << "Токен " << i << ": ID " << tokens[i] << std::endl;
     }
 }
 
@@ -611,9 +595,9 @@ TEST_F(FastTokenizerTest, EncodeUTF8) {
     }
 }
 
-// ======================================================================
+// ============================================================================
 // Тесты декодирования
-// ======================================================================
+// ============================================================================
 
 /**
  * @test Простое декодирование
@@ -629,17 +613,17 @@ TEST_F(FastTokenizerTest, SimpleDecode) {
     auto tokens = tokenizer_->encode(original);
     auto decoded = tokenizer_->decode(tokens);
     
-    std::cout << "Roundtrip тест:" << std::endl;
-    std::cout << "  оригинал:  '" << original << "'" << std::endl;
-    std::cout << "  декод.:    '" << decoded << "'" << std::endl;
-    std::cout << "  токенов:   " << tokens.size() << std::endl;
+    std::cout << "\nRoundtrip тест:" << std::endl;
+    std::cout << "- Оригинал: '" << original << "'" << std::endl;
+    std::cout << "- Декод.:   '" << decoded << "'" << std::endl;
+    std::cout << "- Токенов:  " << tokens.size() << std::endl;
     
     // Проверяем, что все символы сохранились
     bool all_chars_present = true;
     for (char c : original) {
         if (decoded.find(c) == std::string::npos) {
             all_chars_present = false;
-            std::cout << "  Отсутствует символ: '" << c << "'" << std::endl;
+            std::cout << "Отсутствует символ: '" << c << "'" << std::endl;
         }
     }
     
@@ -678,15 +662,15 @@ TEST_F(FastTokenizerTest, RoundtripAllStrings) {
     }
     
     double pass_rate = 100.0 * passed / total;
-    std::cout << "Процент успешных roundtrip: " << std::fixed << std::setprecision(1)
+    std::cout << "\nПроцент успешных roundtrip: " << std::fixed << std::setprecision(1)
               << pass_rate << "% (" << passed << "/" << total << ")" << std::endl;
     
     EXPECT_GE(pass_rate, MIN_ROUNDTRIP_RATE);
 }
 
-// ======================================================================
+// ============================================================================
 // Тесты пакетной обработки
-// ======================================================================
+// ============================================================================
 
 /**
  * @test Пакетное кодирование
@@ -705,10 +689,10 @@ TEST_F(FastTokenizerTest, BatchEncode) {
     auto results = tokenizer_->encode_batch(views);
     
     EXPECT_EQ(results.size(), texts.size());
-    std::cout << "Пакетная обработка " << results.size() << " текстов:" << std::endl;
+    std::cout << "\nПакетная обработка " << results.size() << " текстов:" << std::endl;
     
     for (size_t i = 0; i < std::min<size_t>(MAX_PRINT_TOKENS, results.size()); ++i) {
-        std::cout << "  Текст " << i << ": " << results[i].size() << " токенов" << std::endl;
+        std::cout << "Текст " << i << ": " << results[i].size() << " токенов" << std::endl;
     }
 }
 
@@ -744,22 +728,22 @@ TEST_F(FastTokenizerTest, BatchVsSequential) {
         if (batch_results[i].size() == sequential_results[i].size()) {
             matches++;
         } else {
-            std::cout << "  Несовпадение размера для текста " << i 
+            std::cout << "Несовпадение размера для текста " << i 
                       << ": batch=" << batch_results[i].size() 
                       << ", seq=" << sequential_results[i].size() << std::endl;
         }
     }
     
     double match_rate = 100.0 * matches / texts.size();
-    std::cout << "Совпадение batch vs sequential: " << std::fixed << std::setprecision(1)
+    std::cout << "\nСовпадение batch vs sequential: " << std::fixed << std::setprecision(1)
               << match_rate << "%" << std::endl;
     
     EXPECT_GE(match_rate, MIN_BATCH_MATCH_RATE);
 }
 
-// ======================================================================
+// ============================================================================
 // Тесты производительности
-// ======================================================================
+// ============================================================================
 
 /**
  * @test Производительность кодирования
@@ -790,21 +774,21 @@ TEST_F(FastTokenizerTest, EncodePerformance) {
     double mb_per_second = chars_per_second / (1024.0 * 1024.0);
     
     std::cout << "\nПроизводительность encode:" << std::endl;
-    std::cout << "  размер текста: " << text.size() << " символов (" 
+    std::cout << "- Размер текста: " << text.size() << " символов (" 
               << text.size() / 1024.0 << " КБ)" << std::endl;
-    std::cout << "  итераций: " << PERFORMANCE_ITERATIONS << std::endl;
-    std::cout << "  общее время: " << duration.count() << " мс" << std::endl;
-    std::cout << "  среднее время: " << std::fixed << std::setprecision(3) 
+    std::cout << "- Итераций:      " << PERFORMANCE_ITERATIONS << std::endl;
+    std::cout << "- Общее время:   " << duration.count() << " мс" << std::endl;
+    std::cout << "- Среднее время: " << std::fixed << std::setprecision(3) 
               << ms_per_encode << " мс" << std::endl;
-    std::cout << "  скорость: " << std::fixed << std::setprecision(2)
+    std::cout << "- Скорость:      " << std::fixed << std::setprecision(2)
               << mb_per_second << " МБ/с" << std::endl;
     
     EXPECT_LT(ms_per_encode, MAX_ENCODE_TIME_MS) << "Слишком медленное кодирование!";
 }
 
-// ======================================================================
+// ============================================================================
 // Тесты кэширования
-// ======================================================================
+// ============================================================================
 
 /**
  * @test Проверка эффективности кэширования
@@ -850,14 +834,14 @@ TEST_F(FastTokenizerTest, CacheEfficiency) {
     }
     
     // Первый проход - заполнение кэша
-    std::cout << "Первый проход (заполнение кэша)..." << std::endl;
+    std::cout << "\nПервый проход (заполнение кэша)..." << std::endl;
     for (const auto& text : unique_strings) {
         tokenizer.encode(text);
     }
     
     auto stats1 = tokenizer.stats();
-    std::cout << "  попаданий: " << stats1.cache_hits << std::endl;
-    std::cout << "  промахов: " << stats1.cache_misses << std::endl;
+    std::cout << "- Попаданий: " << stats1.cache_hits << std::endl;
+    std::cout << "- Промахов:  " << stats1.cache_misses << std::endl;
     
     // Второй проход - должны быть попадания
     std::cout << "Второй проход (использование кэша)..." << std::endl;
@@ -866,14 +850,14 @@ TEST_F(FastTokenizerTest, CacheEfficiency) {
     }
     
     auto stats2 = tokenizer.stats();
-    std::cout << "  попаданий: " << stats2.cache_hits << std::endl;
-    std::cout << "  промахов: " << stats2.cache_misses << std::endl;
+    std::cout << "- Попаданий: " << stats2.cache_hits << std::endl;
+    std::cout << "- Промахов:  " << stats2.cache_misses << std::endl;
     
     // Проверяем, что были попадания во втором проходе
     EXPECT_GT(stats2.cache_hits, stats1.cache_hits) << "Кэш не работает!";
     
     double hit_rate = stats2.cache_hit_rate() * 100;
-    std::cout << "  hit rate: " << std::fixed << std::setprecision(1) 
+    std::cout << "- hit rate:  " << std::fixed << std::setprecision(1) 
               << hit_rate << "%" << std::endl;
     
     // Очистка
@@ -881,9 +865,9 @@ TEST_F(FastTokenizerTest, CacheEfficiency) {
     std::remove(merges_path.c_str());
 }
 
-// ======================================================================
+// ============================================================================
 // Тесты граничных случаев
-// ======================================================================
+// ============================================================================
 
 /**
  * @test Пустой текст
@@ -902,7 +886,7 @@ TEST_F(FastTokenizerTest, EmptyText) {
     auto decoded = tokenizer_->decode(tokens);
     EXPECT_EQ(decoded, "");
     
-    std::cout << "Пустой текст обработан корректно!" << std::endl;
+    std::cout << "\nПустой текст обработан корректно!" << std::endl;
 }
 
 /**
@@ -919,7 +903,7 @@ TEST_F(FastTokenizerTest, VeryLongText) {
     auto tokens = tokenizer_->encode(text);
     
     EXPECT_GT(tokens.size(), text.size() / 10);
-    std::cout << "Очень длинный текст (100 КБ) -> " << tokens.size() << " токенов" << std::endl;
+    std::cout << "\nОчень длинный текст (100 КБ) -> " << tokens.size() << " токенов" << std::endl;
 }
 
 /**
@@ -937,7 +921,7 @@ TEST_F(FastTokenizerTest, MixedCharacters) {
     auto tokens = tokenizer_->encode(text);
     
     EXPECT_GT(tokens.size(), 0);
-    std::cout << "Смешанный текст -> " << tokens.size() << " токенов" << std::endl;
+    std::cout << "\nСмешанный текст -> " << tokens.size() << " токенов" << std::endl;
 }
 
 /**
@@ -957,7 +941,7 @@ TEST_F(FastTokenizerTest, AllAsciiChars) {
     
     auto tokens = tokenizer_->encode(text);
     EXPECT_GT(tokens.size(), 0);
-    std::cout << "Все ASCII символы (95 шт) -> " << tokens.size() << " токенов" << std::endl;
+    std::cout << "\nВсе ASCII символы (95 шт) -> " << tokens.size() << " токенов" << std::endl;
 }
 
 /**
@@ -1002,15 +986,15 @@ TEST_F(FastTokenizerTest, RandomStrings) {
     }
     
     double pass_rate = 100.0 * passed / num_tests;
-    std::cout << "Случайные строки: " << std::fixed << std::setprecision(1)
+    std::cout << "\nСлучайные строки: " << std::fixed << std::setprecision(1)
               << pass_rate << "% успешных roundtrip" << std::endl;
     
     EXPECT_GE(pass_rate, MIN_ROUNDTRIP_RATE);
 }
 
-// ======================================================================
+// ============================================================================
 // Тесты статистики
-// ======================================================================
+// ============================================================================
 
 /**
  * @test Проверка сбора статистики
@@ -1039,11 +1023,11 @@ TEST_F(FastTokenizerTest, Statistics) {
     EXPECT_GE(stats_after.encode_calls, 2);
     EXPECT_GE(stats_after.decode_calls, 1);
     
-    std::cout << "Статистика:" << std::endl;
-    std::cout << "  encode_calls: " << stats_after.encode_calls << std::endl;
-    std::cout << "  decode_calls: " << stats_after.decode_calls << std::endl;
-    std::cout << "  cache_hits:   " << stats_after.cache_hits << std::endl;
-    std::cout << "  cache_misses: " << stats_after.cache_misses << std::endl;
+    std::cout << "\nСтатистика:" << std::endl;
+    std::cout << "- encode_calls: " << stats_after.encode_calls << std::endl;
+    std::cout << "- decode_calls: " << stats_after.decode_calls << std::endl;
+    std::cout << "- cache_hits:   " << stats_after.cache_hits << std::endl;
+    std::cout << "- cache_misses: " << stats_after.cache_misses << std::endl;
     
     tokenizer_->reset_stats();
     auto stats_reset = tokenizer_->stats();

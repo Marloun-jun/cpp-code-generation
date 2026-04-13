@@ -1,0 +1,19 @@
+{
+  "name": "CppCodeModel-Tiny",
+  "description": "5M параметров",
+  "vocab_size": 10001,
+  "d_model": 192,
+  "nhead": 3,
+  "num_layers": 3,
+  "max_len": 768,
+  "batch_size": 12,
+  "dropout": 0.15,
+  "weight_decay": 0.01,
+  "gradient_clip": 1.0,
+  "epochs": 12,
+  "learning_rate": 0.00035,
+  "warmup_steps": 800,
+  "pad_token_id": 0,
+  "bos_token_id": 2,
+  "eos_token_id": 3
+}

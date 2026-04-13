@@ -46,7 +46,7 @@
 # @example
 #   python trainer.py                                 # Обучение с параметрами по умолчанию
 #   python trainer.py --corpus ../data/corpus.txt     # Указание корпуса
-#   python trainer.py --vocab-size 8000               # Размер словаря 8000
+#   python trainer.py --vocab-size 10000              # Размер словаря 10000
 #   python trainer.py --output-dir ./my_models        # Сохранение в свою директорию
 #   python trainer.py --no-byte-level                 # Отключить byte-level режим
 #   python trainer.py --special custom_tokens.json    # Загрузка специальных токенов
@@ -78,7 +78,7 @@ sys.path.insert(0, str(BPE_PYTHON_DIR))
 try:
     from tokenizer import BPETokenizer
 except ImportError as e:
-    print(f"Ошибка импорта BPETokenizer: {e}")
+    print(f"Ошибка импорта BPETokenizer: {e}!")
     print(f"Убедитесь, что файл tokenizer.py существует в {BPE_PYTHON_DIR}")
     sys.exit(1)
 
@@ -102,8 +102,8 @@ def print_header(title: str, width: int = 60) -> None:
     Вывести заголовок раздела для красивого форматирования вывода.
     
     Args:
-        title:    Заголовок
-        width:    Ширина линии
+        title: Заголовок
+        width: Ширина линии
     
     Example:
         >>> print_header("ОБУЧЕНИЕ ТОКЕНИЗАТОРА")
@@ -123,10 +123,10 @@ def get_project_paths() -> dict:
     Returns:
         dict:
             Словарь с путями проекта со следующими ключами:
-            - project_root:      корневая директория проекта
-            - bpe_python_dir:    директория с Python кодом
-            - models_dir:        директория для сохранения моделей
-            - default_corpus:    путь к корпусу по умолчанию
+            - project_root:   Корневая директория проекта
+            - bpe_python_dir: Директория с Python кодом
+            - models_dir:     Директория для сохранения моделей
+            - default_corpus: Путь к корпусу по умолчанию
     
     Example:
         >>> paths = get_project_paths()
@@ -134,10 +134,10 @@ def get_project_paths() -> dict:
         /home/user/project/bpe_tokenizer_cpu/data/corpus/train_code.txt
     """
     return {
-        "project_root":      PROJECT_ROOT,
-        "bpe_python_dir":    BPE_PYTHON_DIR,
-        "models_dir":        BPE_PYTHON_DIR / 'models',
-        "default_corpus":    PROJECT_ROOT / 'data' / 'corpus' / 'train_code.txt',
+        "project_root":   PROJECT_ROOT,
+        "bpe_python_dir": BPE_PYTHON_DIR,
+        "models_dir":     BPE_PYTHON_DIR / 'models',
+        "default_corpus": PROJECT_ROOT / 'data' / 'corpus' / 'train_code.txt',
     }
 
 
@@ -146,10 +146,10 @@ def validate_corpus_file(corpus_path: Union[str, Path]) -> bool:
     Проверить файл корпуса на читаемость и базовую структуру.
     
     Args:
-        corpus_path:    Путь к файлу корпуса
+        corpus_path: Путь к файлу корпуса
         
     Returns:
-        bool:    True если файл валиден, иначе False
+        bool: True если файл валиден, иначе False
     
     **Проверки:**
     - Существование файла
@@ -160,7 +160,7 @@ def validate_corpus_file(corpus_path: Union[str, Path]) -> bool:
     corpus_path = Path(corpus_path)
     
     if not corpus_path.exists():
-        logger.error(f"Файл не существует: {corpus_path}")
+        logger.error(f"Файл не существует: {corpus_path}!")
         return False
     
     if not corpus_path.is_file():
@@ -171,22 +171,22 @@ def validate_corpus_file(corpus_path: Union[str, Path]) -> bool:
     try:
         size_kb = corpus_path.stat().st_size / 1024
         if corpus_path.stat().st_size == 0:
-            logger.error(f"Файл пуст: {corpus_path}")
+            logger.error(f"Файл пуст: {corpus_path}!")
             return False
         
         with open(corpus_path, 'r', encoding='utf-8') as f:
             first_line = f.readline().strip()
             if not first_line:
-                logger.warning(f"Первая строка файла пуста: {corpus_path}")
+                logger.warning(f"Первая строка файла пуста: {corpus_path}!")
         
         logger.info(f"Файл корпуса валиден: {corpus_path.name} (размер: {size_kb:.1f} KB)")
         return True
         
     except UnicodeDecodeError:
-        logger.error(f"Ошибка кодировки UTF-8 в файле: {corpus_path}")
+        logger.error(f"Ошибка кодировки UTF-8 в файле: {corpus_path}!")
         return False
     except Exception as e:
-        logger.error(f"Ошибка при проверке файла {corpus_path}: {e}")
+        logger.error(f"Ошибка при проверке файла {corpus_path}: {e}!")
         return False
 
 
@@ -199,15 +199,15 @@ def load_corpus(corpus_path: Path, verbose: bool = True) -> List[str]:
     Загрузить корпус из файла.
     
     Args:
-        corpus_path:    Путь к файлу корпуса
-        verbose:        Выводить прогресс загрузки
+        corpus_path: Путь к файлу корпуса
+        verbose:     Выводить прогресс загрузки
         
     Returns:
-        List[str]:    Список строк корпуса
+        List[str]: Список строк корпуса
         
     Raises:
-        FileNotFoundError:    Если файл не найден
-        ValueError:           Если корпус пуст
+        FileNotFoundError: Если файл не найден
+        ValueError:        Если корпус пуст
     
     **Особенности:**
     - Пропускает пустые строки
@@ -234,17 +234,17 @@ def load_corpus(corpus_path: Path, verbose: bool = True) -> List[str]:
             logger.info(f"Размер корпуса: {corpus_path.stat().st_size / (1024*1024):.2f} MB")
         
         if not corpus:
-            raise ValueError(f"Корпус пуст или не содержит непустых строк: {corpus_path}")
+            raise ValueError(f"Корпус пуст или не содержит непустых строк: {corpus_path}!")
         
         return corpus
         
     except UnicodeDecodeError as e:
-        raise ValueError(f"Ошибка кодировки файла {corpus_path}: {e}")
+        raise ValueError(f"Ошибка кодировки файла {corpus_path}: {e}!")
 
 
 def train_from_corpus(
     corpus_path: Union[str, Path],
-    vocab_size: int = 8000,
+    vocab_size: int = 10000,
     byte_level: bool = True,
     special_tokens: Optional[List[str]] = None,
     output_dir: Union[str, Path] = './bpe_python',
@@ -254,34 +254,34 @@ def train_from_corpus(
     Обучить BPE токенизатор из файла корпуса.
     
     Args:
-        corpus_path:       Путь к файлу с корпусом (построчно)
-        vocab_size:        Размер словаря (рекомендуемые значения: 8000, 10000, 12000)
-        byte_level:        Использовать byte-level режим для поддержки Unicode
-        special_tokens:    Специальные токены (по умолчанию для C++ кода)
-        output_dir:        Директория для сохранения результатов
-        verbose:           Подробный вывод
+        corpus_path:    Путь к файлу с корпусом (построчно)
+        vocab_size:     Размер словаря (рекомендуемые значения: 8000, 10000, 12000)
+        byte_level:     Использовать byte-level режим для поддержки Unicode
+        special_tokens: Специальные токены (по умолчанию для C++ кода)
+        output_dir:     Директория для сохранения результатов
+        verbose:        Подробный вывод
         
     Returns:
-        BPETokenizer:     Обученный экземпляр токенизатора
+        BPETokenizer: Обученный экземпляр токенизатора
         
     Raises:
-        FileNotFoundError:    Если файл корпуса не найден
-        ValueError:           Если корпус пуст или размер словаря слишком мал
+        FileNotFoundError: Если файл корпуса не найден
+        ValueError:        Если корпус пуст или размер словаря слишком мал
         
     **Процесс обучения:**
     1. Загрузка корпуса из файла
     2. Инициализация токенизатора с заданными параметрами
     3. Обучение BPE алгоритму
     4. Сохранение модели в трёх форматах:
-        - vocab.json (словарь)
-        - merges.txt (правила слияния)
-        - model.bin (бинарная версия)
+    - vocab.json (словарь)
+    - merges.txt (правила слияния)
+    - model.bin (бинарная версия)
     5. Вывод статистики
     
     Example:
         >>> tokenizer = train_from_corpus(
         ...     corpus_path='../data/corpus.txt',
-        ...     vocab_size=8000,
+        ...     vocab_size=10000,
         ...     output_dir='./models'
         ... )
     """
@@ -291,7 +291,7 @@ def train_from_corpus(
     
     # Проверяем существование файла
     if not corpus_path.exists():
-        raise FileNotFoundError(f"Файл корпуса не найден: {corpus_path}")
+        raise FileNotFoundError(f"Файл корпуса не найден: {corpus_path}!")
     
     # Загружаем корпус
     corpus = load_corpus(corpus_path, verbose=verbose)
@@ -299,10 +299,10 @@ def train_from_corpus(
     # Инициализируем токенизатор
     if verbose:
         logger.info(f"Инициализация токенизатора:")
-        logger.info(f"- размер словаря: {vocab_size}")
-        logger.info(f"- byte-level: {byte_level}")
+        logger.info(f"- Размер словаря: {vocab_size}")
+        logger.info(f"- byte-level:     {byte_level}")
         if special_tokens:
-            logger.info(f"- спецтокены: {', '.join(special_tokens)}")
+            logger.info(f"- Спецтокены:     {', '.join(special_tokens)}")
     
     tokenizer = BPETokenizer(
         vocab_size=vocab_size,
@@ -317,9 +317,9 @@ def train_from_corpus(
     tokenizer.train(corpus, verbose=verbose)
     
     if verbose:
-        logger.info(f"Обучение завершено")
+        logger.info(f"Обучение завершено!")
         logger.info(f"Итоговый размер словаря: {len(tokenizer.vocab)}")
-        logger.info(f"Выполнено слияний: {tokenizer.merges_count()}")
+        logger.info(f"Выполнено слияний:       {tokenizer.merges_count()}")
     
     # Создаем выходную директорию
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -334,15 +334,15 @@ def train_from_corpus(
     
     if verbose:
         logger.info(f"Модель сохранена в {output_dir}")
-        logger.info(f"- словарь: {vocab_path.name}")
-        logger.info(f"- слияния: {merges_path.name}")
-        logger.info(f"- бинарная: {binary_path.name}")
+        logger.info(f"- Словарь:  {vocab_path.name}")
+        logger.info(f"- Слияния:  {merges_path.name}")
+        logger.info(f"- Бинарная: {binary_path.name}")
         
         # Размеры файлов
         vocab_size_kb = vocab_path.stat().st_size / 1024
         merges_size_kb = merges_path.stat().st_size / 1024
         binary_size_kb = binary_path.stat().st_size / 1024
-        logger.info(f"- размеры: {vocab_size_kb:.1f} КБ / {merges_size_kb:.1f} КБ / {binary_size_kb:.1f} КБ")
+        logger.info(f"- Размеры:  {vocab_size_kb:.1f} КБ / {merges_size_kb:.1f} КБ / {binary_size_kb:.1f} КБ")
     
     return tokenizer
 
@@ -356,10 +356,10 @@ def test_tokenizer(
     Тестирование токенизатора на примерах текстов с защитой от зависания.
     
     Args:
-        tokenizer:          Обученный токенизатор
-        test_texts:         Список тестовых текстов
-        show_tokens:        Количество первых токенов для отображения
-        timeout_seconds:    Максимальное время на один тест (с)
+        tokenizer:       Обученный токенизатор
+        test_texts:      Список тестовых текстов
+        show_tokens:     Количество первых токенов для отображения
+        timeout_seconds: Максимальное время на один тест (с)
     """
     print_header("ТЕСТИРОВАНИЕ ТОКЕНИЗАТОРА")
     
@@ -390,54 +390,61 @@ def test_tokenizer(
             if is_match:
                 passed += 1
             
-            status = "V" if is_match else "X"
+            status = "да" if is_match else "нет"
             print(f"\n{i}. {status} Текст: {text[:60]}{'...' if len(text) > 60 else ''}")
             print(f"Токенов: {len(encoded)}")
             
             if show_tokens > 0 and encoded:
-                # Показываем первые несколько токенов
+                # Показываем первые несколько ID
                 preview = encoded[:show_tokens]
                 if len(encoded) > show_tokens:
-                    preview.append('...')
-                print(f"ID: {preview}")
+                    print(f"   ID: {preview}...")
+                else:
+                    print(f"   ID: {preview}")
                 
-                # Показываем соответствующие токены
+                # Показываем соответствующие токены (без экранирования!)
                 tokens = []
                 for idx in encoded[:show_tokens]:
                     if idx in tokenizer.vocab:
                         token = tokenizer.vocab[idx]
-                        # Экранируем специальные символы для вывода
                         if token in tokenizer.special_tokens:
                             tokens.append(f"[{token}]")
                         elif len(token) > 20:
                             tokens.append(token[:17] + "...")
                         else:
-                            # Экранируем управляющие символы
-                            display_token = repr(token)[1:-1] if any(c in token for c in '\n\t\r') else token
-                            tokens.append(display_token)
+                            # НЕ используем repr для русских символов!
+                            # Просто добавляем токен как есть
+                            tokens.append(token)
+                
                 if tokens:
-                    print(f"Токены: {', '.join(tokens)}{'...' if len(encoded) > show_tokens else ''}")
+                    token_str = ' '.join(tokens)
+                    if len(encoded) > show_tokens:
+                        print(f"Токены: {token_str} ...")
+                    else:
+                        print(f"Токены: {token_str}")
             
         except TimeoutError as e:
             timed_out += 1
             print(f"\n{i}. Таймаут: {text[:60]}...")
-            print(f"   {str(e)}")
+            print(f"    {str(e)}")
             
         except Exception as e:
-            print(f"\n{i}. Ошибка при тестировании: {e}")
+            print(f"\n{i}. Ошибка при тестировании: {e}!")
             import traceback
             traceback.print_exc()
     
-    print(f"\nРезультат: {passed}/{total} тестов пройдено ({passed/total*100:.1f}%)")
+    print(f"\n{'=' * 60}")
+    print(f"Результат: {passed}/{total} тестов пройдено ({passed/total*100:.1f}%)")
     if timed_out > 0:
         print(f"Таймаутов: {timed_out}")
+    print(f"{'=' * 60}")
 
 def get_default_corpus_path() -> Path:
     """
     Получить путь к корпусу по умолчанию.
     
     Returns:
-        Path:    Путь к корпусу по умолчанию (data/corpus/train_code.txt)
+        Path: Путь к корпусу по умолчанию (data/corpus/train_code.txt)
     """
     paths = get_project_paths()
     return paths['default_corpus']
@@ -452,15 +459,15 @@ def main() -> int:
     Основная функция для запуска обучения из командной строки.
     
     Returns:
-        int:    0 при успехе, 1 при ошибке
+        int: 0 при успехе, 1 при ошибке
     
     **Аргументы командной строки:**
-    - `--corpus PATH`        - путь к файлу корпуса
-    - `--vocab-size N`       - размер словаря (по умолч. 8000)
-    - `--output-dir PATH`    - директория для сохранения
-    - `--no-byte-level`      - отключить byte-level режим
-    - `--special FILE`       - JSON файл со специальными токенами
-    - `--quiet`              - тихий режим (без подробностей)
+    - `--corpus PATH`     - Путь к файлу корпуса
+    - `--vocab-size N`    - Размер словаря (по умолч. 10000)
+    - `--output-dir PATH` - Директория для сохранения
+    - `--no-byte-level`   - Отключить byte-level режим
+    - `--special FILE`    - JSON файл со специальными токенами
+    - `--quiet`           - Тихий режим (без подробностей)
     """
     parser = argparse.ArgumentParser(
         description='Обучение BPE токенизатора на корпусе C++ кода',
@@ -469,7 +476,7 @@ def main() -> int:
     Примеры использования:
     python trainer.py                                 # обучение с параметрами по умолчанию
     python trainer.py --corpus ../data/corpus.txt     # указание корпуса
-    python trainer.py --vocab-size 8000               # размер словаря 8000
+    python trainer.py --vocab-size 10000              # размер словаря 10000
     python trainer.py --output-dir ./my_models        # своя директория
     python trainer.py --no-byte-level                 # отключить byte-level
     python trainer.py --special custom_tokens.json    # свои специальные токены
@@ -477,8 +484,8 @@ def main() -> int:
     )
     parser.add_argument('--corpus', type=str, 
                        help='Путь к файлу корпуса (построчно)')
-    parser.add_argument('--vocab-size', '-v', type=int, default=8000,
-                       help='Размер словаря (по умолчанию: 8000)')
+    parser.add_argument('--vocab-size', '-v', type=int, default=10000,
+                       help='Размер словаря (по умолчанию: 10000)')
     parser.add_argument('--output-dir', '-o', type=str, default='./bpe',
                        help='Директория для сохранения модели')
     parser.add_argument('--no-byte-level', action='store_false', dest='byte_level',
@@ -510,7 +517,7 @@ def main() -> int:
                 special_tokens = json.load(f)
             logger.info(f"Загружены специальные токены: {', '.join(special_tokens)}")
         except Exception as e:
-            logger.error(f"Ошибка загрузки специальных токенов: {e}")
+            logger.error(f"Ошибка загрузки специальных токенов: {e}!")
             return 1
     else:
         # Токены по умолчанию для C++ кода
@@ -518,7 +525,7 @@ def main() -> int:
     
     # Проверяем корпус
     if not validate_corpus_file(corpus_path):
-        logger.error(f"Файл корпуса не найден: {corpus_path}")
+        logger.error(f"Файл корпуса не найден: {corpus_path}!")
         logger.info(f"\nПоместите файл train_code.txt в:")
         logger.info(f"{paths['default_corpus']}")
         return 1
@@ -540,13 +547,31 @@ def main() -> int:
             verbose=not args.quiet
         )
         
-        # Тестирование на нескольких примерах (только английский/код)
+        # Тестирование на примерах с поддержкой Unicode (русские и эмодзи)
         if not args.quiet:
             test_texts = [
+                # Базовые C++ конструкции
                 "#include <iostream>",
                 "int main() { return 0; }",
                 'std::cout << "Hello, world!" << std::endl;',
+                
+                # Английские комментарии
                 "// This is a comment in English",
+                
+                # Русские комментарии
+                "// Русский комментарий с буквами",
+                "// Привет, мир!",
+                
+                # Комментарии с эмодзи
+                "// 🔥 эмодзи комментарий с огнём",
+                "// 😊 улыбающийся комментарий",
+                "// 👋 приветствие с эмодзи",
+                
+                # Смешанные комментарии
+                "// Русский текст с эмодзи 🔥 и 😊",
+                "// Emoji with русскими буквами 👌",
+                
+                # Шаблоны C++ (должны работать с Unicode)
                 "template<typename T> class Vector {",
                 "auto result = std::make_unique<int[]>(size);",
                 "for (int i = 0; i < 10; ++i) {",
@@ -562,10 +587,10 @@ def main() -> int:
         return 0
         
     except KeyboardInterrupt:
-        print("\n\nОбучение прервано пользователем")
+        print("\n\nОбучение прервано пользователем!")
         return 1
     except Exception as e:
-        logger.exception(f"Критическая ошибка при обучении: {e}")
+        logger.exception(f"Критическая ошибка при обучении: {e}!")
         return 1
 
 

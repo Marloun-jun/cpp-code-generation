@@ -35,7 +35,7 @@
 cd bpe_cpp
 mkdir build && cd build
 cmake ..
-make
+make -j$(nproc)
 ```
 
 ### **Сборка только простого сервера**
@@ -94,7 +94,7 @@ make run_web_server
 | Характеристика | Простой сервер (server.cpp) | Crow сервер (server_crow.cpp) |
 |----------------|------------------------------|-------------------------------|
 | **Зависимости** | Нет (только стандартная библиотека) | CrowCpp, Zlib |
-| **Размер** | ~100 KB | ~500 KB |
+| **Размер** | ~100 КБ | ~1-2 МБ (с CrowCpp) |
 | **Производительность** | Средняя | Высокая (асинхронный) |
 | **API** | Базовый | Полноценный REST |
 | **Swagger UI** | Нет | ✅ Да |
@@ -124,6 +124,15 @@ curl -X POST http://localhost:8080/api/tokenize \
   -d '{"text": "int main() { return 0; }"}'
 ```
 
+**Пример ответа:**
+```json
+{
+  "tokens": [42, 17, 35, 98, 3, 105, 32, 12],
+  "count": 8,
+  "time_ms": 0.15
+}
+```
+
 ### Crow сервер
 
 | Метод | Путь | Описание |
@@ -151,7 +160,7 @@ curl -X POST http://localhost:8080/tokenize \
 ```text
 # HELP bpe_vocab_size Vocabulary size
 # TYPE bpe_vocab_size gauge
-bpe_vocab_size 8000
+bpe_vocab_size 10000
 
 # HELP bpe_cache_hits_total Total cache hits
 # TYPE bpe_cache_hits_total counter
@@ -207,8 +216,12 @@ vcpkg install zlib
 web/
 ├── CMakeLists.txt     # Конфигурация сборки
 ├── README.md          # Этот файл
-├── server.cpp         # Простой сервер на сокетах
 ├── server_crow.cpp    # REST API сервер на CrowCpp
+├── server.cpp         # Простой сервер на сокетах
 └── swagger.html       # Swagger UI (опционально)
-
 ```
+---
+
+**Автор:** Евгений П.  
+**Лицензия:** MIT  
+**Дата:** 2026
