@@ -1,3 +1,0 @@
-[submodule "3_my_cpp_nn_project/cpp-bpe-tokenizer/third_party/crow"]
-	path = 3_my_cpp_nn_project/cpp-bpe-tokenizer/third_party/crow
-	url = https://github.com/CrowCpp/Crow.git
