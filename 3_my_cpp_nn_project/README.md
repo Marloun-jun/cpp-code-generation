@@ -3,6 +3,7 @@
 [![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.5+-red.svg)](https://pytorch.org/)
 [![C++](https://img.shields.io/badge/C++-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
+[![Docker](https://img.shields.io/badge/Docker-ghcr.io-blue)](https://github.com/marloun-jun/cpp-code-generation/pkgs/container/cpp-code-gen)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://github.com/Marloun-jun/cpp-code-generation/blob/main/LICENSE)
 
 Полнофункциональный проект для генерации C++ кода по русским инструкциям. Включает собственный BPE токенизатор (Python + C++ с SIMD), трансформерную модель (18.3M параметров), LoRA дообучение, веб-сервер и инструменты для анализа данных.
@@ -289,13 +290,13 @@ python final_server.py
 
 Контейнер запускает **два сервера**:
 - **Модель генерации кода** — порт `8080` (веб-интерфейс)
-- **Токенизатор (демо)** — порт `8081`
+- **Токенизатор (демо)** — порт `8081` с Swagger UI
 
 ### Быстрый запуск (готовый образ)
 
 ```bash
 # Скачать образ
-docker pull ghcr.io/Marloun-jun/cpp-code-gen:latest
+docker pull ghcr.io/marloun-jun/cpp-code-gen:latest
 
 # Запустить контейнер (порты 8080 и 8081)
 docker run -d \
@@ -303,17 +304,18 @@ docker run -d \
     -p 8080:8080 \
     -p 8081:8081 \
     --restart unless-stopped \
-    ghcr.io/Marloun-jun/cpp-code-gen:latest
+    ghcr.io/marloun-jun/cpp-code-gen:latest
 
 # Открыть в браузере:
 # - Модель:        http://localhost:8080
 # - Токенизатор:   http://localhost:8081
+# - Swagger UI:    http://localhost:8081/swagger
 ```
 
 ### Сборка из исходников
 
 ```bash
-git clone https://github.com/Marloun-jun/cpp-code-generation.git
+git clone https://github.com/marloun-jun/cpp-code-generation.git
 cd cpp-code-generation/3_my_cpp_nn_project
 docker build -t cpp-code-gen .
 docker run -d --name cpp-code-gen -p 8080:8080 -p 8081:8081 --restart unless-stopped cpp-code-gen
@@ -345,7 +347,7 @@ docker ps
 | Размер | ~5.7 GB |
 | Порты | `8080` (модель), `8081` (токенизатор) |
 | Базовый образ | `python:3.12-slim` |
-| CUDA | Включена (для GPU) |
+| CUDA | ❌ Нет (CPU-only версия) |
 
 ### Доступные сервисы
 
@@ -353,6 +355,26 @@ docker ps
 |--------|------|-----|----------|
 | Генерация кода | 8080 | http://localhost:8080 | Веб-интерфейс модели |
 | Токенизатор API | 8081 | http://localhost:8081 | REST API токенизатора |
+| Swagger UI | 8081 | http://localhost:8081/swagger | Документация API |
+| Health Check | 8081 | http://localhost:8081/api/health | Статус сервера |
+| Статистика | 8081 | http://localhost:8081/api/stats | Метрики токенизатора |
+
+### Пример API запроса к токенизатору
+
+```bash
+curl -X POST http://localhost:8081/api/tokenize \
+    -H "Content-Type: application/json" \
+    -d '{"text": "int main() { return 0; }"}'
+```
+
+**Ответ:**
+```json
+{
+  "success": true,
+  "count": 12,
+  "tokens": [344, 38, 467, 38, 129, 38, 380, 38, 559, 38, 131, 262]
+}
+```
 
 ## ⭐ Заключение
 
