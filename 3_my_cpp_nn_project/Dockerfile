@@ -127,7 +127,7 @@ stderr_logfile=/var/log/supervisor/model_server.log\n\
 environment=PYTHONUNBUFFERED="1",PROJECT_ROOT="/app/cpp_code_model",PYTHONPATH="/app:/app/cpp_code_model:/app/bpe_tokenizer_cpu/bpe_python",MODEL_PATH="/app/cpp_code_model/checkpoints/medium/cpp-code-epoch=19-val_loss=0.87.ckpt",LORA_PATH="/app/cpp_code_model/checkpoints/lora_medium/lora_weights_best.pt",CONFIG_PATH="/app/cpp_code_model/configs/medium.json"\n\
 \n\
 [program:tokenizer_server]\n\
-command=/app/tokenizer_server --port 8081\n\
+command=/app/tokenizer_server --port 8081 --model /app/bpe_tokenizer_cpu/bpe_cpp/models/bpe_10000/cpp_vocab.json --merges /app/bpe_tokenizer_cpu/bpe_cpp/models/bpe_10000/cpp_merges.txt\n\
 directory=/app\n\
 autostart=true\n\
 autorestart=true\n\
